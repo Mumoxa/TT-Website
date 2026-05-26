@@ -1,1 +1,1063 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talent Tree | Specialist Recruitment Built on Reputation</title>
+  <meta name="description" content="Talent Tree is a specialist recruitment partner established in 2013, built on reputation, South African market expertise and focused niche hiring." />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <style>
+    :root {
+      --navy-950: #050d19;
+      --navy-900: #0a1b31;
+      --blue-500: #16a4ff;
+      --blue-300: #8ed6ff;
+      --silver-100: #f6f9fc;
+      --silver-300: #c3cfdd;
+      --silver-500: #8fa0b3;
+      --line: rgba(220, 230, 240, .16);
+      --line-strong: rgba(220, 230, 240, .28);
+      --glass: rgba(255, 255, 255, .055);
+      --glass-strong: rgba(255, 255, 255, .085);
+      --shadow: 0 28px 90px rgba(0, 0, 0, .34);
+      --shadow-soft: 0 18px 54px rgba(0, 0, 0, .22);
+      --radius-xl: 34px;
+      --radius-lg: 24px;
+      --max: 1200px;
+    }
 
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--navy-950); }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--silver-100);
+      background:
+        radial-gradient(circle at 50% -18%, rgba(22, 164, 255, .20), transparent 34rem),
+        radial-gradient(circle at 94% 18%, rgba(142, 214, 255, .08), transparent 28rem),
+        linear-gradient(180deg, var(--navy-950), var(--navy-900) 44%, var(--navy-950));
+      line-height: 1.55;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: .2;
+      background-image:
+        linear-gradient(rgba(220,230,240,.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(220,230,240,.032) 1px, transparent 1px);
+      background-size: 78px 78px;
+      mask-image: linear-gradient(to bottom, black 0%, transparent 74%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+    p { color: var(--silver-500); }
+    h1, h2, h3, h4 { color: var(--silver-100); }
+
+    .container,
+    main.container {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .container-fluid {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    nav.container-fluid {
+      position: sticky;
+      top: 16px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 74px;
+      margin-top: 16px;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(5, 13, 25, .78);
+      box-shadow: 0 18px 54px rgba(0, 0, 0, .24);
+      backdrop-filter: blur(20px);
+    }
+
+    nav ul {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    nav li { margin: 0; }
+
+    .brand {
+      display: inline-grid;
+      gap: 2px;
+      min-width: max-content;
+      line-height: 1.05;
+    }
+
+    .brand strong {
+      color: var(--silver-100);
+      font-size: 1.18rem;
+      letter-spacing: -.035em;
+    }
+
+    .brand span {
+      color: var(--silver-500);
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      color: var(--silver-300);
+      font-size: .9rem;
+      font-weight: 750;
+      opacity: .86;
+      transition: color .18s ease, opacity .18s ease;
+    }
+
+    .nav-link:hover { color: white; opacity: 1; }
+
+    .button,
+    button,
+    [role="button"] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0;
+      border: 1px solid rgba(142, 214, 255, .32);
+      border-radius: 999px;
+      padding: .86rem 1.15rem;
+      background: linear-gradient(135deg, #ffffff, #d8e7f2 46%, #8ed6ff);
+      color: var(--navy-950);
+      box-shadow: 0 14px 38px rgba(22, 164, 255, .20);
+      font-weight: 850;
+      letter-spacing: -.01em;
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .button:hover,
+    button:hover,
+    [role="button"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 48px rgba(22, 164, 255, .28);
+    }
+
+    .button.secondary {
+      background: rgba(255, 255, 255, .04);
+      color: var(--silver-100);
+      border: 1px solid var(--line-strong);
+      box-shadow: none;
+    }
+
+    .section { padding: 78px 0; }
+    .section.first { padding-top: 84px; }
+    .section.compact { padding: 50px 0; }
+
+    .hero {
+      min-height: calc(100vh - 120px);
+      display: grid;
+      align-items: center;
+    }
+
+    .hero-shell {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 42px;
+      padding: clamp(34px, 6vw, 76px);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.072), rgba(255,255,255,.024)),
+        radial-gradient(circle at 84% 18%, rgba(22, 164, 255, .13), transparent 24rem);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-shell::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(140deg, rgba(255,255,255,.09), transparent 36%, rgba(142,214,255,.08));
+      mask-image: linear-gradient(#000, transparent 74%);
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(340px, .72fr);
+      gap: clamp(34px, 6vw, 76px);
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      color: var(--silver-300);
+      font-size: .74rem;
+      font-weight: 850;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--blue-500);
+      box-shadow: 0 0 16px var(--blue-500);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 840px;
+      color: var(--silver-100);
+      font-size: clamp(3.05rem, 7.2vw, 6.7rem);
+      line-height: .92;
+      letter-spacing: -.078em;
+      font-weight: 930;
+    }
+
+    .gradient-text {
+      background: linear-gradient(110deg, #ffffff 0%, #dce6f0 34%, #16a4ff 92%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-subtitle {
+      max-width: 720px;
+      margin: 26px 0 0;
+      color: #c7d3df;
+      font-size: clamp(1.02rem, 1.35vw, 1.18rem);
+      line-height: 1.58;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 16px 0 0;
+      color: var(--silver-500);
+      font-size: .98rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .hero-card,
+    .audience-card,
+    .feature-card,
+    .glass-panel,
+    .proof-card,
+    .solution-card,
+    .contact-card,
+    .subscribe-card,
+    .logo-pill {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero-card {
+      border-color: var(--line-strong);
+      border-radius: 30px;
+      padding: 28px;
+    }
+
+    .hero-card h3 {
+      margin: 0 0 8px;
+      color: var(--silver-100);
+      font-size: 1.28rem;
+      letter-spacing: -.035em;
+    }
+
+    .hero-card p {
+      margin: 0 0 22px;
+      color: var(--silver-500);
+      font-size: .92rem;
+    }
+
+    .stat-list { display: grid; gap: 12px; }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: minmax(112px, auto) 1fr;
+      gap: 16px;
+      align-items: start;
+      padding: 15px;
+      border: 1px solid rgba(220,230,240,.13);
+      border-radius: 18px;
+      background: rgba(255,255,255,.032);
+    }
+
+    .stat-row strong {
+      display: block;
+      min-width: 0;
+      color: var(--silver-100);
+      font-size: 1rem;
+      letter-spacing: -.02em;
+      white-space: nowrap;
+    }
+
+    .stat-row span {
+      display: block;
+      min-width: 0;
+      color: var(--silver-500);
+      font-size: .83rem;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 30px;
+      margin-bottom: 32px;
+    }
+
+    .section-heading h2 {
+      max-width: 760px;
+      margin: 0;
+      color: var(--silver-100);
+      font-size: clamp(2.15rem, 4.8vw, 4.55rem);
+      line-height: .96;
+      letter-spacing: -.068em;
+      font-weight: 900;
+    }
+
+    .section-heading p {
+      max-width: 540px;
+      margin: 0;
+      color: #b4c2d1;
+      font-size: .98rem;
+    }
+
+    .logo-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .logo-pill {
+      min-height: 88px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 18px;
+      border-radius: 22px;
+      color: #d9e5f0;
+      font-weight: 830;
+      letter-spacing: -.02em;
+    }
+
+    .audience-grid,
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .audience-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 306px;
+      border-radius: var(--radius-xl);
+      padding: 34px;
+    }
+
+    .audience-card::after {
+      content: "";
+      position: absolute;
+      right: -126px;
+      top: -126px;
+      width: 285px;
+      height: 285px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(22,164,255,.13), transparent 68%);
+    }
+
+    .audience-card h3 {
+      position: relative;
+      margin: 0 0 12px;
+      color: var(--silver-100);
+      font-size: 1.9rem;
+      letter-spacing: -.052em;
+    }
+
+    .audience-card h3 span { color: var(--blue-300); }
+    .audience-card p { position: relative; margin: 0 0 20px; }
+
+    .check-list {
+      position: relative;
+      display: grid;
+      gap: 10px;
+      margin: 0 0 24px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .check-list li {
+      display: flex;
+      gap: 10px;
+      color: #d9e5f0;
+      font-size: .93rem;
+    }
+
+    .check-list li::before {
+      content: "✓";
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(142,214,255,.28);
+      color: var(--blue-300);
+      font-size: .74rem;
+      font-weight: 900;
+    }
+
+    .card-grid,
+    .solutions-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card,
+    .solution-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      padding: 26px;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .feature-card { min-height: 238px; }
+    .solution-card { min-height: 210px; }
+
+    .feature-card:hover,
+    .solution-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(142,214,255,.34);
+      background: linear-gradient(180deg, rgba(255,255,255,.098), rgba(255,255,255,.045));
+    }
+
+    .icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 22px;
+      border: 1px solid rgba(142,214,255,.25);
+      border-radius: 14px;
+      background: rgba(22,164,255,.10);
+      color: var(--blue-300);
+      font-weight: 900;
+    }
+
+    .feature-card h3,
+    .solution-card h3,
+    .proof-card h3,
+    .glass-panel h3 {
+      margin: 0 0 10px;
+      color: var(--silver-100);
+      font-size: 1.14rem;
+      letter-spacing: -.04em;
+    }
+
+    .feature-card p,
+    .solution-card p,
+    .proof-card p,
+    .glass-panel p {
+      margin: 0;
+      font-size: .92rem;
+    }
+
+    .solution-card a {
+      display: inline-flex;
+      margin-top: 20px;
+      color: var(--blue-300);
+      font-size: .87rem;
+      font-weight: 850;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: .85fr 1.15fr;
+      gap: 38px;
+      align-items: start;
+    }
+
+    .sticky-copy { position: sticky; top: 120px; }
+    .panel-stack { display: grid; gap: 16px; }
+
+    .glass-panel {
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+
+    .glass-panel h3 { font-size: 1.45rem; }
+
+    .proof-grid {
+      display: grid;
+      grid-template-columns: .9fr 1.05fr 1.05fr;
+      gap: 16px;
+    }
+
+    .proof-card {
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+
+    .rating {
+      color: #dce7f2;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .proof-card strong {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--silver-100);
+      font-size: 1.5rem;
+      line-height: 1.08;
+      letter-spacing: -.052em;
+    }
+
+    .quote-band,
+    .cta-shell {
+      border: 1px solid rgba(142,214,255,.26);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(22,164,255,.17), transparent 36%),
+        linear-gradient(135deg, rgba(10,79,143,.30), rgba(8,26,46,.72));
+      box-shadow: 0 18px 70px rgba(22,164,255,.075);
+    }
+
+    .quote-band {
+      margin-top: 18px;
+      border-radius: var(--radius-xl);
+      padding: 38px;
+    }
+
+    .quote-band p {
+      max-width: 1040px;
+      margin: 0;
+      color: white;
+      font-size: clamp(1.25rem, 2.15vw, 2.05rem);
+      line-height: 1.2;
+      letter-spacing: -.052em;
+    }
+
+    .quote-band small {
+      display: block;
+      margin-top: 20px;
+      color: #bad2e5;
+      font-weight: 850;
+    }
+
+    .cta-shell {
+      border-radius: 42px;
+      padding: clamp(32px, 6vw, 70px);
+    }
+
+    .cta-shell h2 {
+      max-width: 800px;
+      margin: 0;
+      color: var(--silver-100);
+      font-size: clamp(2.45rem, 5.7vw, 5.65rem);
+      line-height: .9;
+      letter-spacing: -.078em;
+    }
+
+    .cta-shell p {
+      max-width: 700px;
+      margin: 24px 0 0;
+      color: #c4d2e1;
+      font-size: 1.03rem;
+    }
+
+    .contact-grid { grid-template-columns: .8fr 1.2fr; }
+
+    .contact-card,
+    .subscribe-card {
+      border-radius: var(--radius-xl);
+      padding: 30px;
+    }
+
+    .contact-card h3,
+    .subscribe-card h2,
+    .subscribe-card h3 {
+      margin-top: 0;
+      color: var(--silver-100);
+      letter-spacing: -.04em;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 22px 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      padding: 10px 13px;
+      border: 1px solid rgba(220,230,240,.18);
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      color: #d7e7f5;
+      font-size: .84rem;
+      font-weight: 780;
+    }
+
+    .contact-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .contact-list li {
+      padding: 14px 16px;
+      border: 1px solid rgba(220,230,240,.13);
+      border-radius: 16px;
+      background: rgba(255,255,255,.032);
+      color: #d7e7f8;
+      font-weight: 740;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-grid .full { grid-column: 1 / -1; }
+
+    input,
+    textarea {
+      width: 100%;
+      margin: 0;
+      padding: 17px 18px;
+      border: 1px solid rgba(220,230,240,.16);
+      border-radius: 18px;
+      outline: none;
+      background: rgba(5,13,25,.60);
+      box-shadow: none;
+      color: var(--silver-100);
+      font: inherit;
+    }
+
+    input::placeholder,
+    textarea::placeholder { color: #8394a8; opacity: 1; }
+    input:focus,
+    textarea:focus {
+      border-color: rgba(142,214,255,.48);
+      box-shadow: 0 0 0 4px rgba(22,164,255,.08);
+    }
+
+    textarea { min-height: 150px; resize: vertical; }
+
+    .figure-card {
+      margin: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .figure-card img {
+      width: 100%;
+      min-height: 180px;
+      object-fit: cover;
+    }
+
+    .figure-card figcaption {
+      padding: 14px 16px;
+      color: var(--silver-500);
+      font-size: .86rem;
+    }
+
+    footer.container {
+      width: min(var(--max), calc(100% - 32px));
+      padding: 0 0 36px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1.1fr;
+      gap: 28px;
+      padding: 46px 0 36px;
+      border-top: 1px solid rgba(220,230,240,.13);
+    }
+
+    .footer-grid h4 {
+      margin: 0 0 12px;
+      color: #7e91a7;
+      font-size: .78rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .footer-grid p,
+    .footer-grid a,
+    .footer-grid small {
+      margin: 0;
+      color: var(--silver-500);
+      font-size: .9rem;
+    }
+
+    .footer-links {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .footer-links div {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .copyright {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 0 28px;
+      border-top: 1px solid rgba(220,230,240,.10);
+      color: #6f8097;
+      font-size: .82rem;
+    }
+
+    @media (max-width: 1120px) {
+      .hero-grid,
+      .split,
+      .contact-grid { grid-template-columns: 1fr; }
+      .card-grid,
+      .solutions-grid { grid-template-columns: repeat(2, 1fr); }
+      .proof-grid { grid-template-columns: 1fr 1fr; }
+      .proof-grid .proof-card:last-child { grid-column: 1 / -1; }
+      .logo-row { grid-template-columns: repeat(3, 1fr); }
+      .sticky-copy { position: static; }
+    }
+
+    @media (max-width: 820px) {
+      nav.container-fluid {
+        top: 0;
+        width: 100%;
+        margin-top: 0;
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+      }
+
+      nav ul:nth-child(2) li:not(:last-child) { display: none; }
+      .brand span { display: none; }
+      .section { padding: 58px 0; }
+      .section.first { padding-top: 48px; }
+      .hero { min-height: auto; }
+      .hero-shell { border-radius: 30px; padding: 28px; }
+      h1 { font-size: clamp(3rem, 15vw, 5.55rem); }
+      .section-heading,
+      .audience-grid,
+      .card-grid,
+      .solutions-grid,
+      .proof-grid,
+      .logo-row,
+      .footer-grid,
+      .footer-links,
+      .form-grid { display: grid; grid-template-columns: 1fr; }
+      .proof-grid .proof-card:last-child,
+      .form-grid .full { grid-column: auto; }
+      .audience-card,
+      .feature-card,
+      .solution-card,
+      .proof-card,
+      .glass-panel,
+      .contact-card,
+      .subscribe-card,
+      .quote-band { padding: 24px; border-radius: 24px; }
+      .copyright { display: grid; }
+    }
+
+    @media (max-width: 520px) {
+      .container,
+      main.container,
+      .container-fluid,
+      footer.container { width: min(100% - 22px, var(--max)); }
+      [role="button"], .button, button { padding: .78rem .92rem; font-size: .88rem; }
+      .stat-row { grid-template-columns: 1fr; }
+      .stat-row strong { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="container-fluid">
+    <ul>
+      <li>
+        <strong>
+          <a href="#top" class="brand" aria-label="Talent Tree home">
+            <strong>Talent Tree</strong>
+            <span>Established 2013</span>
+          </a>
+        </strong>
+      </li>
+    </ul>
+    <ul>
+      <li><a href="#offerings" class="nav-link">Solutions</a></li>
+      <li><a href="#about" class="nav-link">About</a></li>
+      <li><a href="#contact" role="button">Let’s Talk</a></li>
+    </ul>
+  </nav>
+
+  <main class="container" id="top">
+    <section class="section first hero" aria-label="Talent Tree hero">
+      <div class="hero-shell">
+        <div class="hero-grid">
+          <section>
+            <hgroup>
+              <div class="eyebrow">Specialist recruitment · South African roots</div>
+              <h1>Specialist recruitment <span class="gradient-text">built on reputation</span></h1>
+              <h3 class="hero-subtitle">Talent Tree is a specialist recruitment partner with a strong South African foundation, trusted delivery and the market judgement needed for high-quality hiring.</h3>
+            </hgroup>
+            <p class="lead">We help businesses build capable teams through niche hiring expertise, credible shortlists and long-term relationships. When a broader hiring model makes sense, we support it carefully and selectively.</p>
+            <div class="hero-actions">
+              <a class="button" href="#contact">Start the Conversation</a>
+              <a class="button secondary" href="#about">About Talent Tree</a>
+            </div>
+          </section>
+
+          <aside class="hero-card" aria-label="Talent Tree proof points">
+            <h3>Why businesses choose Talent Tree</h3>
+            <p>Clear positioning, specialist focus and trusted long-term delivery.</p>
+            <div class="stat-list">
+              <div class="stat-row"><strong>2013</strong><span>Established and building reputation ever since</span></div>
+              <div class="stat-row"><strong>10+ years</strong><span>Trusted delivery in the South African market</span></div>
+              <div class="stat-row"><strong>Preferred</strong><span>Trusted on niche roles by selected key clients</span></div>
+              <div class="stat-row"><strong>Flexible</strong><span>Local team build with selective international support when required</span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section compact" aria-label="Trusted hiring environments">
+      <div class="section-heading">
+        <h2>Trusted across growth and enterprise hiring</h2>
+        <p>Talent Tree works across focused hiring environments where judgement, discretion and specialist search matter.</p>
+      </div>
+      <div class="logo-row">
+        <div class="logo-pill">Startups</div>
+        <div class="logo-pill">Financial Services</div>
+        <div class="logo-pill">Retail Groups</div>
+        <div class="logo-pill">Niche Skills Hiring</div>
+        <div class="logo-pill">International Team Build</div>
+      </div>
+    </section>
+
+    <section class="section" id="audience" aria-label="Who Talent Tree helps">
+      <div class="section-heading">
+        <h2>Two routes. One standard.</h2>
+        <p>For companies that need sharper hiring and candidates exploring better-fit opportunities.</p>
+      </div>
+      <div class="grid audience-grid">
+        <article class="audience-card">
+          <h3><span>I’m Hiring</span></h3>
+          <p>We help you build and scale high-performing teams without the noise of generic recruitment.</p>
+          <ul class="check-list">
+            <li>Specialist recruitment for niche and hard-to-fill roles</li>
+            <li>Local team build with strong South African market expertise</li>
+            <li>Selective blended and international hiring support when it adds value</li>
+          </ul>
+          <a class="button" href="#contact">Hire Talent</a>
+        </article>
+        <article class="audience-card">
+          <h3><span>I’m Looking for Work</span></h3>
+          <p>Explore career opportunities with companies that value specialist capability, trust and long-term fit.</p>
+          <ul class="check-list">
+            <li>Career conversations with a credible specialist team</li>
+            <li>Roles across local and selected international client environments</li>
+            <li>Better alignment between your skills and the right team</li>
+          </ul>
+          <a class="button secondary" href="#contact">Explore Opportunities</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="offerings" aria-label="What Talent Tree is built for">
+      <div class="section-heading">
+        <h2>What We’re Built For</h2>
+        <p>This is not generic recruitment. Talent Tree is built for the moments where hiring matters, niche capability is hard to find and the wrong shortlist wastes everyone’s time.</p>
+      </div>
+      <div class="card-grid">
+        <article class="feature-card"><div class="icon">01</div><h3>Specialist Recruitment</h3><p>Focused search for niche and hard-to-fill roles where quality matters more than volume, including targeted headhunting, scarce skills search and high-value shortlists.</p></article>
+        <article class="feature-card"><div class="icon">02</div><h3>Local Team Build</h3><p>Strong South African market knowledge for businesses building capability on the ground through sector-aligned recruitment and long-term hiring support.</p></article>
+        <article class="feature-card"><div class="icon">03</div><h3>Selective International Support</h3><p>Support for broader hiring models where international capability is part of a practical, well-structured talent strategy.</p></article>
+        <article class="feature-card"><div class="icon">04</div><h3>Blended Team Models</h3><p>Practical hiring support for businesses combining local capability with remote or international talent through flexible, growth-ready recruitment support.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="about" aria-label="About Talent Tree">
+      <div class="split">
+        <div class="sticky-copy">
+          <div class="eyebrow">About Talent Tree</div>
+          <div class="section-heading" style="display:block; margin-bottom:0;">
+            <h2>Built in South Africa. Ready for broader reach.</h2>
+            <p style="margin-top:20px;">Talent Tree was established in 2013 with a simple belief: good recruitment should be sharp, credible and built on reputation.</p>
+          </div>
+        </div>
+        <div class="panel-stack">
+          <article class="glass-panel"><h3>Strong local reputation</h3><p>We have spent more than a decade building our name in the South African market through consistent delivery, trusted relationships and focused work in niche hiring. Our clients range from startups to some of Africa’s largest Financial Services and Retail groups.</p></article>
+          <article class="glass-panel"><h3>Preferred where precision matters</h3><p>For a number of our clients, we are the preferred recruitment partner when specialist capability is hard to find and the quality of the search matters more than the size of the database.</p></article>
+          <article class="glass-panel"><h3>International flavour, grounded delivery</h3><p>Alongside our local strength, we support selected international hiring needs. We understand the practical reality of hiring across markets without losing the precision and care needed to make the right appointment.</p></article>
+          <figure class="figure-card">
+            <img loading="lazy" alt="Abstract blue and silver talent network" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 360'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='45%25' r='65%25'%3E%3Cstop offset='0' stop-color='%2316a4ff' stop-opacity='.36'/%3E%3Cstop offset='.55' stop-color='%230a4f8f' stop-opacity='.24'/%3E%3Cstop offset='1' stop-color='%23050d19'/%3E%3C/radialGradient%3E%3ClinearGradient id='l' x1='0' x2='1'%3E%3Cstop stop-color='%23ffffff' stop-opacity='.78'/%3E%3Cstop offset='.5' stop-color='%238ed6ff' stop-opacity='.9'/%3E%3Cstop offset='1' stop-color='%23c3cfdd' stop-opacity='.64'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1000' height='360' fill='%23050d19'/%3E%3Ccircle cx='500' cy='180' r='250' fill='url(%23g)'/%3E%3Cg fill='%23c3cfdd' opacity='.42'%3E%3Ccircle cx='185' cy='115' r='3'/%3E%3Ccircle cx='300' cy='210' r='3'/%3E%3Ccircle cx='420' cy='110' r='3'/%3E%3Ccircle cx='570' cy='200' r='3'/%3E%3Ccircle cx='710' cy='125' r='3'/%3E%3Ccircle cx='835' cy='235' r='3'/%3E%3C/g%3E%3Cg stroke='url(%23l)' stroke-width='1.4' opacity='.56' fill='none'%3E%3Cpath d='M185 115 C320 40 500 75 710 125 S880 210 835 235'/%3E%3Cpath d='M300 210 C420 270 560 265 835 235'/%3E%3Cpath d='M420 110 C485 150 520 165 570 200'/%3E%3C/g%3E%3Cg fill='none' stroke='%238ed6ff' opacity='.23'%3E%3Cellipse cx='500' cy='180' rx='360' ry='95'/%3E%3Cellipse cx='500' cy='180' rx='265' ry='150' transform='rotate(-12 500 180)'/%3E%3C/g%3E%3C/svg%3E" />
+            <figcaption><a href="#contact" target="_self">Local strength with wider reach where it adds value</a></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="why-us" aria-label="Why Talent Tree">
+      <div class="section-heading">
+        <h2>Why Talent Tree?</h2>
+        <p>Trusted relationships are earned. Our edge is not noise. It is reputation, consistency and real recruitment judgement.</p>
+      </div>
+      <div class="proof-grid">
+        <article class="proof-card"><div class="rating">★★★★★</div><strong>Established in 2013 and built the hard way</strong><p>We have worked hard over more than a decade to build credibility in the South African job market.</p></article>
+        <article class="proof-card"><h3>Client range</h3><strong>From startups to major Financial Services and Retail groups</strong><p>We support businesses at different stages, from growth-focused teams to large enterprise environments.</p></article>
+        <article class="proof-card"><h3>Positioning</h3><strong>Niche hiring where the shortlist actually matters</strong><p>We are trusted to deliver specialist recruitment support where quality beats volume every time.</p></article>
+      </div>
+      <div class="quote-band">
+        <p>Talent Tree is a specialist recruitment partner established in 2013. We have built our reputation in the South African market through focused delivery, trusted relationships and a strong track record in niche hiring.</p>
+        <small>South African roots | Specialist recruitment | Selected international support when required</small>
+      </div>
+    </section>
+
+    <section class="section" id="solutions" aria-label="Talent Tree solutions">
+      <div class="section-heading">
+        <h2>Our Solutions</h2>
+        <p>Flexible hiring and delivery models tailored to your needs.</p>
+      </div>
+      <div class="solutions-grid">
+        <article class="solution-card"><div class="icon">⌁</div><h3>Permanent Recruitment</h3><p>Find full-time talent that drives long-term growth.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">◇</div><h3>Contract Staffing</h3><p>On-demand talent for short-term projects.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">▣</div><h3>Embedded Teams</h3><p>Dedicated teams that integrate with your business.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">◎</div><h3>Executive Search</h3><p>Leaders and experts for critical leadership roles.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">✦</div><h3>Project Delivery</h3><p>End-to-end project delivery by expert teams.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">↗</div><h3>Nearshore Solutions</h3><p>Scale your team through carefully structured delivery support.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">☑</div><h3>Niche Skills Hiring</h3><p>Specialist recruitment for hard-to-find capability.</p><a href="#contact">Learn more →</a></article>
+        <article class="solution-card"><div class="icon">○</div><h3>International Team Build</h3><p>Selective support for broader team structures beyond the local market.</p><a href="#contact">Learn more →</a></article>
+      </div>
+    </section>
+
+    <section class="section compact" aria-label="CTA">
+      <div class="cta-shell">
+        <h2>Your next hire starts here</h2>
+        <p>Whether you are scaling locally, strengthening your hiring strategy or tackling a hard-to-fill niche role, Talent Tree is ready to help you move with more clarity and better hiring precision.</p>
+        <div class="hero-actions">
+          <a class="button" href="#contact">Let’s Build Your Team</a>
+          <a class="button secondary" href="#about">Learn More About Talent Tree</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact" aria-label="Contact Talent Tree">
+      <div class="section-heading">
+        <h2>Let’s Talk Talent</h2>
+        <p>Whether you are hiring, planning for growth or exploring what the right talent solution could look like, the Talent Tree team is ready to help.</p>
+      </div>
+      <div class="contact-grid">
+        <aside class="contact-card">
+          <h3>Talk to Talent Tree</h3>
+          <p>Need talent, insight or a sharper recruitment partner? Get in touch. We are here to answer questions, solve hiring challenges and help you build the team your business needs.</p>
+          <div class="tag-row"><span class="tag">Specialist recruitment</span><span class="tag">Local teams</span><span class="tag">International support</span><span class="tag">Blended teams</span></div>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a></li>
+            <li>Phone: <a href="tel:+27727400439">072 740 0439</a></li>
+            <li>Established 2013 | South Africa with international reach</li>
+          </ul>
+        </aside>
+        <article class="contact-card">
+          <h3>Send us a message</h3>
+          <form action="mailto:hello@talenttree.co.za" method="post" enctype="text/plain">
+            <div class="form-grid">
+              <input type="text" name="name" placeholder="Your name" aria-label="Your name" required />
+              <input type="email" name="email" placeholder="Your email" aria-label="Your email" required />
+              <input type="text" class="full" name="company" placeholder="Company" aria-label="Company" />
+              <textarea class="full" name="message" placeholder="Tell us what you need" aria-label="Tell us what you need" required></textarea>
+            </div>
+            <div style="margin-top:16px;"><button type="submit">Start the Conversation</button></div>
+          </form>
+        </article>
+      </div>
+    </section>
+
+    <section aria-label="Subscribe example" class="section compact">
+      <div class="container" style="width:100%;">
+        <article class="subscribe-card">
+          <hgroup>
+            <h2>Stay close to the market</h2>
+            <h3 style="color:var(--silver-500); font-weight:600;">Get hiring insight and recruitment updates from Talent Tree.</h3>
+          </hgroup>
+          <form class="grid" onsubmit="event.preventDefault()">
+            <input type="text" id="firstname" name="firstname" placeholder="First name" aria-label="First name" required />
+            <input type="email" id="email" name="email" placeholder="Email address" aria-label="Email address" required />
+            <button type="submit" onclick="event.preventDefault()">Subscribe</button>
+          </form>
+        </article>
+      </div>
+    </section>
+
+    <footer class="container" style="width:100%;">
+      <div class="footer-grid">
+        <div>
+          <a href="#top" class="brand" aria-label="Talent Tree home">
+            <strong>Talent Tree</strong>
+            <span>Established 2013</span>
+          </a>
+          <p style="margin-top:14px;">Specialist recruitment with South African roots and international reach.</p>
+        </div>
+        <div class="footer-links">
+          <div><h4>Company</h4><a href="#about">About</a><a href="#why-us">Why Talent Tree</a><a href="#contact">Contact</a></div>
+          <div><h4>Solutions</h4><a href="#offerings">Specialist Recruitment</a><a href="#solutions">Permanent Recruitment</a><a href="#solutions">Contract Staffing</a></div>
+          <div><h4>Teams</h4><a href="#offerings">Local Team Build</a><a href="#offerings">Blended Team Models</a><a href="#solutions">Executive Search</a></div>
+        </div>
+        <div><h4>Contact</h4><p><a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a></p><p><a href="tel:+27727400439">072 740 0439</a></p></div>
+      </div>
+      <div class="copyright"><span>© 2026 Talent Tree. All rights reserved.</span><span>Established 2013 | Specialist recruitment | South Africa with international reach | Local, international and blended teams</span></div>
+      <small><a href="#top">Back to top</a> • <a href="#contact">Contact</a></small>
+    </footer>
+  </main>
+</body>
+</html>
