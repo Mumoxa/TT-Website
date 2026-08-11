@@ -5,7 +5,7 @@ const heading=x=>Object.entries(aliases).find(([,a])=>a.includes(x.trim().replac
 // explicitly separated. Ambiguous lines stay visible in Unclassified Information.
 const experienceLine = text => {
   const parts=text.split(/\s*(?:\||\t)\s*/).map(x=>x.trim()).filter(Boolean);
-  if(parts.length<3||!/(?:19|20)\d{2}\s*(?:-|\u2013|\u2014)\s*(?:(?:19|20)\d{2}|present|current)/i.test(parts[2]))return null;
+  if(parts.length<3||!/^\d{4}\s*(?:-|\u2013|\u2014)\s*(?:\d{4}|present|current)$/i.test(parts[2]))return null;
   return {employer:parts[0],title:parts[1],duration:parts[2]};
 };
 
