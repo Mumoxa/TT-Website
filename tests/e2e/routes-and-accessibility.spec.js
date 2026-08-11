@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test } from 'playwright/test';
 
 async function expectNoSeriousAccessibilityViolations(page) {
   const result = await new AxeBuilder({ page })
