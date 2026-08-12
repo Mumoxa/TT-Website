@@ -5,3 +5,12 @@ dist/
 .DS_Store
 .vscode/
 coverage/
+playwright-report/
+test-results/
+
+.dev.vars
+
+services/cv-suggestion-api/.venv/
+services/cv-suggestion-api/.env
+**/__pycache__/
+*.pyc

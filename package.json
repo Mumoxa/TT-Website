@@ -6,13 +6,40 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run tests/unit tests/integration tests/document",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:desktop": "playwright test --project=chromium",
+    "verify": "npm run verify:frontend && npm run verify:functions",
+    "dev:pages": "wrangler pages dev dist",
+    "test:functions": "vitest run tests/functions",
+    "fixtures": "vitest run tests/fixtures --passWithNoTests",
+    "verify:secrets": "node scripts/verify-no-browser-secrets.mjs",
+    "verify:frontend": "npm run fixtures && npm run test && npm run build && npm run verify:secrets && npm run test:e2e",
+    "verify:functions": "npm run test:functions",
+    "inspect:docx": "node scripts/inspect-docx.mjs",
+    "smoke:suggestions": "node scripts/smoke-suggestion-api.mjs"
   },
   "dependencies": {
-    "@playwright/test": "^1.62.0",
     "@vitejs/plugin-react": "latest",
+    "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "vite": "latest"
+    "mammoth": "^1.10.0",
+    "pdfjs-dist": "^6.2.108",
+    "docx": "^9.5.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.8",
+    "jsdom": "^27.2.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@playwright/test": "1.57.0",
+    "@axe-core/playwright": "^4.11.0",
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
+    "wrangler": "^4.27.0"
   }
 }

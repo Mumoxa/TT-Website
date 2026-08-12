@@ -1,0 +1,36 @@
+name: Verify
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:frontend
+      - run: npm run verify:functions
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: pip }
+      - run: pip install -e '.[test]'
+        working-directory: services/cv-suggestion-api
+      - run: pytest -q
+        working-directory: services/cv-suggestion-api
+      - run: pip check
+        working-directory: services/cv-suggestion-api
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f services/cv-suggestion-api/Containerfile -t talent-tree-cv-suggestion-api:${{ github.sha }} services/cv-suggestion-api

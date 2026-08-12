@@ -1,0 +1,16 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { onRequest } from '../../functions/api/cv-suggestions.js';
+const env={ORACLE_CV_API_URL:'https://oracle.invalid',ORACLE_CV_API_TOKEN:'token',CLIENT_KEY_SECRET:'secret'};
+const valid={task:'refine_bullet',fragments:[{id:'f1',text:'managed team'}]};
+const output={task:'refine_bullet',suggestions:[{fragmentId:'f1',proposedText:'Managed team',reason:'Grammar',confidence:'high',warnings:[]}]};
+const call=(body=valid,options={})=>onRequest({env:options.env??env,request:new Request('https://site/api/cv-suggestions',{method:options.method??'POST',headers:{'Content-Type':options.type??'application/json','CF-Connecting-IP':'192.0.2.5',...(options.headers||{})},body:(options.method??'POST')==='GET'?undefined:typeof body==='string'?body:JSON.stringify(body)})});
+afterEach(()=>vi.unstubAllGlobals());
+describe('Pages relay',()=>{
+ it('rejects method, content type, malformed, oversized, invalid schemas and config safely',async()=>{expect((await call(valid,{method:'GET'})).status).toBe(405);expect((await call(valid,{type:'text/plain'})).status).toBe(415);expect((await call('{')).status).toBe(400);expect((await call(valid,{headers:{'Content-Length':'40000'}})).status).toBe(413);expect((await call({...valid,secret:'PRIVATE'})).status).toBe(400);expect((await call(valid,{env:{}})).status).toBe(503);});
+ it('relays only validated JSON with auth, HMAC key, request ID, and no-store',async()=>{let init;vi.stubGlobal('fetch',vi.fn(async(_url,value)=>{init=value;return Response.json(output)}));const response=await call();expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('no-store');expect(init.headers.Authorization).toBe('Bearer token');expect(init.headers['X-Client-Key']).toMatch(/^[a-f0-9]{64}$/);expect(init.headers['X-Request-Id']).toMatch(/-/);expect(JSON.parse(init.body)).toEqual(valid);});
+ it.each([[429,429],[500,503]])('maps upstream %i to %i',async(upstream,expected)=>{vi.stubGlobal('fetch',vi.fn(async()=>new Response('{}',{status:upstream})));expect((await call()).status).toBe(expected);});
+ it('rejects malformed and schema-invalid upstream output',async()=>{vi.stubGlobal('fetch',vi.fn(async()=>new Response('{')));expect((await call()).status).toBe(502);vi.stubGlobal('fetch',vi.fn(async()=>Response.json({candidate:'PRIVATE'})));expect((await call()).status).toBe(502);});
+ it('rejects a schema-valid response for another task',async()=>{vi.stubGlobal('fetch',vi.fn(async()=>Response.json({task:'review_dates',suggestions:[]})));expect((await call()).status).toBe(502);});
+ it('preserves safe upstream rate-limit metadata',async()=>{vi.stubGlobal('fetch',vi.fn(async()=>new Response('{}',{status:429,headers:{'Retry-After':'17'}})));const response=await call();expect(response.status).toBe(429);expect(response.headers.get('retry-after')).toBe('17');});
+ it('maps network failures without echoing candidate text',async()=>{vi.stubGlobal('fetch',vi.fn(async()=>{throw new Error('PRIVATE')}));const response=await call({task:'refine_bullet',fragments:[{id:'f',text:'PRIVATE'}]});expect(response.status).toBe(503);expect(await response.text()).not.toContain('PRIVATE');});
+});

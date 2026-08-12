@@ -1,0 +1,2 @@
+import {buildApprovedViewModel} from '../document/buildApprovedViewModel';
+export default function CvPreview({state}){const v=buildApprovedViewModel(state);return <aside className={`preview ${state.templateId}`} aria-label="CV preview"><p className="eyebrow">Live preview</p><article><h2>{v.personal.name||'Candidate name'}</h2><p>{v.personal.contact}</p>{v.summary&&<><h3>PROFESSIONAL SUMMARY</h3><p>{v.summary}</p></>}{v.sections.map(s=>s.items.length?<section key={s.heading}><h3>{s.heading}</h3>{s.items.map((x,i)=><p key={i}>{x}</p>)}</section>:null)}</article></aside>}
