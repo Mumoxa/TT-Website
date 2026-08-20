@@ -1,75 +1,324 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
 import './styles.css';
 
-const Arrow = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>;
-const Check = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
+const Arrow = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 12h13M13 6l6 6-6 6" />
+  </svg>
+);
 
 const services = [
-  { num: '01', title: 'Specialist search', text: 'For pivotal roles where the right person is not applying. We map, approach and engage the market with care.' },
-  { num: '02', title: 'Market intelligence', text: 'A clear view of talent pools, availability and trade-offs—before you commit time or budget.' },
-  { num: '03', title: 'Team build', text: 'A focused, repeatable hiring plan for growing teams that need quality without the chaos.' },
+  {
+    title: 'Specialist search',
+    summary: 'A focused search for specialist or difficult-to-fill roles.',
+    detail: 'Start with the brief, define the market to explore and agree the search scope before work begins.',
+  },
+  {
+    title: 'Market mapping',
+    summary: 'A structured view of relevant talent before or alongside a search.',
+    detail: 'Useful when the role, target market or likely talent pool needs clearer definition before a hiring decision.',
+  },
+  {
+    title: 'Selective team builds',
+    summary: 'A coordinated approach when several related hires need to move together.',
+    detail: 'The roles, sequencing and sourcing approach are scoped around the hiring need rather than treated as unrelated vacancies.',
+  },
 ];
 
-const cases = [
-  { type: 'Financial services · Confidential', title: 'Finding conviction in a narrow market', challenge: 'A business-critical leadership brief with a highly specific combination of technical and commercial experience.', result: 'A considered search strategy built around fit, discretion and decision-ready context.' },
-  { type: 'Technology · Confidential', title: 'Turning growth plans into a hiring roadmap', challenge: 'A scaling team needed to understand its addressable market before starting a multi-role hiring sprint.', result: 'A practical map of talent, priorities and sequencing to move with confidence.' },
-  { type: 'Professional services · Confidential', title: 'Replacing volume with judgement', challenge: 'An overstretched internal team needed a credible partner for an exceptional, high-stakes hire.', result: 'A focused shortlist that made a difficult decision simpler, not noisier.' },
+const approach = [
+  ['01', 'Define the brief', 'Start with the role, the business need and the decisions that will shape the search.'],
+  ['02', 'Read the market', 'Build a practical view of where relevant talent may sit and what needs to be tested.'],
+  ['03', 'Engage carefully', 'Keep communication clear, relevant and respectful of both client and candidate time.'],
+  ['04', 'Support the decision', 'Bring the conversation back to fit, trade-offs and what the role actually requires.'],
 ];
 
 const faqs = [
-  ['When is Talent Tree the right partner?', 'When a role matters, the market is nuanced and you want an experienced point of view—not a broad CV blast. We are candid about whether a brief fits our focus before any work begins.'],
-  ['How do you price an engagement?', 'The right commercial model depends on the brief, seniority and level of market work required. We scope the work first and provide a clear, agreed engagement model before launch.'],
-  ['Can you help us before we have a final job specification?', 'Yes. Market mapping and an initial consultation can help sharpen the role, compensation expectations and candidate profile before you commit to a search.'],
-  ['Do you work with confidential briefs?', 'Yes. Discretion is built into how we qualify a brief, approach the market and communicate with candidates.'],
+  ['What kind of hiring does Talent Tree focus on?', 'Talent Tree is positioned as a specialist recruitment consultancy. The right starting point is a conversation about the role and whether the brief fits the service.'],
+  ['Can we discuss a role before the brief is final?', 'Yes. An early conversation can be used to clarify the role, the market question and what information is still missing.'],
+  ['Does Talent Tree work from South Africa?', 'Yes. Talent Tree was established in 2013 and operates from South Africa.'],
+  ['Can this website form send my enquiry now?', 'Not yet. The form currently validates information in the browser only. Production submission still needs a secure backend or CRM integration.'],
 ];
 
-function Logo() { return <a href="#top" className="logo" aria-label="Talent Tree home"><img src="/Talent Tree Logo 2026 (1).png" alt="Talent Tree" /></a>; }
-function Button({ children, secondary = false, href = '#contact' }) { return <a className={`button ${secondary ? 'secondary' : ''}`} href={href}>{children}<Arrow /></a>; }
-function FAQ({ item, index, open, setOpen }) { return <article className={`faq ${open === index ? 'open' : ''}`}><button onClick={() => setOpen(open === index ? -1 : index)} aria-expanded={open === index}><span>{item[0]}</span><b>+</b></button><div className="faq-answer"><p>{item[1]}</p></div></article>; }
+function Logo() {
+  return (
+    <a href="#top" className="logo" aria-label="Talent Tree home">
+      <img src={talentTreeLogo} alt="Talent Tree" />
+    </a>
+  );
+}
+
+function CTA({ children, href = '#contact', quiet = false }) {
+  return (
+    <a className={`button${quiet ? ' button-quiet' : ''}`} href={href}>
+      <span>{children}</span>
+      <Arrow />
+    </a>
+  );
+}
+
+function FAQItem({ item, index, openFaq, setOpenFaq }) {
+  const expanded = openFaq === index;
+  const panelId = `faq-panel-${index}`;
+  return (
+    <article className="faq-item">
+      <h3>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={() => setOpenFaq(expanded ? -1 : index)}
+        >
+          <span>{item[0]}</span>
+          <span className="toggle-mark" aria-hidden="true">{expanded ? '−' : '+'}</span>
+        </button>
+      </h3>
+      <div id={panelId} className="faq-panel" hidden={!expanded}>
+        <p>{item[1]}</p>
+      </div>
+    </article>
+  );
+}
 
 function App() {
- const [open, setOpen] = useState(0);
- const [sent, setSent] = useState(false);
- return <div className="app" id="top">
-   <header className="header">
-    <div className="nav-wrap"><Logo /><nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#approach">Approach</a><a href="#work">Our work</a><a href="#about">About</a></nav><a className="nav-cta" href="#contact">Discuss a brief <span>↗</span></a></div>
-   </header>
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeService, setActiveService] = useState(0);
+  const [openFaq, setOpenFaq] = useState(0);
+  const [formStatus, setFormStatus] = useState({ type: 'idle', message: '' });
 
-   <main>
-    <section className="hero">
-      <div className="orb orb-one" /><div className="orb orb-two" />
-      <div className="hero-inner">
-       <p className="eyebrow">Specialist recruitment <i /> South Africa & beyond</p>
-       <h1>Build the team<br /><em>your future</em> needs.</h1>
-       <div className="hero-bottom"><p>Talent Tree brings clarity, market insight and human judgement to the hires that shape what comes next.</p><Button>Start a conversation</Button></div>
-      </div>
-      <div className="hero-scene" aria-hidden="true"><div className="tree-line tree-a"/><div className="tree-line tree-b"/><div className="tree-line tree-c"/><div className="tree-dot d1"/><div className="tree-dot d2"/><div className="tree-dot d3"/><span>EST. 2013</span></div>
-      <div className="scroll-cue"><span>Scroll to explore</span><i /></div>
-    </section>
+  const closeMenu = () => setMenuOpen(false);
 
-    <section className="intro section" id="approach">
-      <div className="section-label"><span>01</span> A better kind of search</div>
-      <div className="intro-grid"><h2>Good hiring is not a numbers game. <em>It is a judgement call.</em></h2><div><p className="large-copy">The most valuable people are rarely waiting in your inbox. They are building, leading and making an impact elsewhere.</p><p>We get beyond the obvious to help ambitious businesses reach the talent that changes the trajectory of their teams.</p><a href="#services" className="text-link">See how we work <Arrow /></a></div></div>
-    </section>
+  const submitEnquiry = (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const name = String(data.get('name') || '').trim();
+    const email = String(data.get('email') || '').trim();
+    const service = String(data.get('service') || '').trim();
+    const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    <section className="signal-strip"><div><span>REPUTATION LED</span><span>MARKET INFORMED</span><span>HUMAN FIRST</span><span>REPUTATION LED</span><span>MARKET INFORMED</span></div></section>
+    if (name.length < 2 || !emailLooksValid || !service) {
+      setFormStatus({
+        type: 'error',
+        message: 'Please add your name, a valid work email and the service you want to discuss.',
+      });
+      return;
+    }
 
-    <section className="section services" id="services"><div className="section-top"><div className="section-label"><span>02</span> What we solve</div><p>Focused support at the moments when getting the people decision right matters most.</p></div><div className="service-list">{services.map((service) => <article className="service" key={service.num}><div className="service-number">{service.num}</div><h3>{service.title}</h3><p>{service.text}</p><a href="#contact" aria-label={`Discuss ${service.title}`}><Arrow /></a></article>)}</div></section>
+    setFormStatus({
+      type: 'ready',
+      message: 'Your details are complete. This form is frontend-only and is not connected to a backend or CRM yet. Please email hello@talenttree.co.za to send the enquiry.',
+    });
+  };
 
-    <section className="proof section"><div className="proof-card"><p className="eyebrow">The Talent Tree standard</p><h2>Less noise.<br /><em>More signal.</em></h2><p>Every search starts with the real question behind the vacancy—and ends with people you can picture doing the work.</p><ul><li><Check /> Honest market feedback, early</li><li><Check /> Carefully qualified, relevant introductions</li><li><Check /> A partner who protects your reputation</li></ul><Button secondary>Meet Talent Tree</Button></div><div className="proof-quote"><div className="quote-mark">“</div><blockquote>We believe a great recruitment partner should make a complex choice feel clear.</blockquote><p>That takes research, relationships and the confidence to tell the truth about the market.</p><div className="quote-caption">OUR POINT OF VIEW <span>—</span> TALENT TREE</div></div></section>
+  return (
+    <div className="app" id="top">
+      <a className="skip-link" href="#main-content">Skip to content</a>
 
-    <section className="section work" id="work"><div className="section-top"><div className="section-label"><span>03</span> Selected work</div><p>Confidential searches, thoughtful strategies and the moments that moved a team forward.</p></div><div className="case-grid">{cases.map((c, i) => <article className={`case case-${i + 1}`} key={c.title}><div className="case-visual"><span>{String(i + 1).padStart(2, '0')}</span><div className="visual-shape" /></div><div className="case-copy"><p className="case-type">{c.type}</p><h3>{c.title}</h3><div className="case-detail"><p><b>Challenge</b>{c.challenge}</p><p><b>Strategy & outcome</b>{c.result}</p></div><a className="text-link" href="#contact">Talk through your brief <Arrow /></a></div></article>)}</div></section>
+      <header className="site-header">
+        <div className="header-inner">
+          <Logo />
+          <button
+            className="menu-toggle"
+            type="button"
+            aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+            aria-controls="primary-navigation"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((value) => !value)}
+          >
+            <span />
+            <span />
+          </button>
+          <nav id="primary-navigation" className={menuOpen ? 'primary-nav is-open' : 'primary-nav'} aria-label="Primary navigation">
+            <a href="#services" onClick={closeMenu}>Services</a>
+            <a href="#approach" onClick={closeMenu}>Approach</a>
+            <a href="#about" onClick={closeMenu}>About</a>
+            <a href="#faq" onClick={closeMenu}>FAQ</a>
+            <a className="nav-contact" href="#contact" onClick={closeMenu}>Discuss a brief</a>
+          </nav>
+        </div>
+      </header>
 
-    <section className="section process"><div className="process-intro"><div className="section-label"><span>04</span> Our approach</div><h2>Rigour behind<br />every <em>yes.</em></h2></div><ol>{[['Listen','We get beneath the job description to understand the business case, the culture and what great really looks like.'],['Map','We form a realistic view of the market, surfacing the opportunity and the constraints early.'],['Connect','We make thoughtful, credible approaches that represent your opportunity as carefully as our own.'],['Decide','You meet a concise, well-contextualised shortlist and make a decision with confidence.']].map(([title,text], i)=><li key={title}><span>0{i+1}</span><h3>{title}</h3><p>{text}</p></li>)}</ol></section>
+      <main id="main-content">
+        <section className="hero" aria-labelledby="hero-heading">
+          <div className="shell hero-grid">
+            <div>
+              <p className="eyebrow">Specialist recruitment · South Africa</p>
+              <h1 id="hero-heading">A clearer start to specialist hiring.</h1>
+            </div>
+            <div className="hero-copy">
+              <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
+              <p>The starting point is simple: understand the role, understand the market and have a useful conversation about what comes next.</p>
+              <CTA>Discuss a brief</CTA>
+            </div>
+          </div>
+        </section>
 
-    <section className="about section" id="about"><div className="about-image"><div className="about-monogram">T<span>T</span></div><p>ROOTED IN RELATIONSHIPS<br />BUILT FOR WHAT'S NEXT</p></div><div className="about-copy"><div className="section-label"><span>05</span> Why Talent Tree</div><h2>A boutique partner for people decisions with <em>weight.</em></h2><p>Talent Tree was founded on a simple belief: businesses deserve more from recruitment than a transaction. Since 2013, we have brought a more considered, commercially aware approach to specialist hiring.</p><p>Our work is personal by design. You get senior attention, clear communication and a search process that reflects well on your brand.</p><Button secondary>Our story</Button></div></section>
+        <section className="section intro" aria-labelledby="intro-heading">
+          <div className="shell split-layout">
+            <div className="section-kicker"><span>01</span> Positioning</div>
+            <div>
+              <h2 id="intro-heading">Clear thinking before candidate volume.</h2>
+              <p className="lead">A specialist recruitment conversation should reduce uncertainty, not add more CVs to it.</p>
+              <p>Talent Tree keeps the conversation focused on what the role needs, what the market can realistically offer and what should happen next.</p>
+            </div>
+          </div>
+        </section>
 
-    <section className="section faq-section"><div><div className="section-label"><span>06</span> Common questions</div><h2>Clarity before<br /><em>commitment.</em></h2><p>Good partnerships begin with an open conversation. Here are a few useful places to start.</p></div><div className="faqs">{faqs.map((item,i)=><FAQ key={item[0]} item={item} index={i} open={open} setOpen={setOpen}/>)}</div></section>
+        <section className="section services" id="services" aria-labelledby="services-heading">
+          <div className="shell">
+            <div className="section-heading-row">
+              <div className="section-kicker"><span>02</span> Services</div>
+              <div>
+                <h2 id="services-heading">Choose the conversation you need.</h2>
+                <p>Select a service to see what the discussion is intended to cover.</p>
+              </div>
+            </div>
 
-    <section className="contact-section" id="contact"><div className="contact-inner"><div><p className="eyebrow">A first conversation</p><h2>Make your next<br />hire <em>matter.</em></h2><p>Tell us what you are building, replacing or trying to solve. If we are the right partner, we will say so. If we are not, we will be honest about that too.</p><div className="contact-details"><a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a><span>Cape Town · Johannesburg · South Africa</span></div></div><form onSubmit={(e) => { e.preventDefault(); setSent(true); }}><label>Your name<input required placeholder="Jane Smith" /></label><label>Work email<input required type="email" placeholder="jane@company.com" /></label><label>What can we help with?<select defaultValue=""><option value="" disabled>Select an option</option><option>Specialist search</option><option>Market intelligence</option><option>Team build</option><option>Something else</option></select></label><label>Tell us a little more<textarea rows="3" placeholder="The brief, the challenge, the ambition..." /></label><button className="form-button" type="submit">{sent ? 'Thank you — we’ll be in touch.' : 'Send enquiry'} <Arrow /></button></form></div></section>
-   </main>
-   <footer><Logo /><span>© 2013 — 2026 Talent Tree Consulting</span><div><a href="#top">LinkedIn</a><a href="#top">Privacy</a></div></footer>
- </div>;
+            <div className="service-list">
+              {services.map((service, index) => {
+                const expanded = activeService === index;
+                return (
+                  <article className={expanded ? 'service-row is-active' : 'service-row'} key={service.title}>
+                    <button
+                      className="service-toggle"
+                      type="button"
+                      aria-expanded={activeService === index}
+                      aria-controls={`service-panel-${index}`}
+                      onClick={() => setActiveService(expanded ? -1 : index)}
+                    >
+                      <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="service-title">{service.title}</span>
+                      <span className="service-summary">{service.summary}</span>
+                      <span className="toggle-mark" aria-hidden="true">{expanded ? '−' : '+'}</span>
+                    </button>
+                    <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
+                      <p>{service.detail}</p>
+                      <CTA href="#contact" quiet>Discuss {service.title.toLowerCase()}</CTA>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="section approach" id="approach" aria-labelledby="approach-heading">
+          <div className="shell">
+            <div className="section-heading-row compact">
+              <div className="section-kicker"><span>03</span> Approach</div>
+              <h2 id="approach-heading">Keep the process understandable.</h2>
+            </div>
+            <ol className="approach-list">
+              {approach.map(([number, title, text]) => (
+                <li key={number}>
+                  <span className="step-number">{number}</span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="section about" id="about" aria-labelledby="about-heading">
+          <div className="shell about-grid">
+            <div className="about-facts" aria-label="Talent Tree facts">
+              <div className="fact-row">
+                <span>Established</span>
+                <strong>2013</strong>
+              </div>
+              <div className="fact-row">
+                <span>Operating from</span>
+                <strong>South Africa</strong>
+              </div>
+              <p>The foundation is straightforward: an established South African recruitment business and a direct route into a specialist hiring conversation.</p>
+            </div>
+            <div className="about-copy">
+              <div className="section-kicker"><span>04</span> About</div>
+              <h2 id="about-heading">Established in 2013. Focused on specialist recruitment.</h2>
+              <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
+              <p>Clients can explore the available services, understand the approach and start a conversation without unnecessary layers.</p>
+              <CTA href="#contact" quiet>Start a conversation</CTA>
+            </div>
+          </div>
+        </section>
+
+        <section className="section faq" id="faq" aria-labelledby="faq-heading">
+          <div className="shell faq-grid">
+            <div>
+              <div className="section-kicker"><span>05</span> FAQ</div>
+              <h2 id="faq-heading">Useful answers before you enquire.</h2>
+            </div>
+            <div className="faq-list">
+              {faqs.map((item, index) => (
+                <FAQItem key={item[0]} item={item} index={index} openFaq={openFaq} setOpenFaq={setOpenFaq} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="contact" id="contact" aria-labelledby="contact-heading">
+          <div className="shell contact-grid">
+            <div>
+              <p className="eyebrow">Contact</p>
+              <h2 id="contact-heading">Start with the hiring question.</h2>
+              <p>Share enough context to make the first conversation useful. No information is sent from this form until a production backend or CRM connection is added.</p>
+              <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
+            </div>
+
+            <form className="enquiry-form" noValidate onSubmit={submitEnquiry}>
+              <label>
+                <span>Your name</span>
+                <input name="name" autoComplete="name" required />
+              </label>
+              <label>
+                <span>Work email</span>
+                <input name="email" type="email" autoComplete="email" required />
+              </label>
+              <label>
+                <span>What would you like to discuss?</span>
+                <select name="service" defaultValue="" required>
+                  <option value="" disabled>Select a service</option>
+                  <option value="Specialist search">Specialist search</option>
+                  <option value="Market mapping">Market mapping</option>
+                  <option value="Selective team builds">Selective team builds</option>
+                  <option value="Other">Something else</option>
+                </select>
+              </label>
+              <label>
+                <span>Brief context <small>Optional</small></span>
+                <textarea name="message" rows="4" />
+              </label>
+              <button className="submit-button" type="submit">
+                <span>Check enquiry</span>
+                <Arrow />
+              </button>
+              <p className="form-note">Frontend-only form. Secure backend / CRM wiring is still required for production sending.</p>
+              {formStatus.type !== 'idle' && (
+                <div
+                  className={`form-status ${formStatus.type}`}
+                  role={formStatus.type === 'error' ? 'alert' : 'status'}
+                  aria-live="polite"
+                >
+                  {formStatus.message}
+                </div>
+              )}
+            </form>
+          </div>
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <div className="shell footer-inner">
+          <Logo />
+          <p>Talent Tree Consulting · Established 2013 · South Africa</p>
+          <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
+        </div>
+      </footer>
+    </div>
+  );
 }
+
 createRoot(document.getElementById('root')).render(<App />);
