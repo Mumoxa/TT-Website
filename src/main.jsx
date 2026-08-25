@@ -510,7 +510,7 @@ function App() {
           </div>
         </section>
 
-        {/* Draft quotes, written in-house and awaiting client sign-off before launch. */}
+        {/* Quotes written in-house and signed off by Talent Tree for publication. */}
         <section className="section testimonials" id="testimonials" aria-labelledby="testimonials-heading">
           <span className="section-numeral" aria-hidden="true">07</span>
           <div className="shell">
