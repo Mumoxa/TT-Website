@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validate } from './cv/validate.js';
+import { visibleText } from './cv/list-text.js';
 import { REDACTION_DEFAULTS } from './cv/redact.js';
 import './cv-builda.css';
 
@@ -376,15 +377,35 @@ function Field({ path, label, hint, mono, area, rows = 3, placeholder, issueFor,
   );
 }
 
+/**
+ * A list of bullets, one per line.
+ *
+ * The record holds them trimmed with blank lines dropped, which is right for
+ * what is stored and wrong for what is being typed. Applying it to the
+ * textarea on every keystroke ate the space at the end of a word and
+ * swallowed the blank line that begins the next bullet, so a section could
+ * only ever hold one run-together bullet. The field keeps its own text and
+ * the record gets the tidy version.
+ */
 function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
-  const arr = getIn(cv, path) || [];
+  const stored = (getIn(cv, path) || []).join('\n');
+  const [draft, setDraft] = useState(stored);
   const issue = issueUnder(path);
+
+  /* Resync only when the record changed from somewhere else — a candidate
+     loaded, a card removed — never in reply to this field's own edit, which
+     is what tidy() equalling the stored value tells us. */
+  useEffect(() => {
+    setDraft((current) => visibleText(current, stored));
+  }, [stored]);
+
   return (
     <label className="cvb-field">
       <span>{label} <i>one per line</i></span>
-      <textarea rows={Math.max(3, arr.length + 1)} value={arr.join('\n')} placeholder={placeholder}
+      <textarea rows={Math.max(3, draft.split('\n').length + 1)} value={draft} placeholder={placeholder}
         className={issue ? `is-${issue.level}` : ''}
-        onChange={(e) => updateList(path, e.target.value)} />
+        onChange={(e) => { setDraft(e.target.value); updateList(path, e.target.value); }}
+        onBlur={() => setDraft(stored)} />
       {issue && <em className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
     </label>
   );
