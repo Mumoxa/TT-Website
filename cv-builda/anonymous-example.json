@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "targetRole": "Credit Risk Analyst",
+    "fileName": "TT4821_Anonymous_Profile",
+    "mode": "agency",
+    "reference": "Candidate TT-4821"
+  },
+  "personal": {
+    "fullName": "Jacob Johannes Steyn",
+    "citizenship": "South African",
+    "languages": "English, Afrikaans",
+    "dateOfBirth": "18 March 1985",
+    "areaOfResidence": "Northern Suburbs, Cape Town",
+    "availability": "Calendar Month",
+    "areaAlias": "Western Cape"
+  },
+  "consultant": {
+    "contactPerson": "Graham Glintenkamp",
+    "contactNumber": "072 7400 439",
+    "emailAddress": "CV@talenttree.co.za"
+  },
+  "professionalSummary": [
+    "Credit Risk Analyst with experience across a retail consumer credit and Credit Optimisation environment. Experience across retail credit portfolio forecasting, IFRS9 monitoring, PD calibration, Expected Credit Loss (ECL) environments, scorecard development, collections analytics, and bureau-data-driven modelling.",
+    "Exposure to high-volume retail account customer environments involving closed-loop retail credit facilities linked to in-store and online retail purchases. Experience working with finance-aligned portfolio forecasting models used for budgeting and long-term retail credit projections.",
+    "Involved in development, monitoring, optimisation, recalibration, and automation of retail credit risk models. Experience working with bureau data, repayment capacity estimation models, distressed debt models, collections scorecards, and customer behavioural analytics.",
+    "Exposure to originations optimisation and credit top-up response modelling within a retail credit environment. Experience mentoring junior analysts and supporting model ownership responsibilities.",
+    "Technical exposure includes SAS, SQL, Python, automated scoring processes, and analytical reporting environments."
+  ],
+  "careerSummary": [],
+  "qualifications": [
+    {
+      "year": "2018",
+      "name": "MSc. Business Mathematics and Informatics",
+      "institution": "North-West University",
+      "notes": [
+        "Specialisation: Business Analytics"
+      ],
+      "institutionAlias": "South African university"
+    },
+    {
+      "year": "2017",
+      "name": "Honours BSc. Business Mathematics and Informatics",
+      "institution": "North-West University",
+      "notes": [
+        "Specialisation: Data Mining"
+      ],
+      "institutionAlias": "South African university"
+    },
+    {
+      "year": "2016",
+      "name": "BSc. Quantitative Risk Management",
+      "institution": "North-West University",
+      "notes": [],
+      "institutionAlias": "South African university"
+    }
+  ],
+  "certifications": [
+    {
+      "year": "2024",
+      "name": "Survival Data Mining: A Programming Approach",
+      "institution": "SAS Institute",
+      "institutionAlias": "Accredited training provider"
+    },
+    {
+      "year": "2021",
+      "name": "Credit Risk Modeling",
+      "institution": "SAS Institute",
+      "institutionAlias": "Accredited training provider"
+    },
+    {
+      "year": "2020",
+      "name": "Building and Solving Optimization Models using SAS/OR",
+      "institution": "SAS Institute",
+      "institutionAlias": "Accredited training provider"
+    },
+    {
+      "year": "2019",
+      "name": "Data Science for Industry Short Course",
+      "institution": "University of Cape Town",
+      "institutionAlias": "Accredited training provider"
+    }
+  ],
+  "technicalSkills": [
+    {
+      "group": "",
+      "items": [
+        "SAS",
+        "SQL",
+        "Python",
+        "Microsoft 365",
+        "AI tools for productivity",
+        "Credit modelling",
+        "Predictive modelling",
+        "Machine learning",
+        "Credit scorecards",
+        "Credit bureau data",
+        "IFRS9 model monitoring",
+        "Probability of Default (PD) calibration",
+        "Expected Credit Loss (ECL) environments",
+        "Portfolio forecasting",
+        "Retail credit analytics",
+        "Collections analytics",
+        "Distressed debt modelling",
+        "Repayment capacity estimation",
+        "Originations optimisation",
+        "Credit top-up response modelling",
+        "Propensity modelling",
+        "Automated scoring processes",
+        "Finance forecasting support",
+        "Behavioural analytics",
+        "Model recalibration methodologies"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "employer": "The Foschini Group (TFG)",
+      "duration": "January 2019 – Present",
+      "titles": [
+        {
+          "title": "Credit Risk Analyst III",
+          "duration": "October 2024 – Present"
+        },
+        {
+          "title": "Credit Risk Analyst II",
+          "duration": "January 2023 – September 2024"
+        },
+        {
+          "title": "Credit Risk Analyst I",
+          "duration": "January 2020 – December 2022"
+        },
+        {
+          "title": "Analytics Specialist",
+          "duration": "January 2019 – December 2019"
+        }
+      ],
+      "context": "A leading South African retail group with a substantial unsecured retail consumer credit operation supporting both in-store and online purchases. The credit division manages large-scale retail credit portfolios and is involved in credit risk analytics, IFRS9 modelling, portfolio forecasting, collections optimisation, scorecard development, and customer behavioural modelling within a high-volume retail lending environment.",
+      "reasonForLeaving": "",
+      "responsibilities": [
+        "Own the 5-year retail credit portfolio model",
+        "Maintain ownership of 5-year model code",
+        "Maintain Value-Added Services (VAS) 5-year model code ownership",
+        "Maintain distressed debt model and code ownership",
+        "Develop repayment capacity estimation models using bureau data",
+        "Develop action-effect models linked to customer spend optimisation",
+        "Develop credit top-up response models",
+        "Support IFRS9 PD calibration methodology development",
+        "Develop and implement enhanced tracking methodologies focused on model stability and accuracy",
+        "Drive continuous improvement of portfolio forecasting models and scoring processes",
+        "Support bureau-driven credit risk analytics, affordability estimation, repayment behaviour analysis, and long-term portfolio forecasting",
+        "Develop propensity-to-spend models",
+        "Develop scorecards for collections environments",
+        "Develop dashboard views analysing retail credit landscape behaviour using bureau data from the rewards customer base",
+        "Support and enhance 5-year retail credit portfolio models",
+        "Produce automated scoring code",
+        "Conduct scorecard reweighting, monitoring, and implementation",
+        "Perform IFRS9 model work and monitoring",
+        "Conduct collections descriptive analytics",
+        "Support customer behavioural analytics linked to retail credit and CRM environments",
+        "Perform portfolio model scoring and produce finance reporting views for budgeting and forecasting purposes",
+        "Perform ad hoc analytical projects and IFRS9 analytical queries",
+        "Train and mentor junior analysts within the team"
+      ],
+      "achievements": [
+        "Improved a 2-step calibration methodology through enhanced trigger data usage, contributing to reduction in net Expected Credit Loss (ECL)",
+        "Developed a more robust tracking methodology to improve previous stability-testing approaches",
+        "Automate portfolio scoring activities and reduce manual Excel-driven scoring processes"
+      ],
+      "alias": "JSE-listed retail group"
+    }
+  ],
+  "earlyCareer": [
+    {
+      "title": "Actuarial Analyst",
+      "employer": "ARGEN Actuarial Solutions",
+      "duration": "January 2011 – January 2016",
+      "alias": "Actuarial consultancy"
+    }
+  ],
+  "redact": {
+    "candidateName": true,
+    "dateOfBirth": true,
+    "areaOfResidence": true,
+    "employerNames": true,
+    "institutions": true,
+    "dates": true,
+    "qualificationYears": false
+  }
+}
