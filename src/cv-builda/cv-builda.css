@@ -1,0 +1,589 @@
+/* ============================================================================
+   CV-BUILDA — page styles
+
+   The page belongs to talenttree.co.za, so it defines no colours of its own:
+   every value below reads a token from styles.css. The fallbacks exist only so
+   the page still renders if it is ever loaded outside the site shell. Change
+   the site palette and the builder follows.
+
+   The document it generates is a different identity entirely — navy, cyan,
+   Calibri — because that is Talent Tree's candidate profile rather than its
+   website. See the note at the top of cv/compose.js.
+   ========================================================================== */
+
+.cvb {
+  --cvb-ink: var(--ink, #102d3a);
+  --cvb-deep: var(--ink-deep, #081f2a);
+  --cvb-paper: var(--paper, #f5f2eb);
+  --cvb-soft: var(--paper-soft, #fbfaf7);
+  --cvb-white: var(--white, #ffffff);
+  --cvb-accent: var(--accent, #136579);
+  --cvb-accent-soft: var(--accent-soft, #d9e8ea);
+  --cvb-muted: var(--muted, #5f7077);
+  --cvb-line: var(--line, rgba(16, 45, 58, 0.18));
+  --cvb-ease: var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
+  --cvb-serif: var(--serif, Georgia, serif);
+  --cvb-sans: var(--sans, ui-sans-serif, system-ui, sans-serif);
+  --cvb-mono: ui-monospace, "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  --cvb-error: #9c3025;
+  --cvb-warning: #8a5a12;
+
+  min-height: 100vh;
+  padding-bottom: 200px;
+  background: var(--cvb-paper);
+  color: var(--cvb-ink);
+  font-family: var(--cvb-sans);
+}
+
+.cvb :is(h1, h2, h3, p) { margin-top: 0; }
+
+/* ─────────────────────────────────────────────────────────────────── hero ── */
+
+.cvb-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(64px, 9vw, 132px) 0 clamp(40px, 6vw, 76px);
+  border-bottom: 1px solid var(--cvb-line);
+}
+
+.cvb-hero-inner,
+.cvb-start,
+.cvb-work,
+.cvb-note {
+  width: min(1180px, calc(100% - 56px));
+  margin-inline: auto;
+}
+
+.cvb-numeral {
+  position: absolute;
+  top: 26px;
+  right: clamp(8px, 3vw, 56px);
+  font-family: var(--cvb-serif);
+  font-size: clamp(120px, 20vw, 260px);
+  line-height: 0.8;
+  color: var(--cvb-ink);
+  opacity: 0.05;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cvb-hero h1 {
+  margin: 0 0 20px;
+  font-family: var(--cvb-serif);
+  font-weight: 400;
+  font-size: clamp(44px, 7vw, 86px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+
+.cvb-lede {
+  max-width: 60ch;
+  margin: 0 0 26px;
+  font-size: clamp(17px, 1.5vw, 20px);
+  line-height: 1.6;
+  color: var(--cvb-muted);
+}
+
+.cvb-eyebrow {
+  margin: 0 0 14px;
+  font-family: var(--cvb-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cvb-muted);
+}
+
+.cvb-eyebrow--accent { color: var(--cvb-accent); }
+
+/* ────────────────────────────────────────────────────────────────── start ── */
+
+.cvb-start {
+  display: grid;
+  gap: clamp(32px, 5vw, 72px);
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: clamp(40px, 6vw, 84px);
+}
+
+@media (min-width: 900px) {
+  .cvb-start { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
+}
+
+.cvb-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: cvb-step;
+}
+
+.cvb-steps li {
+  padding: 24px 0;
+  border-top: 1px solid var(--cvb-line);
+}
+
+.cvb-steps li:last-child { border-bottom: 1px solid var(--cvb-line); }
+
+.cvb-steps span {
+  font-family: var(--cvb-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--cvb-accent);
+}
+
+.cvb-steps h3 {
+  margin: 8px 0 6px;
+  font-family: var(--cvb-serif);
+  font-weight: 400;
+  font-size: 22px;
+}
+
+.cvb-steps p {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--cvb-muted);
+}
+
+.cvb-panel {
+  padding: clamp(24px, 3vw, 40px);
+  background: var(--cvb-white);
+  border: 1px solid var(--cvb-line);
+}
+
+.cvb-panel h2 {
+  margin: 0 0 22px;
+  font-family: var(--cvb-serif);
+  font-weight: 400;
+  font-size: 26px;
+}
+
+.cvb-drop {
+  /* Block, not grid: the inline <code> in the middle of the sentence would
+     become its own grid item and break the line in three. */
+  display: block;
+  margin-bottom: 20px;
+  padding: 46px 24px;
+  text-align: center;
+  color: var(--cvb-muted);
+  background: var(--cvb-soft);
+  border: 1px dashed var(--cvb-line);
+  cursor: pointer;
+  transition: border-color 0.2s var(--cvb-ease), background 0.2s var(--cvb-ease);
+}
+
+.cvb-drop:hover,
+.cvb-drop:focus-visible,
+.cvb-drop.is-over {
+  border-color: var(--cvb-accent);
+  background: var(--cvb-accent-soft);
+}
+
+.cvb-drop code {
+  font-family: var(--cvb-mono);
+  font-size: 0.92em;
+  color: var(--cvb-ink);
+}
+
+/* ───────────────────────────────────────────────────────────────── fields ── */
+
+.cvb-field {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.cvb-field > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.cvb-field > span i {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--cvb-muted);
+}
+
+.cvb-field :is(input, textarea) {
+  display: block;
+  width: 100%;
+  padding: 11px 13px;
+  color: inherit;
+  background: var(--cvb-white);
+  border: 1px solid var(--cvb-line);
+  border-radius: 0;
+  transition: border-color 0.18s var(--cvb-ease), box-shadow 0.18s var(--cvb-ease);
+}
+
+.cvb-field textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.cvb-field :is(input, textarea):focus-visible {
+  outline: none;
+  border-color: var(--cvb-accent);
+  box-shadow: 0 0 0 3px var(--cvb-accent-soft);
+}
+
+.cvb-field .is-mono { font-family: var(--cvb-mono); font-size: 0.94em; }
+.cvb-field .is-error { border-color: var(--cvb-error); }
+.cvb-field .is-warning { border-color: var(--cvb-warning); }
+
+.cvb-inline {
+  display: block;
+  margin-top: 5px;
+  font-size: 12.5px;
+  font-style: normal;
+  line-height: 1.5;
+  color: var(--cvb-muted);
+}
+
+.cvb-inline.is-error { color: var(--cvb-error); }
+.cvb-inline.is-warning { color: var(--cvb-warning); }
+
+.cvb-hint {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cvb-muted);
+}
+
+.cvb-hint code { font-family: var(--cvb-mono); }
+
+/* ───────────────────────────────────────────────────────────────── layout ── */
+
+.cvb-work {
+  display: grid;
+  gap: clamp(28px, 4vw, 56px);
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: clamp(32px, 4vw, 56px);
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .cvb-work { grid-template-columns: minmax(0, 1fr) 300px; }
+  .cvb-side { position: sticky; top: 24px; }
+}
+
+.cvb-block {
+  padding: clamp(20px, 2.4vw, 32px);
+  margin-bottom: 22px;
+  background: var(--cvb-white);
+  border: 1px solid var(--cvb-line);
+}
+
+.cvb-block h2 {
+  margin: 0 0 6px;
+  font-family: var(--cvb-serif);
+  font-weight: 400;
+  font-size: 24px;
+}
+
+.cvb-two {
+  display: grid;
+  gap: 0 20px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 700px) {
+  .cvb-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.cvb-row {
+  display: grid;
+  gap: 0 14px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+}
+
+@media (min-width: 700px) {
+  .cvb-row { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .cvb-row .cvb-narrow { max-width: 130px; }
+  .cvb-row .cvb-wide { grid-column: span 1; min-width: 220px; }
+}
+
+.cvb-row--tight { align-items: center; }
+.cvb-sub { margin-top: 4px; }
+
+.cvb-card {
+  position: relative;
+  padding: 18px 18px 6px;
+  margin-bottom: 16px;
+  background: var(--cvb-soft);
+  border: 1px solid var(--cvb-line);
+  border-left: 3px solid var(--cvb-line);
+}
+
+.cvb-card.is-live { border-left-color: var(--cvb-accent); }
+
+.cvb-card-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  /* Most cards have no heading — only employers do — so remove sits right and
+     the heading, when there is one, pushes it there. */
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.cvb-card-head h3 {
+  margin-right: auto;
+  margin-block: 0;
+  font-family: var(--cvb-serif);
+  font-weight: 400;
+  font-size: 19px;
+}
+
+/* ──────────────────────────────────────────────────────────────── controls ── */
+
+.cvb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cvb-ink);
+  background: transparent;
+  border: 1px solid var(--cvb-line);
+  cursor: pointer;
+  transition: background 0.18s var(--cvb-ease), border-color 0.18s var(--cvb-ease), color 0.18s var(--cvb-ease);
+}
+
+.cvb-btn:hover:not(:disabled) { border-color: var(--cvb-accent); color: var(--cvb-accent); }
+.cvb-btn:focus-visible { outline: 2px solid var(--cvb-accent); outline-offset: 2px; }
+.cvb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.cvb-btn--primary {
+  color: var(--cvb-white);
+  background: var(--cvb-accent);
+  border-color: var(--cvb-accent);
+}
+
+.cvb-btn--primary:hover:not(:disabled) {
+  color: var(--cvb-white);
+  background: var(--cvb-deep);
+  border-color: var(--cvb-deep);
+}
+
+.cvb-btn--ghost { background: transparent; }
+.cvb-btn--tiny { padding: 6px 12px; font-size: 12.5px; }
+.cvb-btn--danger { color: var(--cvb-muted); }
+.cvb-btn--danger:hover:not(:disabled) { color: var(--cvb-error); border-color: var(--cvb-error); }
+
+.cvb-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+
+.cvb-x {
+  padding: 6px 10px;
+  color: var(--cvb-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.cvb-x:hover { color: var(--cvb-error); border-color: var(--cvb-line); }
+
+/* ────────────────────────────────────────────────── modes and redactions ── */
+
+.cvb-modes {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+}
+
+@media (min-width: 700px) { .cvb-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.cvb-modes legend { padding: 0; margin-bottom: 10px; }
+
+.cvb-mode,
+.cvb-check {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 15px;
+  background: var(--cvb-soft);
+  border: 1px solid var(--cvb-line);
+  cursor: pointer;
+  transition: border-color 0.18s var(--cvb-ease), background 0.18s var(--cvb-ease);
+}
+
+.cvb-mode.is-on,
+.cvb-check.is-on {
+  background: var(--cvb-accent-soft);
+  border-color: var(--cvb-accent);
+}
+
+/* styles.css sets `input { width: 100% }` for the enquiry form, which stretches
+   a checkbox to the width of its row and shoves the label off to the right.
+   Ticks and radios opt out of it. */
+.cvb-mode input,
+.cvb-check input {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  margin: 3px 0 0;
+  padding: 0;
+  accent-color: var(--cvb-accent);
+}
+
+.cvb-mode span,
+.cvb-check span { flex: 1 1 auto; }
+
+.cvb-mode strong,
+.cvb-check strong { display: block; font-size: 14px; font-weight: 600; }
+
+.cvb-mode em,
+.cvb-check em {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-style: normal;
+  line-height: 1.5;
+  color: var(--cvb-muted);
+}
+
+.cvb-redactions {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 700px) { .cvb-redactions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.cvb-redaction-count {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cvb-muted);
+}
+
+/* ──────────────────────────────────────────────────────── check and notes ── */
+
+.cvb-side {
+  padding: 20px;
+  background: var(--cvb-white);
+  border: 1px solid var(--cvb-line);
+}
+
+.cvb-tally {
+  margin: 0 0 14px;
+  font-family: var(--cvb-mono);
+  font-size: 12.5px;
+  color: var(--cvb-muted);
+}
+
+.cvb-clean {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--cvb-muted);
+}
+
+.cvb-issue {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--cvb-ink);
+  background: var(--cvb-soft);
+  border: 1px solid var(--cvb-line);
+  border-left: 3px solid var(--cvb-muted);
+  cursor: pointer;
+}
+
+.cvb-issue code {
+  display: block;
+  margin-bottom: 3px;
+  font-family: var(--cvb-mono);
+  font-size: 11.5px;
+  color: var(--cvb-muted);
+}
+
+.cvb-issue.is-error { border-left-color: var(--cvb-error); }
+.cvb-issue.is-warning { border-left-color: var(--cvb-warning); }
+.cvb-issue:hover { border-color: var(--cvb-accent); }
+
+.cvb-note {
+  padding: 13px 16px;
+  margin-top: 20px;
+  font-size: 14px;
+  border: 1px solid var(--cvb-line);
+  border-left: 3px solid var(--cvb-accent);
+  background: var(--cvb-white);
+}
+
+.cvb-note--bad { border-left-color: var(--cvb-error); }
+.cvb-note--good { border-left-color: var(--cvb-accent); }
+
+.cvb-gaps {
+  padding: 18px 20px;
+  margin-bottom: 22px;
+  background: var(--cvb-white);
+  border: 1px solid var(--cvb-line);
+  border-left: 3px solid var(--cvb-warning);
+}
+
+.cvb-gaps p { font-size: 14px; line-height: 1.6; }
+.cvb-gaps p:last-child { margin-bottom: 0; }
+
+/* ──────────────────────────────────────────────────────────────────── bar ── */
+
+.cvb-bar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  background: var(--cvb-white);
+  border-top: 1px solid var(--cvb-line);
+}
+
+.cvb-bar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: min(1180px, calc(100% - 56px));
+  margin-inline: auto;
+  padding: 14px 0;
+}
+
+.cvb-status {
+  font-family: var(--cvb-mono);
+  font-size: 12.5px;
+  color: var(--cvb-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cvb * { transition-duration: 0.01ms !important; }
+}
+
+/* The drop zone names the formats it accepts, because "a file" is not an
+   answer to "will it take my PDF?". */
+.cvb-drop em {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--cvb-mono);
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  color: var(--cvb-muted);
+}
+
+.cvb-gaps ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.cvb-gaps li {
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cvb-gaps li:last-child { margin-bottom: 0; }
