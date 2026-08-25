@@ -5,6 +5,7 @@ import '@fontsource/inter/latin-500.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/latin-700.css';
 import '@fontsource/fraunces/latin-400.css';
+import '@fontsource/fraunces/latin-400-italic.css';
 import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
 import './styles.css';
@@ -191,7 +192,7 @@ function App() {
           <div className="shell hero-grid">
             <div>
               <p className="eyebrow">Specialist recruitment · South Africa</p>
-              <h1 id="hero-heading">A clearer start to specialist hiring.</h1>
+              <h1 id="hero-heading">A clearer start to <em>specialist hiring.</em></h1>
             </div>
             <div className="hero-copy">
               <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
@@ -387,6 +388,9 @@ function App() {
           <Logo />
           <p>Talent Tree Consulting · Established 2013 · South Africa</p>
           <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
+        </div>
+        <div className="shell footer-legal">
+          <p>© 2026 Talent Tree Consulting</p>
         </div>
       </footer>
     </div>
