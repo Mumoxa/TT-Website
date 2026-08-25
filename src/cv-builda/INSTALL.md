@@ -1,46 +1,35 @@
-# CV-Builda → talenttree.co.za/cv-builda
+# CV-Builda · talenttree.co.za/cv-builda
 
-Drops into `Mumoxa/TT-Website` (React + Vite, Cloudflare Pages). One new
-dependency, one new folder, two lines changed in `src/main.jsx`.
+Installed. The page is served at `/cv-builda` and nothing further needs doing
+to reach it — this file is now a description of how it is wired rather than a
+list of steps.
 
-## 1 · Copy the folder
+## How it is wired
 
-```bash
-cp -R cv-builda src/cv-builda
-cp patch/_redirects public/_redirects
-npm install docx@^9.0.0
-```
+| | |
+|---|---|
+| `src/cv-builda/` | the page, the composer, the checker, the worked example |
+| `src/main.jsx` | imports `CvBuilda` and renders it when the path is `/cv-builda` |
+| `public/_redirects` | tells Cloudflare Pages to serve the SPA shell for every path, so `/cv-builda` reaches the app instead of 404ing. Vite copies `public/` into `dist/` verbatim |
+| `package.json` | `docx@^9` as a dependency; `npm run cv:samples` rebuilds the sample documents |
 
-`public/_redirects` tells Cloudflare Pages to serve the SPA shell for every
-path, so `/cv-builda` reaches your app instead of 404ing. Vite copies anything
-in `public/` into `dist/` verbatim, so no build config changes.
-
-## 2 · Route to it
-
-Your site has no router, and it does not need one. Two edits in `src/main.jsx`:
+The site has no router and does not need one. `Root()` in `src/main.jsx` is
+four lines and picks between two pages:
 
 ```jsx
-// with the other imports at the top
-import CvBuilda from './cv-builda/CvBuilda.jsx';
-```
-
-```jsx
-// replace the last line of the file
 function Root() {
   const path = window.location.pathname.replace(/\/+$/, '');
   if (path === '/cv-builda') return <CvBuilda />;
   return <App />;
 }
-
-createRoot(document.getElementById('root')).render(<Root />);
 ```
 
-That is the whole integration. `npm run dev`, then open `/cv-builda`.
+Add a third page and that becomes a router; until then it would be ceremony.
 
-## 3 · Link to it
+## Linking to it
 
-The page is a working tool, not a marketing page. Whether it belongs in the
-primary nav depends on who it is for — see the note at the end.
+The page is a working tool, not a marketing page, so it is deliberately not in
+the primary nav. If it ever should be:
 
 ```jsx
 <a className="nav-link" href="/cv-builda">CV-Builda</a>
@@ -52,9 +41,9 @@ Nothing until someone uses it. `docx` and the composer are behind
 `await import(...)`, so they compile to separate chunks:
 
 ```
-dist/assets/index-*.js      216 kB   the site + the builder UI
-dist/assets/compose-*.js    139 kB   loaded on first Download
-dist/assets/dist-*.js       404 kB   docx, loaded on first Download
+dist/assets/index-*.js      252 kB   the site + the builder UI
+dist/assets/compose-*.js    139 kB   the composer and the mark, on first Download
+dist/assets/dist-*.js       404 kB   docx, on first Download
 ```
 
 A visitor who never opens `/cv-builda` downloads none of the last two, and a
@@ -90,10 +79,10 @@ The rule is enforced in three places, and all three matter:
 | `cv/validate.js` | Warns if a record still carries `referees`, so the field is removed rather than silently dropped |
 | `cv/compose.js` | Emits no referees heading and no referees paragraph |
 
-Removing the field alone is not enough — the composer is what a client sees,
-so that is where the section actually has to be absent. Any sample `.docx`
-built before this change still ends in `Referees / Available on request.` and
-needs rebuilding.
+Removing the field alone was not enough — the composer is what a client sees,
+so that is where the section had to be absent. `tests/cv-builda.test.mjs`
+builds a record that still carries the field and asserts neither the heading
+nor the line reaches the document.
 
 ## Privacy
 
@@ -106,14 +95,18 @@ property changes and the wording must change with it.
 
 ## Tests
 
-```bash
-node test-page.js      # 27 behaviour tests against the React page in jsdom
-node test-bundle.js    # browser output is byte-identical to the CLI output
-```
+`npm test` runs the repository suite, which includes
+`tests/cv-builda.test.mjs` — the rules that decide what a client is allowed to
+receive. A regression there does not break a page, it sends a candidate's
+employer or contact details to someone who was never meant to have them.
 
-The second one matters most. It builds the same candidate through both paths,
-unzips the two `.docx` files and diffs `word/document.xml`. If that test ever
-fails, the guarantee that every profile comes out identical has broken.
+The browser and the CLI run the same `compose()`, so the documents they
+produce are identical part for part apart from `docProps/core.xml`, which
+carries the timestamp. If those two ever diverge in `word/document.xml`, the
+guarantee that every profile comes out the same has broken.
+
+`npm run cv:samples` rebuilds `src/cv-builda/samples/` — run it after any
+change to the composer. A stale sample is worse than none.
 
 ## Two modes, because the page is public
 
@@ -127,6 +120,7 @@ before anything else. The answer changes the document, not just the wording.
 | Contact shown | The consultant's | The candidate's own |
 | Confidentiality notice | Yes | No |
 | Candidate's email/phone | **Blocked** — the validator errors | **Required** — the validator errors if absent |
+| Hiding the candidate's name | Allowed | **Blocked** — see below |
 
 The validator inverts on this setting, which is the part worth understanding.
 In agency mode a candidate email anywhere in the file is an error, because
@@ -135,8 +129,14 @@ direct mode the absence of an email *and* a phone number is an error, because
 the document would be undeliverable. Same function, opposite rule, driven by
 one field: `meta.mode`.
 
-`Steyn_JJ_TalentTree_CV.docx` and `Steyn_JJ_CV_direct.docx` are the same
-candidate in both modes.
+The two settings meet in one place, and it is a contradiction. Direct mode has
+no consultant block, and hiding the candidate's name strips their email and
+phone with it — a document with neither reaches a reader who has no way to
+answer it. The validator errors rather than letting it build: a candidate
+cannot send an anonymous CV about themselves.
+
+`samples/Steyn_JJ_TalentTree_CV.docx` and `samples/Steyn_JJ_CV_direct.docx`
+are the same candidate in both modes.
 
 ## Blind profiles
 
@@ -153,7 +153,8 @@ Tick what to hide:
 | Exact dates | Every tenure as a band — `4 – 7 years` instead of the months |
 | Qualification years | Nothing. Years of study date a candidate as precisely as a birth date |
 
-`TT4821_Anonymous_Profile.docx` is Mr Steyn's record with six of the seven on.
+`samples/TT4821_Anonymous_Profile.docx` is Mr Steyn's record with six of the
+seven on.
 Talent Tree's contact block stays on the cover, because a blind profile is still
 an agency profile.
 

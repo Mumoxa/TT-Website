@@ -8,6 +8,7 @@ import '@fontsource/fraunces/latin-400.css';
 import '@fontsource/fraunces/latin-400-italic.css';
 import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
+import CvBuilda from './cv-builda/CvBuilda.jsx';
 import './styles.css';
 
 const Arrow = () => (
@@ -617,4 +618,12 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+/* The site has one other page and does not need a router for it. Trailing
+   slashes are stripped so /cv-builda and /cv-builda/ are the same page. */
+function Root() {
+  const path = window.location.pathname.replace(/\/+$/, '');
+  if (path === '/cv-builda') return <CvBuilda />;
+  return <App />;
+}
+
+createRoot(document.getElementById('root')).render(<Root />);

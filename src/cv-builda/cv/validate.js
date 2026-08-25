@@ -252,6 +252,15 @@ function validate(cv) {
   const mode = (cv.meta && cv.meta.mode) === 'direct' ? 'direct' : 'agency';
   const direct = mode === 'direct';
 
+  /* The one combination the two settings cannot both have. Direct mode has no
+     consultant block, and hiding the candidate's name strips their email and
+     phone with it, so the document would reach a reader with no way to answer
+     it. A candidate cannot send an anonymous CV about themselves. */
+  if (direct && flagsOf(cv).candidateName) {
+    err('redact.candidateName',
+      'cannot be hidden in direct mode \u2014 the candidate is sending this themselves, and hiding the name removes their contact details too, leaving the reader no way to reply');
+  }
+
   /* --- meta ------------------------------------------------------------- */
   if (!cv.meta || !isFilled(cv.meta.targetRole)) {
     err('meta.targetRole', 'is required \u2014 it prints under the name on the cover');

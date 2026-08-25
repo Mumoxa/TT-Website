@@ -1,0 +1,3 @@
+# Cloudflare Pages serves the SPA shell for every path, so /cv-builda reaches
+# the app instead of 404ing. Vite copies public/ into dist/ verbatim.
+/*  /index.html  200
