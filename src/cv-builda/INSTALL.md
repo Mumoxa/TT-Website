@@ -35,21 +35,57 @@ the primary nav. If it ever should be:
 <a className="nav-link" href="/cv-builda">CV-Builda</a>
 ```
 
+## Reading a CV
+
+The page takes the candidate's own CV. There is no conversion step and no JSON
+to handle — drop the file in and a draft profile comes back.
+
+| Format | How it is read |
+|---|---|
+| `.docx` | The zip is opened and `word/document.xml` read directly. Paragraphs become lines, list paragraphs keep their bullet, and a table row becomes one tab-separated line |
+| `.pdf` | pdf.js, loaded only when a PDF actually arrives. Text runs are grouped into lines by baseline, and a wide horizontal gap becomes a tab, which is how a PDF renders a date column |
+| `.rtf` | Control words stripped, `\par` and `\tab` honoured |
+| `.txt`, `.md` | As they are |
+| `.doc` | Word 97–2003 hides its text behind a piece table. The readable runs are pulled out and the result is checked before it is accepted; if it is not readable the page says to save as `.docx` rather than showing rubbish |
+| `.json` | A data file saved earlier from this page, so a candidate can be reopened |
+
+Two things it cannot read, and says so plainly rather than failing oddly: a
+`.gdoc` on a desktop, which is a link rather than a document (File → Download →
+Microsoft Word first), and a scanned PDF, which has no text in it at all.
+
+### What the parser will not do
+
+`cv/parse.js` fills what the text supports and reports the rest. It never
+invents a value to satisfy a house rule. A CV that says "2019 – 2021" has given
+years; no amount of parsing turns that into months, so the range is kept as
+written, the gap is raised for the consultant, and the validator blocks the
+build until a person resolves it with the candidate. That friction is the house
+rule working.
+
+The one place it derives rather than reads is arithmetic over stated facts. An
+employer dated "2019 – Present" whose title rows start "Jul 2019" has a tenure
+the CV already states, only lower down; that is read off the rows, and only when
+the derived years match the stated ones exactly.
+
+Everything else that could not be resolved comes back in the panel above the
+editor: a missing profile section, an employer with no title against it, a
+referees section that was dropped, an ID number that was found and not copied.
+Nothing on that list is fixed silently.
+
+### Accuracy
+
+The parser reads a CV the way a person skims one: headings tell it where it is,
+a date range opens an employment block, and the lines above a date are the
+employer and the title. It handles the layouts South African CVs actually use —
+labelled personal details, tabbed date columns, promotions listed under one
+employer, bullets under sub-headings.
+
+It will still be wrong sometimes, and the editor exists for that. The check to
+run when changing it is `npm test`: `tests/cv-reading.test.mjs` reads a Talent
+Tree profile back through the whole path and asserts the record it produces
+passes the validator with no errors.
+
 ## What it costs the site
-
-Nothing until someone uses it. `docx` and the composer are behind
-`await import(...)`, so they compile to separate chunks:
-
-```
-dist/assets/index-*.js      252 kB   the site + the builder UI
-dist/assets/compose-*.js    139 kB   the composer and the mark, on first Download
-dist/assets/dist-*.js       404 kB   docx, on first Download
-```
-
-A visitor who never opens `/cv-builda` downloads none of the last two, and a
-visitor who opens it but does not build downloads neither. This is why the
-build button is wired to a dynamic import rather than a top-level one — keep
-it that way.
 
 ## Design
 
@@ -84,14 +120,21 @@ so that is where the section had to be absent. `tests/cv-builda.test.mjs`
 builds a record that still carries the field and asserts neither the heading
 nor the line reaches the document.
 
-## Privacy
+## Where the work happens
 
-The document is generated in the browser. No candidate data is uploaded and
-nothing is stored. That is a real POPIA answer rather than a policy promise,
-and it is worth saying on the page — the hero already does.
+Reading the CV and building the document both run in the browser tab. Nothing
+is sent anywhere, which is a property of how the page is built rather than a
+promise it makes: there is no server to send to.
 
-If you later add server-side conversion (upload a CV, get the JSON back), that
-property changes and the wording must change with it.
+The hero states this as a fact about the mechanism and stops there. It does not
+pledge anything about storage or compliance, because `/cv-builda` is reachable
+by anyone and a claim on a public page is a claim you have to stand behind.
+
+It is also why the parser is a set of rules rather than a language model. A
+static site has nowhere safe to keep an API key, so an AI-assisted reader means
+a server, and a server means candidate CVs leaving the browser. That trade is
+available — it would read messy CVs considerably better — but it is a different
+architecture, and the wording here would have to change with it.
 
 ## Tests
 

@@ -49,6 +49,14 @@ const blank = {
   },
 };
 
+const FORMATS = {
+  docx: 'a Word document',
+  pdf: 'a PDF',
+  doc: 'a Word 97\u20132003 document',
+  rtf: 'rich text',
+  text: 'plain text',
+};
+
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 /* ── immutable path helpers: "experience[0].titles[1].title" ─────────────── */
@@ -75,7 +83,7 @@ function setIn(obj, path, value) {
 export default function CvBuilda() {
   const [cv, setCv] = useState(() => clone(EMPTY));
   const [step, setStep] = useState('start');       // start | edit
-  const [gaps, setGaps] = useState('');
+  const [gaps, setGaps] = useState([]);
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState(null);
   const [paste, setPaste] = useState('');
@@ -102,45 +110,75 @@ export default function CvBuilda() {
     setCv((c) => setIn(c, path, (getIn(c, path) || []).filter((_, i) => i !== index)));
   }, []);
 
-  /* ── load the AI step's output, tolerating the trailing GAPS: note ────── */
-  const ingest = useCallback((text) => {
-    try {
-      const start = text.indexOf('{');
-      const end = text.lastIndexOf('}');
-      if (start < 0 || end < 0) throw new Error('No JSON object found.');
-      const parsed = JSON.parse(text.slice(start, end + 1));
-      /* Merge one level deep. A shallow spread would drop defaults inside
-         meta and personal — data files written before a field existed would
-         arrive with it undefined, which is how meta.mode went missing. */
-      const base = clone(EMPTY);
-      const merged = { ...base, ...parsed };
-      ['meta', 'personal', 'consultant', 'redact'].forEach((k) => {
-        merged[k] = { ...base[k], ...(parsed[k] || {}) };
-      });
-      /* A formal recruitment profile carries no referees section — the client
-         asks the consultant, who asks the candidate. Data files written before
-         that rule still carry the field, so it is dropped on the way in rather
-         than left to reappear in the document. */
-      delete merged.referees;
-      if (merged.meta.mode !== 'direct') merged.meta.mode = 'agency';
-      setCv(merged);
-      setGaps(text.slice(end + 1).replace(/^\s*GAPS:\s*/i, '').trim());
-      setStep('edit');
-      setNote(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (e) {
-      setNote({ tone: 'bad', text: `That is not valid candidate JSON. ${e.message}` });
-    }
+  const land = useCallback((record, notes, source) => {
+    setCv(record);
+    setGaps(notes);
+    setStep('edit');
+    setNote(source ? { tone: 'good', text: source } : null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const onFile = useCallback((file) => {
+  /* ── a saved data file, or the output of the conversion prompt ────────── */
+  const ingestJson = useCallback((text) => {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start < 0 || end < 0) throw new Error('No JSON object found.');
+    const parsed = JSON.parse(text.slice(start, end + 1));
+    /* Merge one level deep. A shallow spread would drop defaults inside
+       meta and personal — data files written before a field existed would
+       arrive with it undefined, which is how meta.mode went missing. */
+    const base = clone(EMPTY);
+    const merged = { ...base, ...parsed };
+    ['meta', 'personal', 'consultant', 'redact'].forEach((k) => {
+      merged[k] = { ...base[k], ...(parsed[k] || {}) };
+    });
+    /* A formal recruitment profile carries no referees section — the client
+       asks the consultant, who asks the candidate. Data files written before
+       that rule still carry the field, so it is dropped on the way in rather
+       than left to reappear in the document. */
+    delete merged.referees;
+    if (merged.meta.mode !== 'direct') merged.meta.mode = 'agency';
+    const trailing = text.slice(end + 1).replace(/^\s*GAPS:\s*/i, '').trim();
+    land(merged, trailing ? [trailing] : [], '');
+  }, [land]);
+
+  /* ── the candidate's own CV, in whatever they wrote it in ─────────────── */
+  const ingestCv = useCallback(async (text, label) => {
+    const { parseCv } = await import('./cv/parse.js');
+    const { cv: parsed, gaps: found } = parseCv(text);
+    land(parsed, found, `${label} Read every field against the original before you build — that is the part no parser can do.`);
+  }, [land]);
+
+  const onFile = useCallback(async (file) => {
     if (!file) return;
-    if (!/\.json$/i.test(file.name)) {
-      setNote({ tone: 'bad', text: 'Upload the .json file from the conversion step, not the original CV.' });
-      return;
+    setBusy(`Reading ${file.name}\u2026`);
+    setNote(null);
+    try {
+      if (/\.json$/i.test(file.name)) {
+        ingestJson(await file.text());
+      } else {
+        const { extractFromFile } = await import('./cv/extract.js');
+        const { text, format, notes } = await extractFromFile(file);
+        await ingestCv(text, [`Read ${file.name} as ${FORMATS[format] || format}.`, ...notes].join(' '));
+      }
+    } catch (e) {
+      setNote({ tone: 'bad', text: e.message || String(e) });
     }
-    file.text().then(ingest);
-  }, [ingest]);
+    setBusy('');
+  }, [ingestJson, ingestCv]);
+
+  /* Pasted text is a data file if it looks like one and a CV if it does not. */
+  const onPaste = useCallback(async (text) => {
+    setBusy('Reading the text\u2026');
+    setNote(null);
+    try {
+      if (/^\s*[{[]/.test(text)) ingestJson(text);
+      else await ingestCv(text, 'Read from pasted text.');
+    } catch (e) {
+      setNote({ tone: 'bad', text: e.message || String(e) });
+    }
+    setBusy('');
+  }, [ingestJson, ingestCv]);
 
   /* ── build ────────────────────────────────────────────────────────────── */
   const build = useCallback(async () => {
@@ -186,20 +224,20 @@ export default function CvBuilda() {
 
   return (
     <div className="cvb">
-      <Hero step={step} loaded={loaded} onRestart={() => { setCv(clone(EMPTY)); setStep('start'); setGaps(''); }} />
+      <Hero step={step} loaded={loaded} onRestart={() => { setCv(clone(EMPTY)); setStep('start'); setGaps([]); setNote(null); }} />
 
       {note && <div className={`cvb-note cvb-note--${note.tone}`} role="status">{note.text}</div>}
 
       {step === 'start' ? (
-        <StartPanel paste={paste} setPaste={setPaste} onLoad={() => ingest(paste)} onFile={onFile}
+        <StartPanel paste={paste} setPaste={setPaste} onLoad={() => onPaste(paste)} onFile={onFile} busy={busy}
           onBlank={() => { setCv({ ...clone(EMPTY), personal: { ...EMPTY.personal, fullName: 'New candidate' } }); setStep('edit'); }} />
       ) : (
         <div className="cvb-work">
           <div className="cvb-form">
-            {gaps && (
+            {gaps.length > 0 && (
               <div className="cvb-gaps">
-                <p className="cvb-eyebrow">Raised during conversion</p>
-                <p>{gaps}</p>
+                <p className="cvb-eyebrow">Raised while reading the CV</p>
+                <ul>{gaps.map((gap, i) => <li key={i}>{gap}</li>)}</ul>
                 <p className="cvb-hint">Resolve these with the candidate. Never fill them in yourself.</p>
               </div>
             )}
@@ -242,8 +280,8 @@ function Hero({ step, loaded, onRestart }) {
         <h1>CV&#8209;Builda</h1>
         <p className="cvb-lede">
           Turns a candidate&rsquo;s CV into a Talent Tree candidate profile &mdash; the same
-          document, the same structure, every time. The file is generated here in your browser.
-          Nothing is uploaded and nothing is stored.
+          document, the same structure, every time. Drop in a Word file, a PDF or plain text;
+          reading it and building the profile both happen in this browser tab.
         </p>
         {step === 'edit' && loaded && (
           <button className="cvb-btn cvb-btn--ghost" onClick={onRestart}>Start another candidate</button>
@@ -255,19 +293,21 @@ function Hero({ step, loaded, onRestart }) {
 
 /* ══════════════════════════════════════════════════════════════════ start ══ */
 
-function StartPanel({ paste, setPaste, onLoad, onFile, onBlank }) {
+function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
   const inputRef = useRef(null);
   const [over, setOver] = useState(false);
 
   return (
     <section className="cvb-start">
       <ol className="cvb-steps">
-        <li><span>01</span><h3>Convert</h3>
-          <p>Run the candidate&rsquo;s CV through the conversion prompt. It returns a data file
-            and a note listing anything it could not resolve.</p></li>
+        <li><span>01</span><h3>Load</h3>
+          <p>Drop the candidate&rsquo;s CV in &mdash; Word, PDF, rich text or plain text.
+            It is read here in your browser and turned into a draft profile.</p></li>
         <li><span>02</span><h3>Check</h3>
-          <p>Load it here. Every house rule that can be checked mechanically is checked as you
-            type &mdash; dates, ordering, contact details, gaps in the timeline.</p></li>
+          <p>Read the draft against the original. Every house rule that can be checked
+            mechanically is checked as you type &mdash; dates, ordering, contact details,
+            gaps in the timeline &mdash; and anything the reader could not resolve is listed
+            for you.</p></li>
         <li><span>03</span><h3>Build</h3>
           <p>Download the profile. The layout is fixed, so two consultants working on two
             candidates produce documents that match exactly.</p></li>
@@ -285,25 +325,29 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank }) {
           role="button" tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
         >
-          Drop the candidate <code>.json</code> here, or choose a file
+          Drop the CV here, or choose a file
+          <em>.docx &middot; .pdf &middot; .rtf &middot; .txt &middot; or a saved .json</em>
         </div>
-        <input ref={inputRef} type="file" accept=".json" hidden
+        <input ref={inputRef} type="file" hidden
+          accept=".docx,.pdf,.rtf,.txt,.md,.doc,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={(e) => onFile(e.target.files[0])} />
 
         <label className="cvb-field">
-          <span>Or paste the conversion output</span>
+          <span>Or paste the CV text</span>
           <textarea rows={7} value={paste} onChange={(e) => setPaste(e.target.value)}
-            placeholder={'{\n  "meta": { "targetRole": "…" },\n  …\n}\n\nGAPS: …'} />
+            placeholder={'Paste the whole CV here \u2014 name, contact details, employment history, the lot.'} />
         </label>
 
         <div className="cvb-actions">
-          <button className="cvb-btn cvb-btn--primary" onClick={onLoad} disabled={!paste.trim()}>
-            Load candidate
+          <button className="cvb-btn cvb-btn--primary" onClick={onLoad} disabled={!paste.trim() || Boolean(busy)}>
+            {busy || 'Load candidate'}
           </button>
-          <button className="cvb-btn" onClick={onBlank}>Start from blank</button>
+          <button className="cvb-btn" onClick={onBlank} disabled={Boolean(busy)}>Start from blank</button>
         </div>
         <p className="cvb-hint">
-          The trailing <code>GAPS:</code> note is handled automatically &mdash; paste the whole reply.
+          A Google Doc needs <strong>File &rarr; Download &rarr; Microsoft Word (.docx)</strong> first &mdash;
+          the <code>.gdoc</code> on your desktop is a link, not the document. A scanned PDF has no text
+          in it to read, so it needs the original or an OCR pass.
         </p>
       </div>
     </section>

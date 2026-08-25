@@ -562,3 +562,28 @@
 @media (prefers-reduced-motion: reduce) {
   .cvb * { transition-duration: 0.01ms !important; }
 }
+
+/* The drop zone names the formats it accepts, because "a file" is not an
+   answer to "will it take my PDF?". */
+.cvb-drop em {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--cvb-mono);
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  color: var(--cvb-muted);
+}
+
+.cvb-gaps ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.cvb-gaps li {
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cvb-gaps li:last-child { margin-bottom: 0; }
