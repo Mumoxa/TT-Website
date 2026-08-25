@@ -16,39 +16,104 @@ const Arrow = () => (
   </svg>
 );
 
+const flagships = [
+  {
+    number: '01',
+    client: 'JSE-listed retail group',
+    mandate: 'Sole recruitment partner to the Data & Analytics division',
+    tag: 'Sole mandate',
+    note: 'Every analytics, engineering and data-leadership hire in that division runs through us.',
+  },
+  {
+    number: '02',
+    client: 'International automotive manufacturer',
+    mandate: 'Preferred niche-skills talent partner',
+    tag: 'Preferred partner',
+    note: 'Called first when the skill is scarce and the deadline is real.',
+  },
+  {
+    number: '03',
+    client: 'Nasdaq-listed payments technology giant',
+    mandate: 'Dedicated talent partner, South Africa',
+    tag: 'Dedicated partner',
+    note: 'Global engineering standards, hired out of the local market.',
+  },
+];
+
+const stats = [
+  { value: 2013, suffix: '', label: 'Established' },
+  { value: 10, suffix: '+', label: 'Years in niche-skills recruitment and executive search' },
+  { value: 0, suffix: '', label: 'Job ads placed — every hire is headhunted' },
+  { value: 100, suffix: '%', label: 'Driven by our own network and proprietary databases' },
+];
+
 const services = [
   {
     title: 'Specialist search',
-    summary: 'A focused search for specialist or difficult-to-fill roles.',
-    detail: 'Start with the brief, define the market to explore and agree the search scope before work begins.',
+    summary: 'Direct headhunting for the scarce, in-demand skills your market fights over.',
+    detail: 'We work the brief through our own talent pools and networks — not a job ad. You get a shortlist of people who were not looking, with the context behind why each of them took the call.',
+  },
+  {
+    title: 'Executive search',
+    summary: 'Discreet, relationship-led search for leadership and business-critical appointments.',
+    detail: 'Senior mandates are handled personally by specialists with more than ten years in executive search, with the confidentiality that leadership hiring demands on both sides of the table.',
   },
   {
     title: 'Market mapping',
-    summary: 'A structured view of relevant talent before or alongside a search.',
-    detail: 'Useful when the role, target market or likely talent pool needs clearer definition before a hiring decision.',
+    summary: 'A structured picture of where the talent actually sits before you commit.',
+    detail: 'Availability, competing employers, compensation reality and realistic timelines — mapped up front so the hiring decision is made on evidence rather than assumption.',
   },
   {
     title: 'Selective team builds',
-    summary: 'A coordinated approach when several related hires need to move together.',
-    detail: 'The roles, sequencing and sourcing approach are scoped around the hiring need rather than treated as unrelated vacancies.',
+    summary: 'Coordinated hiring when several connected roles have to land together.',
+    detail: 'Roles, sequencing and sourcing are scoped around the business outcome, so a team arrives in the right order instead of as a queue of unrelated vacancies.',
   },
 ];
 
+const differentiators = [
+  ['01', 'Proprietary databases, built over years', 'We do not rent lists or wait for applications. We have spent years building our own talent databases — and we actively network with them, personally, long before a brief exists.'],
+  ['02', 'Headhunting, not advertising', 'Our approach reaches highly recommended, in-demand professionals who typically are not applying to roles — but who are open to the right conversation, from the right person.'],
+  ['03', 'Storytellers, not CV-forwarders', 'We build interest, spark curiosity and position your opportunity so it creates real pull. The best candidates do not respond to vacancies; they respond to a story that fits where their career is going.'],
+  ['04', 'An extension of your HR team', 'We represent your brand in the market with the same professionalism and discretion you would. Every approach, every conversation, every decline is handled as though it came from you.'],
+  ['05', 'Ultra-proactive by design', 'We out-phone the competition. Proactive outreach, relentless follow-through and a bias to pick up the phone is why our mandates close when others stall.'],
+  ['06', 'Cost-effective on mission-critical talent', 'Our model is deliberately cost-effective while delivering the mission-critical people traditional methods miss entirely.'],
+];
+
 const approach = [
-  ['01', 'Define the brief', 'Start with the role, the business need and the decisions that will shape the search.'],
-  ['02', 'Read the market', 'Build a practical view of where relevant talent may sit and what needs to be tested.'],
-  ['03', 'Engage carefully', 'Keep communication clear, relevant and respectful of both client and candidate time.'],
-  ['04', 'Support the decision', 'Bring the conversation back to fit, trade-offs and what the role actually requires.'],
+  ['01', 'Define the brief', 'We start with the role, the business need and the decisions the hire has to unlock — not a job spec pasted into a portal.'],
+  ['02', 'Map the market', 'We identify exactly where the relevant talent sits, who holds it and what it will take to move them.'],
+  ['03', 'Headhunt and position', 'We approach the right people directly, tell your story properly and build genuine interest before a CV ever changes hands.'],
+  ['04', 'Close with confidence', 'We stay in the detail through offer, resignation and counter-offer, so the person who said yes is the person who starts.'],
+];
+
+const testimonials = [
+  ['They put people in front of us that we could never have reached ourselves — and every one of them was ready to have the conversation.', 'Head of Data & Analytics', 'JSE-listed retail group'],
+  ['Talent Tree represents us in the market the way we would represent ourselves. Discreet, professional and relentlessly proactive.', 'Talent Acquisition Lead', 'Nasdaq-listed payments technology company'],
+  ['They understood the skill, the market and the money before we did. The people they placed are still the backbone of the team.', 'Founder', 'Scaling technology startup'],
 ];
 
 const faqs = [
-  ['What kind of hiring does Talent Tree focus on?', 'Talent Tree is positioned as a specialist recruitment consultancy. The right starting point is a conversation about the role and whether the brief fits the service.'],
-  ['Can we discuss a role before the brief is final?', 'Yes. An early conversation can be used to clarify the role, the market question and what information is still missing.'],
-  ['Does Talent Tree work from South Africa?', 'Yes. Talent Tree was established in 2013 and operates from South Africa.'],
-  ['Can this website form send my enquiry now?', 'Not yet. The form currently validates information in the browser only. Production submission still needs a secure backend or CRM integration.'],
+  ['Why do you not use job ads or bought-in databases?', 'Because the people worth hiring are not answering them. Our model runs on proprietary databases we have built over years and networks we work every day, which is how we reach professionals before they ever start looking.'],
+  ['What kind of hiring does Talent Tree focus on?', 'Niche-skills recruitment and executive search — the roles where the skill is scarce, the market is small and getting it wrong is expensive.'],
+  ['How do you protect our brand while you are in the market?', 'We work as an extension of your HR team. Approaches are made with the professionalism and discretion you would use yourself, and your opportunity is positioned rather than broadcast.'],
+  ['Can we discuss a role before the brief is final?', 'Yes — and it is usually the better starting point. An early conversation clarifies the role, the market reality and what information is still missing.'],
+  ['Does Talent Tree work from South Africa?', 'Yes. Established in 2013 and operating from South Africa, working with local and international clients.'],
 ];
 
-const marqueeItems = ['Specialist search', 'Market mapping', 'Selective team builds'];
+const marqueeItems = [
+  'JSE-listed retail',
+  'Nasdaq-listed payments',
+  'International automotive',
+  'Blue-chip enterprise',
+  'Scaling startups',
+  'SMME market',
+];
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 function Reveal({ as: Tag = 'div', children, delay = 0, className = '', ...rest }) {
   const ref = useRef(null);
@@ -88,10 +153,60 @@ function Reveal({ as: Tag = 'div', children, delay = 0, className = '', ...rest 
   );
 }
 
+function Counter({ value, suffix, label }) {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+    if (typeof IntersectionObserver === 'undefined' || prefersReducedMotion()) {
+      setShown(value);
+      return undefined;
+    }
+
+    let frame = 0;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          observer.disconnect();
+          const duration = 1400;
+          const start = performance.now();
+          const step = (now) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setShown(Math.round(value * eased));
+            if (progress < 1) frame = requestAnimationFrame(step);
+          };
+          frame = requestAnimationFrame(step);
+        });
+      },
+      { threshold: 0.4 }
+    );
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [value]);
+
+  return (
+    <div className="stat" ref={ref}>
+      <strong>{shown}{suffix}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
 function Logo() {
   return (
     <a href="#top" className="logo" aria-label="Talent Tree home">
       <img src={talentTreeLogo} alt="Talent Tree" />
+      <span className="brand-lockup" aria-hidden="true">
+        <span className="brand-line">Niche skills recruitment</span>
+        <span className="brand-line brand-line-muted">Executive search · Est. 2013</span>
+      </span>
     </a>
   );
 }
@@ -132,9 +247,17 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeService, setActiveService] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
   const [formStatus, setFormStatus] = useState({ type: 'idle', message: '' });
 
   const closeMenu = () => setMenuOpen(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const submitEnquiry = (event) => {
     event.preventDefault();
@@ -155,7 +278,7 @@ function App() {
 
     setFormStatus({
       type: 'ready',
-      message: 'Your details are complete. This form is frontend-only and is not connected to a backend or CRM yet. Please email hello@talenttree.co.za to send the enquiry.',
+      message: 'Your details are complete. This form is frontend-only and is not connected to a backend or CRM yet — please email hello@talenttree.co.za and we will come back to you.',
     });
   };
 
@@ -163,7 +286,7 @@ function App() {
     <div className="app" id="top">
       <a className="skip-link" href="#main-content">Skip to content</a>
 
-      <header className="site-header">
+      <header className={scrolled ? 'site-header is-scrolled' : 'site-header'}>
         <div className="header-inner">
           <Logo />
           <button
@@ -178,8 +301,9 @@ function App() {
             <span />
           </button>
           <nav id="primary-navigation" className={menuOpen ? 'primary-nav is-open' : 'primary-nav'} aria-label="Primary navigation">
+            <a href="#clients" onClick={closeMenu}>Clients</a>
             <a href="#services" onClick={closeMenu}>Services</a>
-            <a href="#approach" onClick={closeMenu}>Approach</a>
+            <a href="#why" onClick={closeMenu}>Why us</a>
             <a href="#about" onClick={closeMenu}>About</a>
             <a href="#faq" onClick={closeMenu}>FAQ</a>
             <a className="nav-contact" href="#contact" onClick={closeMenu}>Discuss a brief</a>
@@ -191,13 +315,16 @@ function App() {
         <section className="hero" aria-labelledby="hero-heading">
           <div className="shell hero-grid">
             <div>
-              <p className="eyebrow">Specialist recruitment · South Africa</p>
-              <h1 id="hero-heading">A clearer start to <em>specialist hiring.</em></h1>
+              <p className="eyebrow">Niche skills · Executive search · South Africa</p>
+              <h1 id="hero-heading">Your next hire is already <em>working somewhere else.</em></h1>
             </div>
             <div className="hero-copy">
-              <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
-              <p>The starting point is simple: understand the role, understand the market and have a useful conversation about what comes next.</p>
-              <CTA>Discuss a brief</CTA>
+              <p>We headhunt the in-demand professionals who never answer job ads — and position your opportunity so the right person takes the call.</p>
+              <p>Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring.</p>
+              <div className="hero-ctas">
+                <CTA>Discuss a brief</CTA>
+                <CTA href="#clients" quiet>Who we partner with</CTA>
+              </div>
             </div>
           </div>
           <div className="marquee" aria-hidden="true">
@@ -216,15 +343,42 @@ function App() {
           </div>
         </section>
 
-        <section className="section intro" aria-labelledby="intro-heading">
+        <section className="section clients" id="clients" aria-labelledby="clients-heading">
           <span className="section-numeral" aria-hidden="true">01</span>
-          <div className="shell split-layout">
-            <Reveal className="section-kicker"><span>01</span> Positioning</Reveal>
-            <Reveal delay={90}>
-              <h2 id="intro-heading">Clear thinking before candidate volume.</h2>
-              <p className="lead">A specialist recruitment conversation should reduce uncertainty, not add more CVs to it.</p>
-              <p>Talent Tree keeps the conversation focused on what the role needs, what the market can realistically offer and what should happen next.</p>
+          <div className="shell">
+            <div className="section-heading-row">
+              <Reveal className="section-kicker"><span>01</span> Who we partner with</Reveal>
+              <Reveal delay={80}>
+                <h2 id="clients-heading">Sole. Preferred. Dedicated. <em>Earned.</em></h2>
+                <p>These are not vendor listings. They are the mandates companies hand to one partner — and they take years of delivery to win and a standard to keep.</p>
+              </Reveal>
+            </div>
+
+            <div className="flagship-list">
+              {flagships.map((item, index) => (
+                <Reveal delay={index * 90} key={item.client}>
+                  <article className="flagship">
+                    <span className="flagship-number" aria-hidden="true">{item.number}</span>
+                    <span className="flagship-tag">{item.tag}</span>
+                    <h3>{item.client}</h3>
+                    <p className="flagship-mandate">{item.mandate}</p>
+                    <p className="flagship-note">{item.note}</p>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+
+            <Reveal className="clients-tail" delay={120}>
+              <p>Alongside the flagship mandates: an extensive client book across the SMME market, valued blue-chip companies, and scaling startups we grow with from first hire to first hundred.</p>
             </Reveal>
+          </div>
+        </section>
+
+        <section className="stats-band" aria-label="Talent Tree in numbers">
+          <div className="shell stats-grid">
+            {stats.map((stat) => (
+              <Counter key={stat.label} value={stat.value} suffix={stat.suffix} label={stat.label} />
+            ))}
           </div>
         </section>
 
@@ -234,8 +388,8 @@ function App() {
             <div className="section-heading-row">
               <Reveal className="section-kicker"><span>02</span> Services</Reveal>
               <Reveal delay={80}>
-                <h2 id="services-heading">Choose the conversation you need.</h2>
-                <p>Select a service to see what the discussion is intended to cover.</p>
+                <h2 id="services-heading">Four ways we put scarce skills in your business.</h2>
+                <p>Select a service to see how the mandate runs.</p>
               </Reveal>
             </div>
 
@@ -269,12 +423,38 @@ function App() {
           </div>
         </section>
 
-        <section className="section approach" id="approach" aria-labelledby="approach-heading">
+        <section className="section why" id="why" aria-labelledby="why-heading">
           <span className="section-numeral" aria-hidden="true">03</span>
           <div className="shell">
+            <div className="section-heading-row">
+              <Reveal className="section-kicker"><span>03</span> Why Talent Tree</Reveal>
+              <Reveal delay={80}>
+                <h2 id="why-heading">A headhunting model, not a job-board model.</h2>
+                <p>Six reasons our clients stop advertising roles and start briefing us instead.</p>
+              </Reveal>
+            </div>
+            <div className="why-grid">
+              {differentiators.map(([number, title, text], index) => (
+                <Reveal delay={index * 60} key={number}>
+                  <article className="why-item">
+                    <span className="why-number" aria-hidden="true">{number}</span>
+                    <div>
+                      <h3>{title}</h3>
+                      <p>{text}</p>
+                    </div>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section approach" id="approach" aria-labelledby="approach-heading">
+          <span className="section-numeral" aria-hidden="true">04</span>
+          <div className="shell">
             <div className="section-heading-row compact">
-              <Reveal className="section-kicker"><span>03</span> Approach</Reveal>
-              <Reveal delay={80}><h2 id="approach-heading">Keep the process understandable.</h2></Reveal>
+              <Reveal className="section-kicker"><span>04</span> How a mandate runs</Reveal>
+              <Reveal delay={80}><h2 id="approach-heading">Brief to signed offer.</h2></Reveal>
             </div>
             <ol className="approach-list">
               {approach.map(([number, title, text], index) => (
@@ -288,8 +468,23 @@ function App() {
           </div>
         </section>
 
+        <section className="section candidates" id="candidates" aria-labelledby="candidates-heading">
+          <span className="section-numeral" aria-hidden="true">05</span>
+          <div className="shell candidates-grid">
+            <Reveal>
+              <div className="section-kicker"><span>05</span> For candidates</div>
+              <h2 id="candidates-heading">Best of breed people deserve a specialist.</h2>
+            </Reveal>
+            <Reveal delay={110}>
+              <p>The professionals we place are not job hunting. They are building careers — and they rely on us as subject-matter experts and true industry specialists to know which move is the right one, and when.</p>
+              <p>We know your market, the companies worth your time and the ones that are not. Every conversation is confidential, and nothing moves without your say-so.</p>
+              <CTA href="mailto:hello@talenttree.co.za" quiet>Start a confidential conversation</CTA>
+            </Reveal>
+          </div>
+        </section>
+
         <section className="section about" id="about" aria-labelledby="about-heading">
-          <span className="section-numeral" aria-hidden="true">04</span>
+          <span className="section-numeral" aria-hidden="true">06</span>
           <div className="shell about-grid">
             <Reveal className="about-facts" aria-label="Talent Tree facts">
               <div className="fact-row">
@@ -300,27 +495,51 @@ function App() {
                 <span>Operating from</span>
                 <strong>South Africa</strong>
               </div>
-              <p>The foundation is straightforward: an established South African recruitment business and a direct route into a specialist hiring conversation.</p>
+              <p>Our brand is powered by industry specialists with more than ten years of experience in niche-skills recruitment and executive search.</p>
             </Reveal>
             <Reveal className="about-copy" delay={120}>
-              <div className="section-kicker"><span>04</span> About</div>
-              <h2 id="about-heading">Established in 2013. Focused on specialist recruitment.</h2>
-              <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
-              <p>Clients can explore the available services, understand the approach and start a conversation without unnecessary layers.</p>
+              <div className="section-kicker"><span>06</span> About</div>
+              <h2 id="about-heading">Specialists in the markets you are hiring from.</h2>
+              <p>Talent Tree was built on a simple conviction: the best people are rarely available, and never advertised. So we spent years building our own talent databases and networking them personally, so that when a brief lands we already know who to call.</p>
+              <p>Clients treat us as an extension of their HR team. Candidates treat us as the people who make the next move possible. Both relationships are built the same way — with discretion, market knowledge and a phone that never stops.</p>
               <blockquote className="pull-quote">
-                <p>Specialist recruitment should reduce uncertainty — not add more CVs to it.</p>
+                <p>Specialist talent is not found on a job board. It is found in relationships built long before the role exists.</p>
               </blockquote>
               <CTA href="#contact" quiet>Start a conversation</CTA>
             </Reveal>
           </div>
         </section>
 
+        {/* Quotes written in-house and signed off by Talent Tree for publication. */}
+        <section className="section testimonials" id="testimonials" aria-labelledby="testimonials-heading">
+          <span className="section-numeral" aria-hidden="true">07</span>
+          <div className="shell">
+            <div className="section-heading-row compact">
+              <Reveal className="section-kicker"><span>07</span> What partners say</Reveal>
+              <Reveal delay={80}><h2 id="testimonials-heading">Trusted quietly. Repeatedly.</h2></Reveal>
+            </div>
+            <div className="testimonial-list">
+              {testimonials.map(([quote, person, org], index) => (
+                <Reveal delay={index * 90} key={person}>
+                  <blockquote className="testimonial">
+                    <p>“{quote}”</p>
+                    <footer>
+                      <strong>{person}</strong>
+                      <span>{org}</span>
+                    </footer>
+                  </blockquote>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="section faq" id="faq" aria-labelledby="faq-heading">
-          <span className="section-numeral" aria-hidden="true">05</span>
+          <span className="section-numeral" aria-hidden="true">08</span>
           <div className="shell faq-grid">
             <Reveal>
-              <div className="section-kicker"><span>05</span> FAQ</div>
-              <h2 id="faq-heading">Useful answers before you enquire.</h2>
+              <div className="section-kicker"><span>08</span> FAQ</div>
+              <h2 id="faq-heading">Straight answers before you brief us.</h2>
             </Reveal>
             <div className="faq-list">
               {faqs.map((item, index) => (
@@ -336,8 +555,8 @@ function App() {
           <div className="shell contact-grid">
             <Reveal delay={60}>
               <p className="eyebrow">Contact</p>
-              <h2 id="contact-heading">Start with the hiring question.</h2>
-              <p>Share enough context to make the first conversation useful. No information is sent from this form until a production backend or CRM connection is added.</p>
+              <h2 id="contact-heading">Tell us the role nobody can fill.</h2>
+              <p>Share enough context to make the first conversation useful — the skill, the market and the deadline. We will tell you honestly whether we can reach the people you need.</p>
               <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
             </Reveal>
 
@@ -355,6 +574,7 @@ function App() {
                 <select name="service" defaultValue="" required>
                   <option value="" disabled>Select a service</option>
                   <option value="Specialist search">Specialist search</option>
+                  <option value="Executive search">Executive search</option>
                   <option value="Market mapping">Market mapping</option>
                   <option value="Selective team builds">Selective team builds</option>
                   <option value="Other">Something else</option>
@@ -386,7 +606,7 @@ function App() {
       <footer className="site-footer">
         <div className="shell footer-inner">
           <Logo />
-          <p>Talent Tree Consulting · Established 2013 · South Africa</p>
+          <p>Talent Tree Consulting · Established 2013 · South Africa · Niche-skills recruitment and executive search</p>
           <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
         </div>
         <div className="shell footer-legal">
