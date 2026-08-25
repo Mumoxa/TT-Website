@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/inter/latin-700.css';
+import '@fontsource/fraunces/latin-400.css';
+import '@fontsource/fraunces/latin-400-italic.css';
+import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
 import './styles.css';
 
@@ -40,6 +47,46 @@ const faqs = [
   ['Does Talent Tree work from South Africa?', 'Yes. Talent Tree was established in 2013 and operates from South Africa.'],
   ['Can this website form send my enquiry now?', 'Not yet. The form currently validates information in the browser only. Production submission still needs a secure backend or CRM integration.'],
 ];
+
+const marqueeItems = ['Specialist search', 'Market mapping', 'Selective team builds'];
+
+function Reveal({ as: Tag = 'div', children, delay = 0, className = '', ...rest }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -8% 0px' }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Tag
+      ref={ref}
+      className={`reveal${visible ? ' is-visible' : ''}${className ? ` ${className}` : ''}`}
+      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+      {...rest}
+    >
+      {children}
+    </Tag>
+  );
+}
 
 function Logo() {
   return (
@@ -145,7 +192,7 @@ function App() {
           <div className="shell hero-grid">
             <div>
               <p className="eyebrow">Specialist recruitment · South Africa</p>
-              <h1 id="hero-heading">A clearer start to specialist hiring.</h1>
+              <h1 id="hero-heading">A clearer start to <em>specialist hiring.</em></h1>
             </div>
             <div className="hero-copy">
               <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
@@ -153,51 +200,69 @@ function App() {
               <CTA>Discuss a brief</CTA>
             </div>
           </div>
-        </section>
-
-        <section className="section intro" aria-labelledby="intro-heading">
-          <div className="shell split-layout">
-            <div className="section-kicker"><span>01</span> Positioning</div>
-            <div>
-              <h2 id="intro-heading">Clear thinking before candidate volume.</h2>
-              <p className="lead">A specialist recruitment conversation should reduce uncertainty, not add more CVs to it.</p>
-              <p>Talent Tree keeps the conversation focused on what the role needs, what the market can realistically offer and what should happen next.</p>
+          <div className="marquee" aria-hidden="true">
+            <div className="marquee-track">
+              {[0, 1].map((group) => (
+                <span className="marquee-group" key={group}>
+                  {marqueeItems.map((item) => (
+                    <span className="marquee-item" key={item}>
+                      {item}
+                      <span className="marquee-dot" aria-hidden="true">·</span>
+                    </span>
+                  ))}
+                </span>
+              ))}
             </div>
           </div>
         </section>
 
+        <section className="section intro" aria-labelledby="intro-heading">
+          <span className="section-numeral" aria-hidden="true">01</span>
+          <div className="shell split-layout">
+            <Reveal className="section-kicker"><span>01</span> Positioning</Reveal>
+            <Reveal delay={90}>
+              <h2 id="intro-heading">Clear thinking before candidate volume.</h2>
+              <p className="lead">A specialist recruitment conversation should reduce uncertainty, not add more CVs to it.</p>
+              <p>Talent Tree keeps the conversation focused on what the role needs, what the market can realistically offer and what should happen next.</p>
+            </Reveal>
+          </div>
+        </section>
+
         <section className="section services" id="services" aria-labelledby="services-heading">
+          <span className="section-numeral" aria-hidden="true">02</span>
           <div className="shell">
             <div className="section-heading-row">
-              <div className="section-kicker"><span>02</span> Services</div>
-              <div>
+              <Reveal className="section-kicker"><span>02</span> Services</Reveal>
+              <Reveal delay={80}>
                 <h2 id="services-heading">Choose the conversation you need.</h2>
                 <p>Select a service to see what the discussion is intended to cover.</p>
-              </div>
+              </Reveal>
             </div>
 
             <div className="service-list">
               {services.map((service, index) => {
                 const expanded = activeService === index;
                 return (
-                  <article className={expanded ? 'service-row is-active' : 'service-row'} key={service.title}>
-                    <button
-                      className="service-toggle"
-                      type="button"
-                      aria-expanded={activeService === index}
-                      aria-controls={`service-panel-${index}`}
-                      onClick={() => setActiveService(expanded ? -1 : index)}
-                    >
-                      <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
-                      <span className="service-title">{service.title}</span>
-                      <span className="service-summary">{service.summary}</span>
-                      <span className="toggle-mark" aria-hidden="true">{expanded ? '−' : '+'}</span>
-                    </button>
-                    <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
-                      <p>{service.detail}</p>
-                      <CTA href="#contact" quiet>Discuss {service.title.toLowerCase()}</CTA>
-                    </div>
-                  </article>
+                  <Reveal delay={index * 70} key={service.title}>
+                    <article className={expanded ? 'service-row is-active' : 'service-row'}>
+                      <button
+                        className="service-toggle"
+                        type="button"
+                        aria-expanded={activeService === index}
+                        aria-controls={`service-panel-${index}`}
+                        onClick={() => setActiveService(expanded ? -1 : index)}
+                      >
+                        <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
+                        <span className="service-title">{service.title}</span>
+                        <span className="service-summary">{service.summary}</span>
+                        <span className="toggle-mark" aria-hidden="true">{expanded ? '−' : '+'}</span>
+                      </button>
+                      <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
+                        <p>{service.detail}</p>
+                        <CTA href="#contact" quiet>Discuss {service.title.toLowerCase()}</CTA>
+                      </div>
+                    </article>
+                  </Reveal>
                 );
               })}
             </div>
@@ -205,26 +270,28 @@ function App() {
         </section>
 
         <section className="section approach" id="approach" aria-labelledby="approach-heading">
+          <span className="section-numeral" aria-hidden="true">03</span>
           <div className="shell">
             <div className="section-heading-row compact">
-              <div className="section-kicker"><span>03</span> Approach</div>
-              <h2 id="approach-heading">Keep the process understandable.</h2>
+              <Reveal className="section-kicker"><span>03</span> Approach</Reveal>
+              <Reveal delay={80}><h2 id="approach-heading">Keep the process understandable.</h2></Reveal>
             </div>
             <ol className="approach-list">
-              {approach.map(([number, title, text]) => (
-                <li key={number}>
+              {approach.map(([number, title, text], index) => (
+                <Reveal as="li" delay={index * 80} key={number}>
                   <span className="step-number">{number}</span>
                   <h3>{title}</h3>
                   <p>{text}</p>
-                </li>
+                </Reveal>
               ))}
             </ol>
           </div>
         </section>
 
         <section className="section about" id="about" aria-labelledby="about-heading">
+          <span className="section-numeral" aria-hidden="true">04</span>
           <div className="shell about-grid">
-            <div className="about-facts" aria-label="Talent Tree facts">
+            <Reveal className="about-facts" aria-label="Talent Tree facts">
               <div className="fact-row">
                 <span>Established</span>
                 <strong>2013</strong>
@@ -234,26 +301,32 @@ function App() {
                 <strong>South Africa</strong>
               </div>
               <p>The foundation is straightforward: an established South African recruitment business and a direct route into a specialist hiring conversation.</p>
-            </div>
-            <div className="about-copy">
+            </Reveal>
+            <Reveal className="about-copy" delay={120}>
               <div className="section-kicker"><span>04</span> About</div>
               <h2 id="about-heading">Established in 2013. Focused on specialist recruitment.</h2>
               <p>Talent Tree is a South African specialist recruitment consultancy established in 2013.</p>
               <p>Clients can explore the available services, understand the approach and start a conversation without unnecessary layers.</p>
+              <blockquote className="pull-quote">
+                <p>Specialist recruitment should reduce uncertainty — not add more CVs to it.</p>
+              </blockquote>
               <CTA href="#contact" quiet>Start a conversation</CTA>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         <section className="section faq" id="faq" aria-labelledby="faq-heading">
+          <span className="section-numeral" aria-hidden="true">05</span>
           <div className="shell faq-grid">
-            <div>
+            <Reveal>
               <div className="section-kicker"><span>05</span> FAQ</div>
               <h2 id="faq-heading">Useful answers before you enquire.</h2>
-            </div>
+            </Reveal>
             <div className="faq-list">
               {faqs.map((item, index) => (
-                <FAQItem key={item[0]} item={item} index={index} openFaq={openFaq} setOpenFaq={setOpenFaq} />
+                <Reveal delay={index * 70} key={item[0]}>
+                  <FAQItem item={item} index={index} openFaq={openFaq} setOpenFaq={setOpenFaq} />
+                </Reveal>
               ))}
             </div>
           </div>
@@ -261,14 +334,14 @@ function App() {
 
         <section className="contact" id="contact" aria-labelledby="contact-heading">
           <div className="shell contact-grid">
-            <div>
+            <Reveal delay={60}>
               <p className="eyebrow">Contact</p>
               <h2 id="contact-heading">Start with the hiring question.</h2>
               <p>Share enough context to make the first conversation useful. No information is sent from this form until a production backend or CRM connection is added.</p>
               <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
-            </div>
+            </Reveal>
 
-            <form className="enquiry-form" noValidate onSubmit={submitEnquiry}>
+            <Reveal as="form" className="enquiry-form" noValidate onSubmit={submitEnquiry} delay={140}>
               <label>
                 <span>Your name</span>
                 <input name="name" autoComplete="name" required />
@@ -305,7 +378,7 @@ function App() {
                   {formStatus.message}
                 </div>
               )}
-            </form>
+            </Reveal>
           </div>
         </section>
       </main>
@@ -315,6 +388,9 @@ function App() {
           <Logo />
           <p>Talent Tree Consulting · Established 2013 · South Africa</p>
           <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
+        </div>
+        <div className="shell footer-legal">
+          <p>© 2026 Talent Tree Consulting</p>
         </div>
       </footer>
     </div>
