@@ -7,6 +7,8 @@ import '@fontsource/inter/latin-700.css';
 import '@fontsource/fraunces/latin-400.css';
 import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
+import capeTownDusk from './assets/cape-town-dusk.jpg';
+import workspaceDetail from './assets/workspace-detail.jpg';
 import './styles.css';
 
 const Arrow = () => (
@@ -309,8 +311,24 @@ function App() {
               <blockquote className="pull-quote">
                 <p>Specialist recruitment should reduce uncertainty — not add more CVs to it.</p>
               </blockquote>
+              <img
+                className="about-visual"
+                src={workspaceDetail}
+                alt="A consultant's desk with a notebook, pen and reading glasses in warm window light."
+                loading="lazy"
+                decoding="async"
+              />
               <CTA href="#contact" quiet>Start a conversation</CTA>
             </Reveal>
+          </div>
+        </section>
+
+        <section className="place" aria-labelledby="place-heading" style={{ backgroundImage: `url(${capeTownDusk})` }}>
+          <span className="place-overlay" aria-hidden="true" />
+          <div className="shell place-inner">
+            <p className="eyebrow">Established 2013</p>
+            <h2 id="place-heading">Operating from South Africa.</h2>
+            <p className="place-caption">Specialist recruitment with a South African foundation.</p>
           </div>
         </section>
 
