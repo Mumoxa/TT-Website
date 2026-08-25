@@ -70,6 +70,18 @@ function checkRange(where, value, { allowEmpty = false } = {}) {
   }
   if (!RANGE.test(value.trim())) {
     err(where, `duration must read "Month YYYY \u2013 Month YYYY" or "Month YYYY \u2013 Present" \u2014 got "${value}"`);
+    return;
+  }
+  /* The shape can be right and the tenure still impossible. Ordering checks
+     and tenure bands both consume these endpoints, so a reversed range has to
+     be caught before either of them reads it. */
+  const [from, to] = value.trim().split(' \u2013 ');
+  if (to !== 'Present') {
+    const a = monthIndex(from);
+    const b = monthIndex(to);
+    if (a !== null && b !== null && b < a) {
+      err(where, `ends before it starts \u2014 "${value}"`);
+    }
   }
 }
 
@@ -105,7 +117,9 @@ function checkBullet(where, text, { sentence = false } = {}) {
    every second bullet and train people to ignore the warnings. */
 const STOP = new Set(['the', 'and', 'for', 'group', 'holdings', 'ltd', 'pty', 'limited',
   'inc', 'plc', 'company', 'corporation', 'services', 'solutions', 'south', 'africa',
-  'african', 'international', 'global', 'consulting', 'consultancy', 'technologies']);
+  'african', 'international', 'global', 'consulting', 'consultancy', 'technologies',
+  'university', 'universiteit', 'college', 'institute', 'institution', 'academy',
+  'school', 'technikon', 'faculty']);
 
 /** "The Foschini Group (TFG)" -> ["Foschini", "TFG"] */
 function nameTokens(name) {
@@ -157,9 +171,28 @@ function checkAnonymity(cv) {
   }
 
   if (f.institutions) {
+    /* A training provider's name is frequently a technology's name too \u2014
+       "SAS Institute" against a candidate who lists SAS as a skill. Tokens the
+       candidate claims as capability are dropped, or the check flags every
+       second line and trains people to ignore it. */
+    const skills = new Set();
+    (cv.technicalSkills || []).forEach((g) => (g.items || []).forEach((item) => {
+      if (!isFilled(item)) return;
+      String(item).split(/[^A-Za-z0-9&]+/).forEach((w) => { if (w) skills.add(w.toLowerCase()); });
+    }));
+    [...(cv.qualifications || []), ...(cv.certifications || [])].forEach((q) => {
+      nameTokens(q.institution).forEach((t) => {
+        if (!skills.has(t.toLowerCase())) tokens.push({ token: t, what: 'institution name' });
+      });
+    });
     (cv.qualifications || []).forEach((q, i) => {
       if (isFilled(q.institution) && !isFilled(q.institutionAlias)) {
         warn(`qualifications[${i}].institutionAlias`, 'institutions are redacted but no descriptor was given \u2014 the institution will be blank');
+      }
+    });
+    (cv.certifications || []).forEach((q, i) => {
+      if (isFilled(q.institution) && !isFilled(q.institutionAlias)) {
+        warn(`certifications[${i}].institutionAlias`, 'institutions are redacted but no descriptor was given \u2014 the provider will be blank');
       }
     });
   }
@@ -182,6 +215,9 @@ function checkAnonymity(cv) {
   (cv.professionalSummary || []).forEach((t, i) => fields.push([`professionalSummary[${i}]`, t]));
   (cv.careerSummary || []).forEach((t, i) => fields.push([`careerSummary[${i}]`, t]));
   if (cv.meta) fields.push(['meta.targetRole', cv.meta.targetRole]);
+  (cv.qualifications || []).forEach((q, i) => {
+    (q.notes || []).forEach((n, j) => fields.push([`qualifications[${i}].notes[${j}]`, n]));
+  });
   (cv.experience || []).forEach((r, i) => {
     fields.push([`experience[${i}].context`, r.context]);
     fields.push([`experience[${i}].reasonForLeaving`, r.reasonForLeaving]);
@@ -350,6 +386,11 @@ function validate(cv) {
         && titles[0].duration !== r.duration) {
       warn(`${w}.titles[0]`, 'is the only title but its duration differs from the employer duration \u2014 if they are the same tenure, make them identical so the redundant date row is suppressed');
     }
+
+    /* Rendered free text, so the agency-mode contact rule applies here exactly
+       as it does to the bullets. */
+    checkContactLeak(`${w}.context`, r.context);
+    checkContactLeak(`${w}.reasonForLeaving`, r.reasonForLeaving);
 
     if (isFilled(r.context) && r.context.trim().length > 600) {
       warn(`${w}.context`, `is ${r.context.trim().length} chars \u2014 keep the employer description to about 3 sentences`);
