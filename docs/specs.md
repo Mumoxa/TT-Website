@@ -28,12 +28,14 @@ For teams requiring true server-side processing, wrap this with a Cloudflare Wor
 
 Reuses and extends the CV-Builda extraction logic:
 
-- **PDF:** `pdfjs-dist` (lazy-loaded), text runs grouped by baseline, wide gaps → tabs
+- **PDF:** `pdfjs-dist` (lazy-loaded), text runs grouped by baseline. Gap thresholds between runs: `≤3pt` = same word (join directly — fixes glyph-run splits like "term"+"s"), `3–12pt` = word gap (space), `>12pt` = column gap (tab)
 - **DOCX:** Zip reader (no dependency), `word/document.xml` → paragraphs, tables → tab-separated lines
 - **XLSX:** Tries `xlsx` (SheetJS) first, falls back to manual XML parsing of `xl/worksheets/` and `sharedStrings.xml`
 - **DOC (legacy):** UTF-16LE run extraction with readability check
 - **RTF:** Control word stripping
 - **Google Docs links:** ID extraction from various URL formats, attempts export via `https://docs.google.com/document/d/{id}/export?format=docx` (will fail due to CORS unless public — provides actionable guidance to download as .docx or paste text)
+
+Every extraction path ends with the **text reviewer** (`reviewText`) so file uploads get professional spacing before sanitization (pasted text is covered by the reviewer step inside the sanitize pipeline).
 
 Validation:
 - Max 10MB
@@ -57,6 +59,9 @@ Product-critical — confidence in removal drives internal adoption.
 8. Addresses → `[Location details removed]`
 9. VAT/Reg/CK numbers → `[Registration details removed]`
 10. ID numbers (13-digit, labeled) → `[ID Removed]`
+11. Existing branding removal: `Talent Tree` (with space) → `TalentTree`
+12. **Text review** (`textReviewer.js`) — professional spacing pass
+13. Ensure application instruction exists (`CV@talenttree.co.za`)
 
 **Company mapping (`companyMap.js`):**
 - 120+ known SA & global companies → descriptors
@@ -75,12 +80,27 @@ Product-critical — confidence in removal drives internal adoption.
 **Logging:**
 Every replacement logged with original, replacement, confidence (high/medium), category. Summary: total removed, breakdown, high/medium counts. Shown in UI for user confidence.
 
+### Text Review (`src/specs/lib/textReviewer.js`)
+
+A second-pass "editor" that fixes the cosmetic extraction artifacts which made output look unprofessional (broken words, random enters, stray spaces). Runs at the end of extraction (`parse.js`) and again as pipeline step 12 inside `sanitizeDocument` — it is **idempotent** (runs to a fixed point, max 3 passes), so the second application is a no-op.
+
+What it fixes:
+
+- **Broken words from PDF glyph-run splits** — `term s` → `terms`, `i nsurance` → `insurance`, `Th e` → `The`, `Reta il` → `Retail`, `lead ership` → `leadership`, `opportunitie s` → `opportunities`, `CR M` → `CRM`. Merging is dictionary-guarded: two space-separated words are only joined when the concatenation is in a curated job-brief vocabulary (~1,400 words). A fragment that is itself a complete common word ("the", "and", "sure", "R"...) earns no merge evidence, so `R and D`, `as sure`, `in put` and `full time` are untouched, and `the m anager` → `the manager` (never `them anager`).
+- **Stray spaces around hyphens** in known compounds — `Full - time` → `Full-time`, `e - commerce` → `e-commerce` (safe: only a fixed list of compounds is affected)
+- **Spaces before punctuation** — `journeys , CRM` → `journeys, CRM`
+- **Inconsistent bullets** — `•\titem`, `•   item`, `• - item` → `• item`; bullet-only lines dropped
+- **Random blank lines** — whitespace-only lines normalised, runs of 3+ blank lines collapsed to one
+- **Duplicate lines** — consecutive identical lines (page-break artifacts) dropped; two back-to-back application instructions collapsed to one
+- **Legacy application address** — `applications@talenttree.co.za` → `CV@talenttree.co.za`
+
 ### Document Generation (`src/specs/lib/docGenerator.js`)
 
 Uses `docx` library (already in repo for CV-Builda):
 
 - **Structure detection:** Tries to detect headings (About, Role, Responsibilities, Requirements, etc.) via regex, falls back to intelligent heuristics (first line = title, client descriptor → About, keyword buckets → Responsibilities/Requirements)
 - **Branding:** TalentTree header, cyan accent rule, footer "Presented by TalentTree", page numbers, confidentiality header
+- **Brand hyperlinks (DOCX):** logo image is a hyperlink to `https://talenttree.co.za`; every `CV@talenttree.co.za` occurrence (body bullets/paragraphs + footer) is a `mailto:` hyperlink with display text preserved. The print/PDF window mirrors this (logo + "TalentTree" link to the site, emails as mailto). TXT output stays plain text (no markup)
 - **Sections:** Confidential Opportunity badge, job title, company descriptor, structured content with bullets, footer note
 - **Outputs:** DOCX (primary), TXT (plain), PDF via print dialog (opens new window with print styles + button)
 
@@ -156,7 +176,9 @@ Cloudflare Pages (existing):
 
 ## Testing
 
-- Existing tests: `npm test` — 42 tests for CV-Builda, all pass
+- `npm test` — full suite (CV-Builda + site quality + specs). Specs coverage:
+  - `tests/specs-sanitize.test.mjs` — 27 sanitization regression tests (company leaks, bare domains, phones, names, etc.)
+  - `tests/specs-textreviewer.test.mjs` — text reviewer regression suite: every user-reported artifact (broken words, `Full - time`, `journeys ,`, bullets, blank lines, duplicate apply lines, legacy address), no-false-merge safety cases, idempotency, and an end-to-end "messy brief" through `sanitizeDocument`
 - Manual: Upload sample brief with known companies, emails, phones, links — verify report shows removals
 - Edge: Scanned PDF → error guidance, .gdoc → guidance, 15MB file → size error, text <50 chars → too short error
 
@@ -174,10 +196,12 @@ Cloudflare Pages (existing):
 
 - `src/specs/SpecsApp.jsx` — main page
 - `src/specs/specs.css` — styling
-- `src/specs/lib/companyMap.js` — 120+ mappings + industry fallbacks
-- `src/specs/lib/sanitize.js` — pipeline + logging
-- `src/specs/lib/parse.js` — file parsing + Google Docs handling
+- `src/specs/lib/companyMap.js` — 120+ mappings + industry fallbacks + descriptor templates
+- `src/specs/lib/sanitize.js` — pipeline + logging (+ existing-branding removal, text-review step)
+- `src/specs/lib/parse.js` — file parsing + Google Docs handling (+ PDF gap thresholds, text-review integration)
+- `src/specs/lib/textReviewer.js` — professional spacing pass (broken words, hyphens, punctuation, bullets, blank lines, duplicate lines)
 - `src/specs/lib/docGenerator.js` — DOCX/TXT/PDF generation
 - `src/main.jsx` — added `/specs` route
+- `tests/specs-textreviewer.test.mjs` — text reviewer regression suite
 - `package.json` — added `xlsx`
 - `docs/specs.md` — this doc

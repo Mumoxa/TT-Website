@@ -3,6 +3,8 @@
  * Supports PDF, DOCX, XLSX, TXT, RTF, DOC, Google Docs links
  */
 
+import { reviewText } from "./textReviewer.js";
+
 const DECODER = new TextDecoder("utf-8");
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_DECOMPRESSED_SIZE = 20 * 1024 * 1024; // 20MB decompressed limit to prevent zip bomb
@@ -90,11 +92,11 @@ export async function extractText(bytes, fileName = "", extHint = "") {
     
     if (hasWorkbook) {
       format = "xlsx";
-      return { text: await fromXlsx(parts, input), format, notes };
+      return { text: reviewText(await fromXlsx(parts, input)), format, notes };
     }
     if (hasWordDoc) {
       format = "docx";
-      return { text: fromWordXml(DECODER.decode(parts.get("word/document.xml"))), format, notes };
+      return { text: reviewText(fromWordXml(DECODER.decode(parts.get("word/document.xml")))), format, notes };
     }
     if ([...parts.keys()].some(k => k.startsWith("content.xml"))) {
       throw new ParseError(
@@ -105,7 +107,7 @@ export async function extractText(bytes, fileName = "", extHint = "") {
     }
     // Might be xlsx without workbook marker but with sheet
     if ([...parts.keys()].some(k => k.includes("worksheets"))) {
-      return { text: await fromXlsx(parts, input), format: "xlsx", notes };
+      return { text: reviewText(await fromXlsx(parts, input)), format: "xlsx", notes };
     }
     throw new ParseError("Unrecognized zip contents", "INVALID_ZIP", "The file doesn't contain a readable document.");
   }
@@ -119,7 +121,7 @@ export async function extractText(bytes, fileName = "", extHint = "") {
   }
 
   if (format === "pdf") {
-    return { text: await fromPdf(input), format: "pdf", notes };
+    return { text: reviewText(await fromPdf(input)), format: "pdf", notes };
   }
 
   if (format === "doc") {
@@ -132,11 +134,11 @@ export async function extractText(bytes, fileName = "", extHint = "") {
       );
     }
     notes.push("Read from legacy .doc - check formatting carefully");
-    return { text, format: "doc", notes };
+    return { text: reviewText(text), format: "doc", notes };
   }
 
   if (format === "rtf") {
-    return { text: fromRtf(DECODER.decode(input)), format: "rtf", notes };
+    return { text: reviewText(fromRtf(DECODER.decode(input))), format: "rtf", notes };
   }
 
   // Plain text fallback
@@ -148,7 +150,7 @@ export async function extractText(bytes, fileName = "", extHint = "") {
       "Supported: PDF, DOCX, XLSX, TXT, RTF, DOC. If this is a scanned PDF, it needs OCR first."
     );
   }
-  return { text: normalise(text), format: "text", notes };
+  return { text: reviewText(normalise(text)), format: "text", notes };
 }
 
 // ── Zip handling ──────────────────────────────────────────────────────────
@@ -365,8 +367,16 @@ function linesFromItems(items) {
       let out = "";
       let cursor = null;
       for (const run of runs) {
-        if (cursor !== null && run.x - cursor > 12) out += "\t";
-        else if (out && !/\s$/.test(out) && !/^\s/.test(run.str)) out += " ";
+        // Gap thresholds (points):
+        //   >12pt -> column gap (tab)
+        //   >3pt  -> word gap (space)
+        //   <=3pt -> same word (glyph-run split, e.g. "term"+"s") - join directly
+        const gap = cursor === null ? 0 : run.x - cursor;
+        if (gap > 12) {
+          out += "\t";
+        } else if (gap > 3 && out && !/\s$/.test(out) && !/^\s/.test(run.str)) {
+          out += " ";
+        }
         out += run.str;
         cursor = run.x + run.width;
       }
@@ -614,7 +624,7 @@ export async function fetchGoogleDoc(url) {
       } else {
         const text = DECODER.decode(bytes);
         if (readable(text)) {
-          return { text: normalise(text), format: "text", notes: ["Fetched from Google Docs"], source: "google_docs", docId: parsed.id };
+          return { text: reviewText(normalise(text)), format: "text", notes: ["Fetched from Google Docs"], source: "google_docs", docId: parsed.id };
         }
       }
     } catch (e) {

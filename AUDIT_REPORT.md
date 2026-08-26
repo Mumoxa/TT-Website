@@ -703,3 +703,72 @@ Covers:
 
 **Reason (≤5 sentences):** After remediation, all Blocker/Critical leaks (unknown Corp, bare domains, intl phones, hiring manager names, Sixty60, Holdings Ltd suffix, logo missing, PII in logs/report) are fixed and covered by 27 regression tests, and generated DOCX is professionally branded with logo and no hidden hyperlinks. The remaining risk is narrow — unknown companies without suffix and without Client label can still leak — but this is mitigated by preview + unrecognized warning and is far lower probability than before. For typical JSE-listed briefs (Shoprite, Vodacom, etc.) the pipeline is now reliable enough to trust with confidence, provided it is fronted by Cloudflare Access for true internal-only protection.
 
+---
+
+## 16. Post-Audit Follow-up — Professional Spacing (Text Reviewer)
+
+**Date:** 2026-08-26
+**Branch:** arena/01a03d12-tt-website
+**Trigger:** After merge, user reported generated output "looks unprofessional" — broken words and random enters.
+
+### User-reported symptoms (verified reproducible)
+
+`term s`, `i nsurance`, `Th e`, `Reta il`, `lead ership`, `opportunitie s`, `Full - time`, `journeys ,`, stray `CRM` spacing, duplicate apply lines, random blank lines (sometimes containing only spaces).
+
+### Root cause
+
+1. **Broken words:** PDF text is delivered as glyph *runs*. The old `linesFromItems` joiner in `parse.js` inserted a space between *any* two adjacent runs whose gap was ≤12pt, so a single word split across two runs (`term` + `s`) came out as `term s`. DOCX/RTF/plain-text/pasted text had no such cosmetic cleanup at all.
+2. **Random enters:** `docGenerator` previously emitted empty `blank()` paragraphs between many content lines, and extracted text carried whitespace-only "lines" and runs of blank lines straight through to the DOCX.
+
+### Fix (this change)
+
+1. **`src/specs/lib/textReviewer.js` (new)** — idempotent `reviewText()` pass:
+   - **Broken words:** merges two space-separated alphabetic tokens **only if** the concatenation is in a curated ~1,400-word job-brief vocabulary *and* at least one fragment looks like a broken piece (not a standalone word/single letter/blocker). This is what keeps `R and D`, `as sure`, `in put`, `full time` untouched while fixing `term s`→`terms`, `i nsurance`→`insurance`, `Th e`→`The`, `Reta il`→`Retail`, `lead ership`→`leadership`, `opportunitie s`→`opportunities`, and phrase cases like `stakeholder lead ership`→`stakeholder leadership`.
+   - **Hyphen compounds:** `Full - time`→`Full-time` (fixed compound list only).
+   - **Spaces before punctuation:** `journeys ,`→`journeys,`.
+   - **Bullets:** `•\titem` / `•   item` / `• - item`→`• item`; bullet-only lines dropped.
+   - **Blank lines:** whitespace-only lines normalised, 3+ blank lines collapsed to one.
+   - **Duplicate lines:** consecutive identical lines and back-to-back apply instructions collapsed.
+   - **Legacy address:** `applications@talenttree.co.za`→`CV@talenttree.co.za`.
+   - Runs to a fixed point (≤3 passes) so repeated application (parse + sanitize) is a no-op.
+2. **`src/specs/lib/parse.js`** — PDF run joiner now uses gap thresholds (`≤3pt` join, `3–12pt` space, `>12pt` tab) and every extraction path ends with `reviewText()`.
+3. **`src/specs/lib/sanitize.js`** — pipeline gains (a) existing-branding removal `Talent Tree`→`TalentTree` (logged as `branding`) and (b) the text-review step, both after all PII redaction and before the "ensure `CV@talenttree.co.za`" step, matching the documented order.
+4. **`tests/specs-textreviewer.test.mjs` (new)** — 40 regression tests: every reported artifact, no-false-merge safety cases, idempotency, and an end-to-end "messy brief" through `sanitizeDocument` asserting broken words are fixed **and** PII is still removed.
+
+### Verification
+
+- `npm test`: **128 PASS, 0 FAIL** (was 88 before this change; +40 text-reviewer tests, all pre-existing tests still green — the reviewer does not weaken any sanitization guarantee).
+- `npm run build`: PASS.
+- Manual: the user-reported example brief now renders with clean spacing, single blank lines, one apply line, and all client PII removed (see `tests/specs-textreviewer.test.mjs` → "user-reported example").
+
+### Residual (non-blocking)
+
+- Broken-word merging is vocabulary-guarded: a split word *not* in the dictionary (e.g. a rare brand) is left as-is rather than risk a wrong merge. Safe to extend `WORDS` as new splits are seen.
+- The reviewer is cosmetic; it neither adds nor removes PII, so it does not change the confidentiality verdict above.
+
+## 17. Post-Audit Follow-up — Brand Hyperlinks in Generated Spec
+
+### Request
+
+In the generated spec document, `CV@talenttree.co.za` should be a working hyperlink, and the Talent Tree logo should link to the talenttree.co.za site.
+
+### Changes
+
+1. **`src/specs/lib/docGenerator.js`**
+   - Every `CV@talenttree.co.za` occurrence in body paragraphs/bullets is emitted as a `mailto:` `ExternalHyperlink` run. Text is split on the address with a **capturing** regex (`/(CV@talenttree\.co\.za)/gi`) so the display text is preserved inside the link (a non-capturing split would have dropped it).
+   - The logo `ImageRun` is wrapped in an `ExternalHyperlink` to `https://talenttree.co.za`; the text fallback logo ("TalentTree") is likewise a site link.
+   - Footer email is a `mailto:` hyperlink (its relationship is registered in the footer part's own `.rels`).
+   - `run()` now supports `underline` styling for link runs.
+2. **`src/specs/SpecsApp.jsx`** — the print/PDF window mirrors the DOCX: the header "TalentTree" links to the site, and email occurrences in body and footer are mailto links (HTML is escaped *before* the fixed anchor tags are injected, so pasted content cannot inject markup). TXT output is intentionally unchanged — plain text, no markup.
+3. **`tests/specs-docx-branding.test.mjs` (new)** — 6 tests that parse the actually-generated DOCX (zip + XML, no fixtures): both brand rels registered; logo `<w:drawing>` sits inside a `<w:hyperlink>` whose rId resolves to `https://talenttree.co.za` and whose blip embeds the media file; every email hyperlink resolves to a mailto rel and preserves its display text; footer email resolves via the footer part's rels; **no other external targets exist** (no client links leak); TXT output carries the plain address without markup.
+
+### Verification
+
+- `npm test`: **135 PASS, 0 FAIL** (was 129 before this change; +6 branding tests).
+- `npm run build`: PASS.
+- Real DOCX XML inspection: `word/_rels/document.xml.rels` registers both external targets; each body hyperlink contains the literal `CV@talenttree.co.za` text; `word/_rels/footer1.xml.rels` maps the footer rId to `mailto:CV@talenttree.co.za`; logo PNG embedded and wrapped.
+
+### Notes
+
+- These are TalentTree's own brand links (company site + application address), not client data — no confidentiality impact.
+- Manual check: open a downloaded DOCX in Word — the logo and every `CV@talenttree.co.za` occurrence should be clickable.

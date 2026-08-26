@@ -7,6 +7,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  ExternalHyperlink,
   Footer,
   Header,
   Paragraph,
@@ -23,6 +24,14 @@ import {
 
 // Logo handling - synchronous import of base64 logo (same as cv-builda)
 import { logoBytes as getLogoBytes, LOGO_WIDTH as LOGO_W, LOGO_HEIGHT as LOGO_H } from "../../cv-builda/cv/logo.js";
+
+// Branding links (intentional — our own brand, never client data)
+const APPLY_EMAIL = "CV@talenttree.co.za";
+const APPLY_EMAIL_HREF = `mailto:${APPLY_EMAIL}`;
+// Capture group is REQUIRED: String.split only returns the match itself at
+// odd indices when the pattern captures it (without, matches are deleted).
+const APPLY_EMAIL_SPLIT_RE = /(CV@talenttree\.co\.za)/gi;
+const SITE_URL = "https://talenttree.co.za";
 
 const LOGO_WIDTH = LOGO_W;
 const LOGO_HEIGHT = LOGO_H;
@@ -90,6 +99,42 @@ function run(text, style = {}) {
     italics: Boolean(style.italics),
     allCaps: Boolean(style.caps),
     characterSpacing: style.spacing,
+    ...(style.underline ? { underline: {} } : {}),
+  });
+}
+
+// Split text on the application email so every occurrence becomes a
+// clickable mailto: hyperlink. Splitting with a capture keeps the matched
+// text at odd indices, preserving its original casing in the display.
+function textChildren(text, style = {}) {
+  const parts = String(text).split(APPLY_EMAIL_SPLIT_RE);
+  const children = [];
+  parts.forEach((part, i) => {
+    if (i % 2 === 0) {
+      if (part) children.push(run(part, style));
+    } else {
+      children.push(
+        new ExternalHyperlink({
+          link: APPLY_EMAIL_HREF,
+          children: [run(part, { ...style, color: COLORS.cyan, underline: true })],
+        })
+      );
+    }
+  });
+  return children;
+}
+
+// Paragraph whose text is plain, except the site name which links to the
+// TalentTree website (used for the logo fallback).
+function siteLink(text, style = {}, pPr = {}) {
+  return new Paragraph({
+    spacing: { after: pPr.after ?? 120, before: pPr.before ?? 0, line: pPr.line ?? 276 },
+    children: [
+      new ExternalHyperlink({
+        link: SITE_URL,
+        children: [run(text, style)],
+      }),
+    ],
   });
 }
 
@@ -100,7 +145,7 @@ function para(text, style = {}, pPr = {}) {
     alignment: pPr.alignment,
     indent: pPr.indent,
     border: pPr.border,
-    children: [run(text.trim(), style)],
+    children: textChildren(text.trim(), style),
   });
 }
 
@@ -127,7 +172,7 @@ function bullet(text) {
     bullet: { level: 0 },
     spacing: { after: 80, line: 276 },
     indent: { left: 360, hanging: 260 },
-    children: [run(text, { size: SIZES.body, color: COLORS.ink })],
+    children: textChildren(text, { size: SIZES.body, color: COLORS.ink }),
   });
 }
 
@@ -305,8 +350,9 @@ export function composeJobSpec(sanitizedText, metadata = {}) {
   // ── Header branding ──
   docChildren.push(blank(100));
 
-  // Logo + text branding
+  // Logo + text branding — logo (and its text fallback) links to the site
   const logo = getLogo();
+  const logoTextStyle = { font: FONTS.display, size: SIZES.h1, color: COLORS.navy, bold: true };
   if (logo && logo.bytes) {
     try {
       const imgData = typeof logo.bytes === "function" ? logo.bytes() : logo.bytes;
@@ -316,20 +362,25 @@ export function composeJobSpec(sanitizedText, metadata = {}) {
         new Paragraph({
           spacing: { after: 100 },
           children: [
-            new ImageRun({
-              data,
-              type: "png",
-              transformation: { width: 110, height: Math.round(110 * logo.height / logo.width) },
+            new ExternalHyperlink({
+              link: SITE_URL,
+              children: [
+                new ImageRun({
+                  data,
+                  type: "png",
+                  transformation: { width: 110, height: Math.round(110 * logo.height / logo.width) },
+                }),
+              ],
             }),
           ],
         })
       );
     } catch (e) {
       console.warn("[Specs] Logo failed", e);
-      docChildren.push(para("TalentTree", { font: FONTS.display, size: SIZES.h1, color: COLORS.navy, bold: true }, { after: 60 }));
+      docChildren.push(siteLink("TalentTree", logoTextStyle, { after: 60 }));
     }
   } else {
-    docChildren.push(para("TalentTree", { font: FONTS.display, size: SIZES.h1, color: COLORS.navy, bold: true }, { after: 60 }));
+    docChildren.push(siteLink("TalentTree", logoTextStyle, { after: 60 }));
   }
   docChildren.push(eyebrow("Niche skills recruitment · Executive search · Est. 2013", COLORS.muted, { after: 200 }));
 
@@ -439,7 +490,10 @@ export function composeJobSpec(sanitizedText, metadata = {}) {
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({ text: "Presented by TalentTree  ·  ", font: FONTS.mono, size: SIZES.tiny, color: COLORS.muted }),
-                  new TextRun({ text: "CV@talenttree.co.za", font: FONTS.mono, size: SIZES.tiny, color: COLORS.cyan }),
+                  new ExternalHyperlink({
+                    link: APPLY_EMAIL_HREF,
+                    children: [new TextRun({ text: "CV@talenttree.co.za", font: FONTS.mono, size: SIZES.tiny, color: COLORS.cyan, underline: {} })],
+                  }),
                   new TextRun({ text: "  ·  Page ", font: FONTS.mono, size: SIZES.tiny, color: COLORS.muted }),
                   new TextRun({ children: [PageNumber.CURRENT], font: FONTS.mono, size: SIZES.tiny, color: COLORS.muted }),
                   new TextRun({ text: " of ", font: FONTS.mono, size: SIZES.tiny, color: COLORS.muted }),
