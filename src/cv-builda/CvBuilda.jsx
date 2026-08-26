@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validate } from './cv/validate.js';
+import { visibleText } from './cv/list-text.js';
 import { REDACTION_DEFAULTS } from './cv/redact.js';
 import './cv-builda.css';
 
@@ -222,17 +223,26 @@ export default function CvBuilda() {
 
   const ctx = { cv, update, updateList, push, removeAt, issueFor, issueUnder, direct, R, anonymous };
 
+  /* Entering the editor swaps the whole panel out. Without moving focus a
+     keyboard or screen-reader user is left on a control that no longer exists
+     and silently dropped to the top of the document; this lands them on the
+     editor region, which announces itself. */
+  const workRef = useRef(null);
+  useEffect(() => {
+    if (step === 'edit') workRef.current?.focus({ preventScroll: true });
+  }, [step]);
+
   return (
     <div className="cvb">
       <Hero step={step} loaded={loaded} onRestart={() => { setCv(clone(EMPTY)); setStep('start'); setGaps([]); setNote(null); }} />
 
-      {note && <div className={`cvb-note cvb-note--${note.tone}`} role="status">{note.text}</div>}
+      {note && <div className={`cvb-note cvb-note--${note.tone}`} role={note.tone === 'bad' ? 'alert' : 'status'}>{note.text}</div>}
 
       {step === 'start' ? (
         <StartPanel paste={paste} setPaste={setPaste} onLoad={() => onPaste(paste)} onFile={onFile} busy={busy}
           onBlank={() => { setCv({ ...clone(EMPTY), personal: { ...EMPTY.personal, fullName: 'New candidate' } }); setStep('edit'); }} />
       ) : (
-        <div className="cvb-work">
+        <div className="cvb-work" ref={workRef} tabIndex={-1} aria-label="Candidate editor">
           <div className="cvb-form">
             {gaps.length > 0 && (
               <div className="cvb-gaps">
@@ -330,7 +340,7 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
         </div>
         <input ref={inputRef} type="file" hidden
           accept=".docx,.pdf,.rtf,.txt,.md,.doc,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          onChange={(e) => onFile(e.target.files[0])} />
+          onChange={(e) => { onFile(e.target.files[0]); e.target.value = ''; }} />
 
         <label className="cvb-field">
           <span>Or paste the CV text</span>
@@ -356,36 +366,70 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
 
 /* ═════════════════════════════════════════════════════════════════ fields ══ */
 
+/* A field's path doubles as its anchor, so the data check can scroll to the
+   exact field an issue belongs to, and as the id of its message, so a screen
+   reader reads the reason rather than announcing an unexplained invalid box. */
+const anchorId = (path) => `cvb-${String(path).replace(/[^\w]+/g, '-')}`;
+
 function Field({ path, label, hint, mono, area, rows = 3, placeholder, issueFor, update, cv }) {
   const issue = issueFor(path);
+  const messageId = `${anchorId(path)}-msg`;
+  const described = issue || hint ? messageId : undefined;
+  const wiring = {
+    'aria-invalid': issue?.level === 'error' ? 'true' : undefined,
+    'aria-describedby': described,
+    placeholder,
+    onChange: (e) => update(path, e.target.value),
+  };
   return (
-    <label className="cvb-field">
+    <label className="cvb-field" data-anchor={path}>
       <span>{label}</span>
       {area ? (
-        <textarea rows={rows} value={getIn(cv, path) ?? ''} placeholder={placeholder}
-          className={issue ? `is-${issue.level}` : ''}
-          onChange={(e) => update(path, e.target.value)} />
+        <textarea rows={rows} value={getIn(cv, path) ?? ''}
+          className={issue ? `is-${issue.level}` : ''} {...wiring} />
       ) : (
-        <input type="text" value={getIn(cv, path) ?? ''} placeholder={placeholder}
-          className={`${mono ? 'is-mono ' : ''}${issue ? `is-${issue.level}` : ''}`}
-          onChange={(e) => update(path, e.target.value)} />
+        <input type="text" value={getIn(cv, path) ?? ''}
+          className={`${mono ? 'is-mono ' : ''}${issue ? `is-${issue.level}` : ''}`} {...wiring} />
       )}
-      {issue && <em className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
-      {!issue && hint && <em className="cvb-inline">{hint}</em>}
+      {issue && <em id={messageId} className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
+      {!issue && hint && <em id={messageId} className="cvb-inline">{hint}</em>}
     </label>
   );
 }
 
+/**
+ * A list of bullets, one per line.
+ *
+ * The record holds them trimmed with blank lines dropped, which is right for
+ * what is stored and wrong for what is being typed. Applying it to the
+ * textarea on every keystroke ate the space at the end of a word and
+ * swallowed the blank line that begins the next bullet, so a section could
+ * only ever hold one run-together bullet. The field keeps its own text and
+ * the record gets the tidy version.
+ */
 function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
-  const arr = getIn(cv, path) || [];
+  const stored = (getIn(cv, path) || []).join('\n');
+  const [draft, setDraft] = useState(stored);
   const issue = issueUnder(path);
+
+  /* Resync only when the record changed from somewhere else — a candidate
+     loaded, a card removed — never in reply to this field's own edit, which
+     is what tidy() equalling the stored value tells us. */
+  useEffect(() => {
+    setDraft((current) => visibleText(current, stored));
+  }, [stored]);
+
+  const messageId = `${anchorId(path)}-msg`;
   return (
-    <label className="cvb-field">
+    <label className="cvb-field" data-anchor={path}>
       <span>{label} <i>one per line</i></span>
-      <textarea rows={Math.max(3, arr.length + 1)} value={arr.join('\n')} placeholder={placeholder}
+      <textarea rows={Math.max(3, draft.split('\n').length + 1)} value={draft} placeholder={placeholder}
         className={issue ? `is-${issue.level}` : ''}
-        onChange={(e) => updateList(path, e.target.value)} />
-      {issue && <em className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
+        aria-invalid={issue?.level === 'error' ? 'true' : undefined}
+        aria-describedby={issue ? messageId : undefined}
+        onChange={(e) => { setDraft(e.target.value); updateList(path, e.target.value); }}
+        onBlur={() => setDraft(stored)} />
+      {issue && <em id={messageId} className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
     </label>
   );
 }
@@ -658,10 +702,18 @@ function Card({ heading, live, onRemove, children }) {
 /* ════════════════════════════════════════════════════════════════ sidebar ══ */
 
 function Sidebar({ report }) {
+  /* An issue's field is the path of the input it belongs to, except for the
+     ones raised against a whole list ("professionalSummary",
+     "experience[0].titles"), which match the first field beneath them. */
   const goto = (field) => {
     const el = document.querySelector(`[data-anchor="${field}"]`)
-      || document.querySelector('.cvb-field .is-error, .cvb-field .is-warning');
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      || document.querySelector(`[data-anchor^="${field}"]`)
+      || document.querySelector('.cvb-field:has(.is-error), .cvb-field:has(.is-warning)');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    /* Scrolling alone leaves a keyboard user where they were, so the caret
+       follows the eye. */
+    el.querySelector('input, textarea')?.focus({ preventScroll: true });
   };
 
   return (
