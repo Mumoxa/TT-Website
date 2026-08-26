@@ -9,6 +9,8 @@
  *       "term s" -> "terms", "i nsurance" -> "insurance",
  *       "Th e" -> "The", "Reta il" -> "Retail",
  *       "lead ership" -> "leadership", "opportunitie s" -> "opportunities"
+ *   - soft visual line wraps inside sentences, including line-break
+ *     hyphenation: "e-\ncommerce" -> "e-commerce"
  *   - stray spaces around hyphens in compounds: "Full - time" -> "Full-time"
  *   - spaces before punctuation: "journeys , CRM" -> "journeys, CRM"
  *   - inconsistent bullet spacing: "•   item" / "• - item" -> "• item"
@@ -30,6 +32,11 @@
  * fragment is clearly a broken piece. This is what keeps
  * "the m anager" -> "the manager" instead of "them anager", and
  * "as sure" -> "as sure" instead of "assure".
+ *
+ * Soft-wrap reflow is deliberately conservative: a line is joined only when
+ * it begins with a lowercase continuation and the previous line is not a
+ * recognised heading/numbered item or a completed sentence. This preserves
+ * document structure while removing PDF/Word visual wrapping before output.
  *
  * The pass is idempotent — reviewText(reviewText(x)) === reviewText(x) —
  * because it is applied in BOTH parse.js (after extraction) and
@@ -535,6 +542,48 @@ function normaliseLine(line) {
   return l;
 }
 
+// ── Soft visual-wrap reflow ─────────────────────────────────────────────────
+
+const NUMBERED_ITEM_RE = /^\d{1,2}[.)]\s+/;
+const KNOWN_HEADING_RE = /^(?:about\s+(?:the\s+)?(?:company|client|organisation|organization|business|role)|client\s+overview|role\s+(?:overview|summary|description)|position\s+(?:overview|summary|description)|job\s+(?:overview|summary|description)|key\s+focus\s+areas|key\s+responsibilities|responsibilities|requirements|qualifications|skills(?:\s*&\s*experience)?|experience|competencies|benefits|what\s+we\s+offer|location(?:\s*&\s*type)?|work\s+arrangement|employment\s+type|how\s+to\s+apply|application|apply|to\s+apply)[:\-]?$/i;
+
+function isStructuralPreviousLine(line) {
+  return NUMBERED_ITEM_RE.test(line) || KNOWN_HEADING_RE.test(line);
+}
+
+function reflowSoftWrappedLines(text) {
+  const lines = text.split("\n");
+  const out = [];
+
+  for (const line of lines) {
+    if (!line) {
+      out.push("");
+      continue;
+    }
+
+    const prevIndex = out.length - 1;
+    const previous = prevIndex >= 0 ? out[prevIndex] : "";
+    const startsAsLowercaseContinuation = /^[a-z]/.test(line);
+    const previousIsCompleteSentence = /[.!?;:]$/.test(previous);
+
+    if (
+      previous &&
+      startsAsLowercaseContinuation &&
+      !previousIsCompleteSentence &&
+      !isStructuralPreviousLine(previous)
+    ) {
+      // Preserve a real hyphen across a visual line wrap: "e-\ncommerce"
+      // becomes "e-commerce". Other continuation lines receive one space.
+      out[prevIndex] = previous.endsWith("-") ? `${previous}${line}` : `${previous} ${line}`;
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return out.join("\n");
+}
+
 // ── Duplicate line removal ──────────────────────────────────────────────────
 
 function dedupeLines(text) {
@@ -602,13 +651,16 @@ function passOnce(text) {
     .map(normaliseLine)
     .join("\n");
 
-  // 7. Collapse runs of 3+ newlines to a single blank line
+  // 7. Rejoin visual PDF/Word wraps that split a sentence across lines.
+  text = reflowSoftWrappedLines(text);
+
+  // 8. Collapse runs of 3+ newlines to a single blank line
   text = text.replace(/\n{3,}/g, "\n\n");
 
-  // 8. Drop consecutive duplicate lines + duplicate apply lines
+  // 9. Drop consecutive duplicate lines + duplicate apply lines
   text = dedupeLines(text);
 
-  // 9. Legacy application address -> standard one
+  // 10. Legacy application address -> standard one
   text = text.replace(/applications@talenttree\.co\.za/gi, "CV@talenttree.co.za");
 
   return text;

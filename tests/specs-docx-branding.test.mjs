@@ -178,3 +178,15 @@ test('plain TXT output still carries the plain address (no markup)', () => {
   assert.ok(txt.includes('CV@talenttree.co.za'), 'address missing from TXT');
   assert.ok(!txt.includes('<a '), 'TXT must not contain markup');
 });
+
+test('generated DOCX only bullets lines that were explicitly bullets in the reviewed text', async () => {
+  const buf = await buildDoc();
+  const docXml = readZipEntry(buf, 'word/document.xml').toString('utf8');
+  const bulletParagraphs = [...docXml.matchAll(/<w:numPr>/g)].length;
+
+  assert.equal(
+    bulletParagraphs,
+    2,
+    'short prose or numbered focus-area text must not be converted into bullets'
+  );
+});
