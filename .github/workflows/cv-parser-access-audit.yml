@@ -1,9 +1,6 @@
 name: CV parser access audit
 
 on:
-  push:
-    branches:
-      - codex/cv-builda-structured-ai-parser
   workflow_dispatch:
 
 permissions:
