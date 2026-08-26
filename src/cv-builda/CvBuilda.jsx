@@ -801,22 +801,21 @@ function AiAssistPanel({
     <section className="cvb-ai" aria-labelledby="cvb-ai-title">
       <div className="cvb-ai-head">
         <div>
-          <p className="cvb-eyebrow cvb-eyebrow--accent">Interpretation layer</p>
-          <h2 id="cvb-ai-title">Ask a local AI to review the draft</h2>
+          <p className="cvb-eyebrow cvb-eyebrow--accent">Optional second pass</p>
+          <h2 id="cvb-ai-title">Review ambiguous fields with a local AI</h2>
         </div>
         <span className={`cvb-ai-status is-${state.status}`}>{statusText}</span>
       </div>
 
       <p className="cvb-hint">
-        This is an optional second pair of eyes for messy layouts and misplaced fields. It returns
-        small, traceable suggestions for you to approve — it never rewrites or applies the profile.
+        Structured AI extraction now builds the first draft automatically. Use this optional second
+        pass only when a field still looks ambiguous; suggestions remain traceable and require approval.
       </p>
 
       <div className="cvb-ai-boundary">
-        <strong>No paid API is built in.</strong> Use a self-hosted Ollama-compatible model or a
-        same-origin relay that you control. The original CV stays in this tab unless you press
-        the review button; when you do, its extracted text is sent to the endpoint below.
-        No API key is stored or requested here.
+        <strong>Automatic extraction uses Talent Tree’s controlled same-origin parser.</strong> This
+        optional reviewer is separate and should only point to infrastructure you control. Never
+        paste a paid-provider API key into this browser form.
       </div>
 
       <div className="cvb-ai-settings">
