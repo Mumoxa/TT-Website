@@ -44,6 +44,11 @@ const FIELD_PATTERNS = [
   /^earlyCareer\[\d+\]\.(?:title|employer|duration|alias)$/,
 ];
 
+const RESPONSE_KEYS = new Set(['suggestions', 'warnings']);
+const SUGGESTION_KEYS = new Set([
+  'id', 'kind', 'field', 'sourceQuote', 'currentValue', 'proposedValue', 'reason', 'confidence',
+]);
+
 class AiRequestError extends Error {
   constructor(code, message) {
     super(message);
@@ -331,6 +336,7 @@ function safetyReason(suggestion, currentValue, sourceText) {
 
 function validateSuggestion(raw, sourceText, cv, seenIds, seenFields) {
   if (!isRecord(raw)) return { error: 'the item was not an object' };
+  if (Object.keys(raw).some((key) => !SUGGESTION_KEYS.has(key))) return { error: 'the item contained an unknown key' };
   const id = cleanOneLine(raw.id, 80);
   const kind = raw.kind === 'formatting' ? 'formatting' : raw.kind === 'placement' ? 'placement' : '';
   const field = cleanOneLine(raw.field, 140);
@@ -368,7 +374,8 @@ function validateSuggestion(raw, sourceText, cv, seenIds, seenFields) {
 }
 
 function validateInterpretation(raw, sourceText, cv) {
-  if (!isRecord(raw) || !Array.isArray(raw.suggestions) || !Array.isArray(raw.warnings)) {
+  if (!isRecord(raw) || Object.keys(raw).some((key) => !RESPONSE_KEYS.has(key))
+      || !Array.isArray(raw.suggestions) || !Array.isArray(raw.warnings)) {
     throw new AiRequestError('AI_INVALID_RESPONSE', 'The AI service returned an unexpected suggestion shape. Nothing was changed.');
   }
 
