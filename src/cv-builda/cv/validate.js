@@ -23,6 +23,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
 const MONTH = `(?:${MONTHS.join('|')})`;
 const RANGE = new RegExp(`^${MONTH} \\d{4} \u2013 (?:Present|${MONTH} \\d{4})$`);
 const YEAR = /^\d{4}$/;
+const YEAR_RANGE = /^\d{4} – (?:Present|\d{4})$/;
 
 /* Openers that are not action verbs. The house rule is that every bullet starts
    with one, and these are the phrases that most often slip through. */
