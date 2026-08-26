@@ -408,19 +408,12 @@ export function composeJobSpec(sanitizedText, metadata = {}) {
     
     for (const line of section.content) {
       if (!line.trim()) continue;
-      
-      // Detect bullet-like lines
-      if (/^[•\-\*]\s+/.test(line) || (line.length < 200 && /^[A-Z][^.!?]*$/.test(line) === false && line.split(",").length > 2 === false)) {
-        // Heuristic: short lines or lines starting with bullet chars are bullets
-        // But also lines that are sentences should be paragraphs
-        const cleanLine = line.replace(/^[•\-\*]\s+/, "").trim();
-        if (cleanLine.length > 10) {
-          if (cleanLine.length < 120 || /^[•\-\*]/.test(line)) {
-            docChildren.push(bullet(cleanLine));
-          } else {
-            docChildren.push(bodyPara(cleanLine));
-          }
-        }
+
+      // Preserve source intent: only explicit bullet markers become DOCX bullets.
+      // Short prose and numbered focus-area labels remain normal paragraphs.
+      const bulletMatch = line.match(/^[•\-\*]\s+(.+)$/);
+      if (bulletMatch) {
+        docChildren.push(bullet(bulletMatch[1].trim()));
       } else {
         docChildren.push(bodyPara(line));
       }
