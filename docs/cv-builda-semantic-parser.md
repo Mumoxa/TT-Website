@@ -9,7 +9,8 @@
 ```
 talenttree.co.za/cv-builda
   -> extracted CV text only
-  -> https://n8n.mumoxa.co.za/webhook/cv-builda-parse
+  -> /api/cv-parse (Cloudflare Pages Function)
+  -> authenticated private n8n webhook
   -> n8n on Oracle
   -> Ollama on host.containers.internal:11434
   -> schema-valid candidate JSON
@@ -18,11 +19,18 @@ talenttree.co.za/cv-builda
   -> existing DOCX generator
 ```
 
-The original PDF/DOCX bytes remain in the browser. The semantic request contains extracted text, file name and mode. No paid-provider API key is used by CV-Builda.
+The original PDF/DOCX bytes remain in the browser. The semantic request contains extracted text, file name and mode. The browser calls only the same-origin Pages Function; the n8n endpoint and webhook token remain server-side. No paid-provider API key is used by CV-Builda.
 
 ## Import
 
-Import `docs/cv-builda-n8n-workflow.json` into n8n and activate it only after the test webhook succeeds.
+Import `docs/cv-builda-n8n-workflow.json` into n8n and activate it only after authentication and the test webhook succeed.
+
+Configure these Cloudflare Pages environment bindings for production:
+
+- `CV_N8N_ENDPOINT` = the full production n8n webhook URL
+- `CV_N8N_TOKEN` = a long random secret used only between the Pages Function and n8n
+
+The browser must not receive either value. The frontend uses `/api/cv-parse`.
 
 The workflow currently targets:
 
@@ -40,18 +48,21 @@ Do not make that change until the model is actually installed. The first objecti
 
 1. Keep Ollama private to the Oracle host/container network. CV-Builda must never call port 11434 directly.
 2. Put `n8n.mumoxa.co.za` behind valid HTTPS before production use.
-3. Restrict CORS to `https://talenttree.co.za`.
-4. Do not log `sourceText` in custom Code nodes.
-5. Use n8n execution-data retention appropriate for candidate PII. If executions retain request/response payloads, configure pruning or workflow-level settings so CV text is not stored indefinitely.
-6. Add a request authentication mechanism before exposing this webhook beyond the Talent Tree site. CORS alone is not authentication.
-7. Rate-limit the public webhook at the reverse proxy / Cloudflare layer.
+3. Configure the n8n Webhook node to require header authentication before activation. Use the same secret as `CV_N8N_TOKEN`, carried by the Pages Function in `X-CV-Builda-Token`.
+4. Do not rely on CORS as authentication. The browser never needs direct access to n8n.
+5. Do not log `sourceText` in custom Code nodes.
+6. Use n8n execution-data retention appropriate for candidate PII. If executions retain request/response payloads, configure pruning or workflow-level settings so CV text is not stored indefinitely.
+7. Rate-limit the parser path at Cloudflare and/or the reverse proxy.
 8. Confirm the n8n container can reach `host.containers.internal:11434`.
+9. Protect `/cv-builda` itself with Cloudflare Access or equivalent internal access control.
 
 ## Runtime smoke test
 
-The production smoke test should POST a small synthetic CV to:
+The browser-facing smoke test should POST a small synthetic CV to:
 
-`https://n8n.mumoxa.co.za/webhook/cv-builda-parse`
+`https://talenttree.co.za/api/cv-parse`
+
+A separate server-side n8n webhook test can be used during setup, but it must include the configured authentication header.
 
 Expected response shape:
 
