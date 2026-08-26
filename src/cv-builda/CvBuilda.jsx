@@ -330,6 +330,21 @@ export default function CvBuilda() {
         format = extracted.format;
         const parsed = parseCv(extracted.text, { fileName: file.name });
         incomingCv = parsed.cv;
+        try {
+          const semantic = await requestSemanticParse(extracted.text, {
+            endpoint: SEMANTIC_ENDPOINT,
+            fileName: file.name,
+            mode: cv.meta.mode,
+            fallbackCv: parsed.cv,
+          });
+          incomingCv = semantic.cv;
+          if (semantic.gaps.length) setGaps((current) => [...new Set([...current, ...semantic.gaps])]);
+        } catch (error) {
+          setGaps((current) => [...new Set([
+            ...current,
+            `Supplementary document used the built-in parser because semantic parsing was unavailable. ${error?.message || ''}`.trim(),
+          ])]);
+        }
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
       setCv(merged);
@@ -361,6 +376,21 @@ export default function CvBuilda() {
       } else {
         const parsed = parseCv(text, { fileName: 'Pasted Supplementary Text' });
         incomingCv = parsed.cv;
+        try {
+          const semantic = await requestSemanticParse(text, {
+            endpoint: SEMANTIC_ENDPOINT,
+            fileName: 'Pasted Supplementary Text',
+            mode: cv.meta.mode,
+            fallbackCv: parsed.cv,
+          });
+          incomingCv = semantic.cv;
+          if (semantic.gaps.length) setGaps((current) => [...new Set([...current, ...semantic.gaps])]);
+        } catch (error) {
+          setGaps((current) => [...new Set([
+            ...current,
+            `Supplementary text used the built-in parser because semantic parsing was unavailable. ${error?.message || ''}`.trim(),
+          ])]);
+        }
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
       setCv(merged);
@@ -619,6 +649,26 @@ export default function CvBuilda() {
               Talent Tree's self-hosted parser, checked against the CV-Builda schema, and the
               built-in parser remains available as a fallback.
             </div>
+
+            <details className="cvb-ai-advanced">
+              <summary>Advanced parser diagnostics</summary>
+              <AiAssistPanel
+                cv={cv}
+                sourceText={sourceText}
+                state={aiState}
+                endpoint={aiEndpoint}
+                setEndpoint={setAiEndpoint}
+                model={aiModel}
+                setModel={setAiModel}
+                provider={aiProvider}
+                setProvider={setAiProvider}
+                busy={Boolean(busy)}
+                onRun={handleAiInterpret}
+                onApply={applyAiSuggestion}
+                onReject={rejectAiSuggestion}
+                onApplyAll={applyAllAiSuggestions}
+              />
+            </details>
 
             {showSuppModal && (
               <SupplementaryModal
