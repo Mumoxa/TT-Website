@@ -1,37 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./specs.css";
-import { extractFromFile, fetchGoogleDoc, parseGoogleDocsUrl, ParseError } from "./lib/parse.js";
+import { extractFromFile, fetchGoogleDoc, parseGoogleDocsUrl } from "./lib/parse.js";
 import { sanitizeDocument, getSanitizationSummary } from "./lib/sanitize.js";
 import { composeJobSpec, generateFileName, generatePlainText } from "./lib/docGenerator.js";
-import { COMPANY_MAP } from "./lib/companyMap.js";
+import { ALL_DESCRIPTORS, COMPANY_MAP, DESCRIPTOR_TEMPLATES } from "./lib/companyMap.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────
-
-// Password handling: store hash, not plain text, to avoid trivial bundle inspection
-// Default password: TT-Internal-2026 -> SHA-256 be6199da64816066667f9c435086dd225ffddcd69fc1e59b2f58d4aa36a6e653
-// Override via VITE_SPECS_PASSWORD (plain) or VITE_SPECS_PASSWORD_HASH (sha256 hex) env vars
-const DEFAULT_PASSWORD_HASH = "be6199da64816066667f9c435086dd225ffddcd69fc1e59b2f58d4aa36a6e653";
-const ENV_PASSWORD = typeof import.meta !== "undefined" ? import.meta.env?.VITE_SPECS_PASSWORD : null;
-const ENV_PASSWORD_HASH = typeof import.meta !== "undefined" ? import.meta.env?.VITE_SPECS_PASSWORD_HASH : null;
-
-async function sha256Hex(str) {
-  if (typeof crypto !== "undefined" && crypto.subtle) {
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
-  }
-  // Fallback for non-secure contexts - simple hash (not cryptographically secure, but better than plain)
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(16);
-}
-
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MINUTES = 15;
-const SESSION_KEY = "tt_specs_auth";
-const ATTEMPTS_KEY = "tt_specs_attempts";
 
 const STEPS = {
   IDLE: "idle",
@@ -98,12 +72,6 @@ const Icon = {
       <line x1="12" y1="4" x2="12" y2="20" />
     </svg>
   ),
-  Lock: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width="20" height="20">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0110 0v4" />
-    </svg>
-  ),
   X: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
       <line x1="18" y1="6" x2="6" y2="18" />
@@ -117,158 +85,9 @@ const Icon = {
   ),
 };
 
-// ── Password Gate ─────────────────────────────────────────────────────────
-
-function PasswordGate({ onAuthenticated }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [attempts, setAttempts] = useState(() => {
-    try {
-      const data = JSON.parse(sessionStorage.getItem(ATTEMPTS_KEY) || '{"count":0,"lockedUntil":0}');
-      return data;
-    } catch {
-      return { count: 0, lockedUntil: 0 };
-    }
-  });
-  const [showPassword, setShowPassword] = useState(false);
-
-  const isLocked = attempts.lockedUntil > Date.now();
-  const lockoutRemaining = isLocked ? Math.ceil((attempts.lockedUntil - Date.now()) / 60000) : 0;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (isLocked) return;
-
-    try {
-      const inputHash = await sha256Hex(password);
-      // Determine expected hash: env hash takes precedence, else env plain hashed, else default hash
-      let expectedHash = DEFAULT_PASSWORD_HASH;
-      if (ENV_PASSWORD_HASH) {
-        expectedHash = ENV_PASSWORD_HASH.toLowerCase();
-      } else if (ENV_PASSWORD) {
-        expectedHash = await sha256Hex(ENV_PASSWORD);
-      }
-
-      // Also allow direct plain compare for default in case subtle crypto unavailable and hash mismatch due to fallback
-      const isDefaultPlainMatch = password === "TT-Internal-2026" && !ENV_PASSWORD && !ENV_PASSWORD_HASH;
-      
-      if (inputHash === expectedHash || isDefaultPlainMatch) {
-        const authData = { authenticated: true, timestamp: Date.now() };
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(authData));
-        sessionStorage.removeItem(ATTEMPTS_KEY);
-        onAuthenticated();
-      } else {
-        const newCount = attempts.count + 1;
-        let newAttempts = { count: newCount, lockedUntil: 0 };
-        
-        if (newCount >= MAX_ATTEMPTS) {
-          newAttempts.lockedUntil = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
-          setError(`Too many attempts. Locked for ${LOCKOUT_MINUTES} minutes. Contact admin if needed.`);
-        } else {
-          setError(`Incorrect password. ${MAX_ATTEMPTS - newCount} attempts remaining.`);
-        }
-        
-        setAttempts(newAttempts);
-        sessionStorage.setItem(ATTEMPTS_KEY, JSON.stringify(newAttempts));
-        setPassword("");
-      }
-    } catch (err) {
-      setError("Authentication error. Please try again.");
-    }
-  };
-
-  return (
-    <div className="specs-gate">
-      <div className="specs-gate-card">
-        <div className="specs-gate-header">
-          <div className="specs-gate-logo">
-            <span className="specs-gate-logo-mark">TT</span>
-          </div>
-          <h1>Specs Generator</h1>
-          <p className="specs-gate-subtitle">Internal tool · talenttree.co.za/specs</p>
-        </div>
-
-        <div className="specs-gate-notice">
-          <Icon.Shield />
-          <div>
-            <strong>Internal access only</strong>
-            <span>This tool processes confidential client data. Authentication required.</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="specs-gate-form">
-          <label className="specs-field">
-            <span>Access password</span>
-            <div className="specs-input-group">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter internal password"
-                autoComplete="current-password"
-                autoFocus
-                disabled={isLocked}
-              />
-              <button
-                type="button"
-                className="specs-input-action"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                title={showPassword ? "Hide password" : "Show password"}
-              >
-                <Icon.Eye />
-              </button>
-            </div>
-          </label>
-
-          {error && (
-            <div className="specs-alert specs-alert-error">
-              <Icon.Alert />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {isLocked && (
-            <div className="specs-alert specs-alert-warn">
-              <Icon.Lock />
-              <span>Locked for {lockoutRemaining} minute{lockoutRemaining !== 1 ? "s" : ""}. Try again later or contact system admin.</span>
-            </div>
-          )}
-
-          <button type="submit" className="specs-btn specs-btn-primary" disabled={isLocked || !password.trim()}>
-            <span>Authenticate</span>
-            <Icon.Arrow />
-          </button>
-
-          <div className="specs-gate-hint">
-            <p>Default password: <code>TT-Internal-2026</code></p>
-            <p className="specs-gate-hint-muted">
-              For production: replace with Cloudflare Access, IP allowlist, or SSO. 
-              This password gate is a frontend deterrent only — all processing stays client-side for POPIA compliance.
-            </p>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ── Main Specs App ────────────────────────────────────────────────────────
 
 export default function SpecsApp() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    try {
-      const data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
-      if (data?.authenticated && Date.now() - data.timestamp < 8 * 60 * 60 * 1000) {
-        return true; // 8 hour session
-      }
-      sessionStorage.removeItem(SESSION_KEY);
-      return false;
-    } catch {
-      return false;
-    }
-  });
-
   const [inputMethod, setInputMethod] = useState("upload"); // upload | text | gdocs
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
@@ -296,26 +115,6 @@ export default function SpecsApp() {
       setSanitizedResult(null);
       setDocData(null);
     };
-  }, []);
-
-  const handleAuthenticated = useCallback(() => {
-    setIsAuthenticated(true);
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    sessionStorage.removeItem(SESSION_KEY);
-    setIsAuthenticated(false);
-    setFile(null);
-    setPastedText("");
-    setGdocsUrl("");
-    setRawText("");
-    setSanitizedResult(null);
-    setDocData(null);
-    setStep(STEPS.IDLE);
-    setError(null);
-    setCustomDescriptor("");
-    setCustomCompanyDescription("");
-    setShowCustomize(false);
   }, []);
 
   // ── File handling ─────────────────────────────────────────────────────
@@ -601,10 +400,6 @@ export default function SpecsApp() {
 
   // ── Render ────────────────────────────────────────────────────────────
 
-  if (!isAuthenticated) {
-    return <PasswordGate onAuthenticated={handleAuthenticated} />;
-  }
-
   return (
     <div className="specs-app">
       {/* Header */}
@@ -622,9 +417,6 @@ export default function SpecsApp() {
               <Icon.Shield />
               Client-side only · No data stored
             </span>
-            <button onClick={handleLogout} className="specs-btn specs-btn-ghost">
-              Lock
-            </button>
           </div>
         </div>
       </header>
@@ -1136,7 +928,7 @@ export default function SpecsApp() {
 
       <footer className="specs-footer">
         <p>© 2026 TalentTree · Internal tool · talenttree.co.za/specs · No client data stored · Client-side processing only</p>
-        <p className="specs-footer-small">If this page is accessible without Cloudflare Access or IP restriction, configure it in Cloudflare Pages → Settings → Access. Password gate is frontend deterrent only.</p>
+        <p className="specs-footer-small">If this page is accessible without Cloudflare Access or IP restriction, configure it in Cloudflare Pages → Settings → Access. This unlisted internal route has no application password gate.</p>
       </footer>
     </div>
   );

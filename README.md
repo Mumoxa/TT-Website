@@ -20,7 +20,7 @@ React/Vite website for Talent Tree Consulting.
 ```bash
 npm install
 npm run dev
-# Open http://localhost:5173/specs for specs generator (password: TT-Internal-2026)
+# Open http://localhost:5173/specs for the private specs generator
 ```
 
 ## Production build
@@ -33,6 +33,6 @@ npm test
 ## Security for internal tools
 
 - `/cv-builda` and `/specs` are frontend-only (no data leaves browser) for POPIA compliance
-- Password gate is frontend deterrent — for production, add Cloudflare Access (SSO / IP allowlist) in Pages → Settings → Access
+- `/specs` is an unlisted private route with no application password gate; restrict the deployment with Cloudflare Access or an IP allowlist if stronger access control is required
 - No client data stored — cleared on reset / tab close
 
