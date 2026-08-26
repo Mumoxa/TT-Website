@@ -38,8 +38,10 @@ test('the browser contract sends facts-only rules and no provider credentials', 
 
 test('obvious headings and email addresses are not valid employers', () => {
   assert.equal(badEmployer('WORK EXPERIENCE'), true);
+  assert.equal(badEmployer('W O R K E X P E R I E N C E'), true);
   assert.equal(badEmployer('Education'), true);
-  assert.equal(badEmployer('person@example.com'), true);
+  assert.equal(badEmployer('E D U C'), true);
+  assert.equal(badEmployer('Bomikazi.mditshwa@gmail.com'), true);
   assert.equal(badEmployer('Adcock Ingram'), false);
 });
 
