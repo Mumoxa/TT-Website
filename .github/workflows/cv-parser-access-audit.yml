@@ -1,0 +1,36 @@
+name: CV parser access audit
+
+on:
+  push:
+    branches:
+      - codex/cv-builda-structured-ai-parser
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secret availability
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ORACLE_KEY: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
+          CV_PARSE_TOKEN: ${{ secrets.CV_PARSE_TOKEN }}
+          CV_PARSE_UPSTREAM: ${{ secrets.CV_PARSE_UPSTREAM }}
+        run: |
+          test -n "$CF_TOKEN" && echo "CLOUDFLARE_API_TOKEN=present" || echo "CLOUDFLARE_API_TOKEN=missing"
+          test -n "$CF_ACCOUNT" && echo "CLOUDFLARE_ACCOUNT_ID=present" || echo "CLOUDFLARE_ACCOUNT_ID=missing"
+          test -n "$ORACLE_KEY" && echo "ORACLE_SSH_PRIVATE_KEY=present" || echo "ORACLE_SSH_PRIVATE_KEY=missing"
+          test -n "$CV_PARSE_TOKEN" && echo "CV_PARSE_TOKEN=present" || echo "CV_PARSE_TOKEN=missing"
+          test -n "$CV_PARSE_UPSTREAM" && echo "CV_PARSE_UPSTREAM=present" || echo "CV_PARSE_UPSTREAM=missing"
+
+      - name: Check Cloudflare project access
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project list
