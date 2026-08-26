@@ -342,7 +342,7 @@
   color: var(--cvb-muted);
 }
 
-.cvb-field :is(input, textarea) {
+.cvb-field :is(input, textarea, select) {
   display: block;
   width: 100%;
   padding: 11px 13px;
@@ -358,7 +358,7 @@
   line-height: 1.55;
 }
 
-.cvb-field :is(input, textarea):focus-visible {
+.cvb-field :is(input, textarea, select):focus-visible {
   outline: none;
   border-color: var(--cvb-accent);
   box-shadow: 0 0 0 3px var(--cvb-accent-soft);
@@ -367,6 +367,19 @@
 .cvb-field .is-mono { font-family: var(--cvb-mono); font-size: 0.94em; }
 .cvb-field .is-error { border-color: var(--cvb-error); }
 .cvb-field .is-warning { border-color: var(--cvb-warning); }
+
+/* select-specific: match input appearance */
+.cvb-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: var(--cvb-white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%235f7077'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E") right 13px center no-repeat;
+  padding-right: 38px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.cvb-field select option { color: var(--cvb-ink); background: var(--cvb-white); }
 
 .cvb-inline {
   display: block;

@@ -721,6 +721,44 @@ function Field({ path, label, hint, mono, area, rows = 3, placeholder, issueFor,
   );
 }
 
+/* ── South African Employment Equity designations ────────────────────── */
+const EE_OPTIONS = [
+  { value: '', label: '— Select —' },
+  { value: 'African Male', label: 'African Male' },
+  { value: 'African Female', label: 'African Female' },
+  { value: 'Coloured Male', label: 'Coloured Male' },
+  { value: 'Coloured Female', label: 'Coloured Female' },
+  { value: 'Indian Male', label: 'Indian Male' },
+  { value: 'Indian Female', label: 'Indian Female' },
+  { value: 'White Male', label: 'White Male' },
+  { value: 'White Female', label: 'White Female' },
+  { value: 'Chinese Male', label: 'Chinese Male' },
+  { value: 'Chinese Female', label: 'Chinese Female' },
+];
+
+function SelectField({ path, label, options, hint, issueFor, update, cv }) {
+  const issue = issueFor(path);
+  const messageId = `${anchorId(path)}-msg`;
+  return (
+    <label className="cvb-field" data-anchor={path}>
+      <span>{label}</span>
+      <select
+        value={getIn(cv, path) ?? ''}
+        className={issue ? `is-${issue.level}` : ''}
+        aria-invalid={issue?.level === 'error' ? 'true' : undefined}
+        aria-describedby={issue ? messageId : undefined}
+        onChange={(e) => update(path, e.target.value)}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+      {issue && <em id={messageId} className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
+      {!issue && hint && <em id={messageId} className="cvb-inline">{hint}</em>}
+    </label>
+  );
+}
+
 function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
   const stored = (getIn(cv, path) || []).join('\n');
   const [draft, setDraft] = useState(stored);
@@ -754,6 +792,7 @@ function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
 function Editor(ctx) {
   const { cv, push, removeAt, update, direct, R, onAutoSynthesize, onAutoAliases } = ctx;
   const F = (p) => <Field {...ctx} {...p} />;
+  const SF = (p) => <SelectField {...ctx} {...p} />;
 
   return (
     <>
@@ -789,7 +828,7 @@ function Editor(ctx) {
           {F({ path: 'personal.dateOfBirth', label: 'Date of birth', mono: true, placeholder: '18 March 1985' })}
         </div>
         <div className="cvb-two">
-          {F({ path: 'personal.eeStatus', label: 'Employment Equity (EE) status', placeholder: 'EE / Non-EE / African Female / Designated group' })}
+          {SF({ path: 'personal.eeStatus', label: 'Employment Equity (EE) status', options: EE_OPTIONS })}
           {F({ path: 'personal.areaOfResidence', label: 'Area of residence', placeholder: 'Northern Suburbs, Cape Town' })}
           {R.areaOfResidence && F({ path: 'personal.areaAlias', label: 'Shown instead of the area', placeholder: 'Cape Town' })}
           {F({ path: 'personal.availability', label: 'Availability', placeholder: '30 days / 1 calendar month' })}
