@@ -9,6 +9,7 @@ import '@fontsource/fraunces/latin-400-italic.css';
 import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
 import CvBuilda from './cv-builda/CvBuilda.jsx';
+import SpecsApp from './specs/SpecsApp.jsx';
 import './styles.css';
 
 const Arrow = () => (
@@ -203,18 +204,18 @@ function Counter({ value, suffix, label }) {
 function Logo() {
   return (
     <a href="#top" className="logo" aria-label="Talent Tree home">
-      <img src={talentTreeLogo} alt="Talent Tree" />
+      <img src={talentTreeLogo} alt="Talent Tree" width="132" height="108" />
       <span className="brand-lockup" aria-hidden="true">
-        <span className="brand-line">Niche skills recruitment</span>
-        <span className="brand-line brand-line-muted">Executive search · Est. 2013</span>
+        <span className="brand-name">Talent Tree</span>
+        <span className="brand-line">Niche skills · Executive search</span>
       </span>
     </a>
   );
 }
 
-function CTA({ children, href = '#contact', quiet = false }) {
+function CTA({ children, href = '#contact', quiet = false, small = false }) {
   return (
-    <a className={`button${quiet ? ' button-quiet' : ''}`} href={href}>
+    <a className={`button${quiet ? ' button-quiet' : ''}${small ? ' button-sm' : ''}`} href={href}>
       <span>{children}</span>
       <Arrow />
     </a>
@@ -234,7 +235,7 @@ function FAQItem({ item, index, openFaq, setOpenFaq }) {
           onClick={() => setOpenFaq(expanded ? -1 : index)}
         >
           <span>{item[0]}</span>
-          <span className="toggle-mark" aria-hidden="true">{expanded ? '−' : '+'}</span>
+          <span className="toggle-mark" aria-hidden="true" />
         </button>
       </h3>
       <div id={panelId} className="faq-panel" hidden={!expanded}>
@@ -249,16 +250,55 @@ function App() {
   const [activeService, setActiveService] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
   const [formStatus, setFormStatus] = useState({ type: 'idle', message: '' });
+  const navToggleRef = useRef(null);
 
   const closeMenu = () => setMenuOpen(false);
 
+  const navSections = ['clients', 'services', 'why', 'about', 'faq'];
+
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 16);
+      const marker = window.innerHeight * 0.38;
+      let current = '';
+      navSections.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= marker) current = id;
+      });
+      setActiveSection(current);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lock body scroll while the mobile drawer is open, and close it cleanly.
+  useEffect(() => {
+    document.body.classList.toggle('menu-open', menuOpen);
+    return () => document.body.classList.remove('menu-open');
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        if (navToggleRef.current) navToggleRef.current.focus({ preventScroll: true });
+      }
+    };
+    const onResize = () => {
+      if (window.innerWidth > 1000) setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuOpen]);
 
   const submitEnquiry = (event) => {
     event.preventDefault();
@@ -287,10 +327,19 @@ function App() {
     <div className="app" id="top">
       <a className="skip-link" href="#main-content">Skip to content</a>
 
-      <header className={scrolled ? 'site-header is-scrolled' : 'site-header'}>
+      <header className={`site-header${scrolled ? ' is-scrolled' : ''}${menuOpen ? ' is-open' : ''}`}>
         <div className="header-inner">
           <Logo />
+          <nav id="primary-navigation" className={menuOpen ? 'primary-nav is-open' : 'primary-nav'} aria-label="Primary navigation">
+            <a href="#clients" onClick={closeMenu} aria-current={activeSection === 'clients' ? 'true' : undefined}>Clients</a>
+            <a href="#services" onClick={closeMenu} aria-current={activeSection === 'services' ? 'true' : undefined}>Services</a>
+            <a href="#why" onClick={closeMenu} aria-current={activeSection === 'why' ? 'true' : undefined}>Why us</a>
+            <a href="#about" onClick={closeMenu} aria-current={activeSection === 'about' ? 'true' : undefined}>About</a>
+            <a href="#faq" onClick={closeMenu} aria-current={activeSection === 'faq' ? 'true' : undefined}>FAQ</a>
+            <a className="nav-contact" href="#contact" onClick={closeMenu}>Discuss a brief</a>
+          </nav>
           <button
+            ref={navToggleRef}
             className="menu-toggle"
             type="button"
             aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
@@ -301,27 +350,21 @@ function App() {
             <span />
             <span />
           </button>
-          <nav id="primary-navigation" className={menuOpen ? 'primary-nav is-open' : 'primary-nav'} aria-label="Primary navigation">
-            <a href="#clients" onClick={closeMenu}>Clients</a>
-            <a href="#services" onClick={closeMenu}>Services</a>
-            <a href="#why" onClick={closeMenu}>Why us</a>
-            <a href="#about" onClick={closeMenu}>About</a>
-            <a href="#faq" onClick={closeMenu}>FAQ</a>
-            <a className="nav-contact" href="#contact" onClick={closeMenu}>Discuss a brief</a>
-          </nav>
         </div>
       </header>
 
       <main id="main-content">
         <section className="hero" aria-labelledby="hero-heading">
           <div className="shell hero-grid">
-            <div>
+            <div className="hero-intro">
               <p className="eyebrow">Niche skills · Executive search · South Africa</p>
               <h1 id="hero-heading">Your next hire is already <em>working somewhere else.</em></h1>
             </div>
-            <div className="hero-copy">
-              <p>We headhunt the in-demand professionals who never answer job ads — and position your opportunity so the right person takes the call.</p>
-              <p>Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring.</p>
+            <div className="hero-row">
+              <div className="hero-copy">
+                <p className="hero-lead">We headhunt the in-demand professionals who never answer job ads — and position your opportunity so the right person takes the call.</p>
+                <p>Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring.</p>
+              </div>
               <div className="hero-ctas">
                 <CTA>Discuss a brief</CTA>
                 <CTA href="#clients" quiet>Who we partner with</CTA>
@@ -359,8 +402,10 @@ function App() {
               {flagships.map((item, index) => (
                 <Reveal delay={index * 90} key={item.client}>
                   <article className="flagship">
-                    <span className="flagship-number" aria-hidden="true">{item.number}</span>
-                    <span className="flagship-tag">{item.tag}</span>
+                    <div className="flagship-head">
+                      <span className="flagship-number" aria-hidden="true">{item.number}</span>
+                      <span className="flagship-tag">{item.tag}</span>
+                    </div>
                     <h3>{item.client}</h3>
                     <p className="flagship-mandate">{item.mandate}</p>
                     <p className="flagship-note">{item.note}</p>
@@ -410,11 +455,11 @@ function App() {
                         <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
                         <span className="service-title">{service.title}</span>
                         <span className="service-summary">{service.summary}</span>
-                        <span className="toggle-mark" aria-hidden="true">{expanded ? '−' : '+'}</span>
+                        <span className="toggle-mark" aria-hidden="true" />
                       </button>
                       <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
                         <p>{service.detail}</p>
-                        <CTA href="#contact" quiet>Discuss {service.title.toLowerCase()}</CTA>
+                        <CTA href="#contact" quiet small>Discuss {service.title.toLowerCase()}</CTA>
                       </div>
                     </article>
                   </Reveal>
@@ -605,24 +650,32 @@ function App() {
       </main>
 
       <footer className="site-footer">
-        <div className="shell footer-inner">
-          <Logo />
-          <p>Talent Tree Consulting · Established 2013 · South Africa · Niche-skills recruitment and executive search</p>
-          <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
-        </div>
-        <div className="shell footer-legal">
-          <p>© 2026 Talent Tree Consulting</p>
+        <div className="shell">
+          <div className="footer-top">
+            <div>
+              <Logo />
+              <p className="footer-line">Talent Tree Consulting · Established 2013 · South Africa · Niche-skills recruitment and executive search</p>
+            </div>
+            <div className="footer-email">
+              <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
+            </div>
+          </div>
+          <div className="footer-legal">
+            <p>© 2026 Talent Tree Consulting</p>
+          </div>
         </div>
       </footer>
     </div>
   );
 }
 
-/* The site has one other page and does not need a router for it. Trailing
-   slashes are stripped so /cv-builda and /cv-builda/ are the same page. */
+/* The site now has three pages and still does not need a router.
+   Trailing slashes are stripped so /cv-builda and /cv-builda/ are the same page.
+   /specs is the internal job brief sanitizer. */
 function Root() {
   const path = window.location.pathname.replace(/\/+$/, '');
   if (path === '/cv-builda') return <CvBuilda />;
+  if (path === '/specs') return <SpecsApp />;
   return <App />;
 }
 
