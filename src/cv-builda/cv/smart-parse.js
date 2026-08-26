@@ -69,7 +69,7 @@ function normalizeExperience(entry) {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
   const employer = clean(entry.employer, 300);
   if (!employer) return null;
-  if (EMAIL.test(employer) || SECTION_LABEL.test(employer)) {
+  if (EMAIL.test(employer) || SECTION_LABEL.test(employer) || SPACED_HEADING.test(employer) || QUALIFICATION_LIKE_EMPLOYER.test(employer)) {
     throw new SmartParseError('AI_STRUCTURAL_ERROR', `The AI returned an invalid employer value: ${employer}`);
   }
   const titles = Array.isArray(entry.titles)
@@ -158,9 +158,20 @@ function normalizeServiceResponse(body, options) {
   const rawCv = body.cv || body.record || body;
   const cv = normalizeCv(rawCv, options);
   const gaps = cleanList(body.gaps || body.warnings, 30, 500);
-  const evidence = body.evidence && typeof body.evidence === 'object' && !Array.isArray(body.evidence)
-    ? body.evidence
-    : {};
+  let evidence = {};
+  if (Array.isArray(body.evidence)) {
+    evidence = Object.fromEntries(
+      body.evidence
+        .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+        .map((item) => [clean(item.field, 160), {
+          quote: clean(item.quote, 500),
+          confidence: clean(item.confidence, 20),
+        }])
+        .filter(([field, item]) => field && item.quote),
+    );
+  } else if (body.evidence && typeof body.evidence === 'object') {
+    evidence = body.evidence;
+  }
   return { cv, gaps, evidence };
 }
 
