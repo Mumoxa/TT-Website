@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { validate } from './cv/validate.js';
 import { visibleText } from './cv/list-text.js';
 import { REDACTION_DEFAULTS } from './cv/redact.js';
+import { parseCv, synthesizeProfile, mergeCvRecords, standardizeCv } from './cv/parse.js';
 import './cv-builda.css';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -12,8 +13,8 @@ import './cv-builda.css';
    The document is generated in the browser. Nothing is uploaded, which is the
    honest answer to the POPIA question a candidate or client will ask.
 
-   `docx` and the composer are loaded lazily on first build, so this page adds
-   nothing to the main site bundle until someone actually presses Download.
+   Supports multi-column PDFs, LinkedIn profile PDFs, multi-document merging,
+   automated profile synthesis, and one-click data standardization.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const EMPTY = {
@@ -88,6 +89,9 @@ export default function CvBuilda() {
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState(null);
   const [paste, setPaste] = useState('');
+  const [sources, setSources] = useState([]);
+  const [showSuppModal, setShowSuppModal] = useState(false);
+  const [suppPaste, setSuppPaste] = useState('');
 
   const report = useMemo(() => validate(cv), [cv]);
   const loaded = Boolean(cv.personal.fullName.trim());
@@ -111,75 +115,201 @@ export default function CvBuilda() {
     setCv((c) => setIn(c, path, (getIn(c, path) || []).filter((_, i) => i !== index)));
   }, []);
 
-  const land = useCallback((record, notes, source) => {
+  const land = useCallback((record, notes, source, sourceFiles = []) => {
     setCv(record);
     setGaps(notes);
     setStep('edit');
+    if (sourceFiles.length) setSources(sourceFiles);
     setNote(source ? { tone: 'good', text: source } : null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   /* ── a saved data file, or the output of the conversion prompt ────────── */
-  const ingestJson = useCallback((text) => {
+  const ingestJson = useCallback((text, fileName = '') => {
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
     if (start < 0 || end < 0) throw new Error('No JSON object found.');
     const parsed = JSON.parse(text.slice(start, end + 1));
-    /* Merge one level deep. A shallow spread would drop defaults inside
-       meta and personal — data files written before a field existed would
-       arrive with it undefined, which is how meta.mode went missing. */
     const base = clone(EMPTY);
     const merged = { ...base, ...parsed };
     ['meta', 'personal', 'consultant', 'redact'].forEach((k) => {
       merged[k] = { ...base[k], ...(parsed[k] || {}) };
     });
-    /* A formal recruitment profile carries no referees section — the client
-       asks the consultant, who asks the candidate. Data files written before
-       that rule still carry the field, so it is dropped on the way in rather
-       than left to reappear in the document. */
     delete merged.referees;
     if (merged.meta.mode !== 'direct') merged.meta.mode = 'agency';
     const trailing = text.slice(end + 1).replace(/^\s*GAPS:\s*/i, '').trim();
-    land(merged, trailing ? [trailing] : [], '');
+    land(merged, trailing ? [trailing] : [], '', [{ name: fileName || 'candidate_data.json', format: 'json' }]);
   }, [land]);
 
   /* ── the candidate's own CV, in whatever they wrote it in ─────────────── */
-  const ingestCv = useCallback(async (text, label) => {
-    const { parseCv } = await import('./cv/parse.js');
-    const { cv: parsed, gaps: found } = parseCv(text);
-    land(parsed, found, `${label} Read every field against the original before you build — that is the part no parser can do.`);
+  const ingestCv = useCallback(async (text, label, fileName = '', format = 'text') => {
+    const { cv: parsed, gaps: found } = parseCv(text, { fileName });
+    land(
+      parsed,
+      found,
+      `${label} Read every field against the original before you build — that is the part no parser can do.`,
+      [{ name: fileName || 'Pasted CV text', format }],
+    );
   }, [land]);
 
-  const onFile = useCallback(async (file) => {
-    if (!file) return;
-    setBusy(`Reading ${file.name}\u2026`);
+  /* ── primary file upload (single or multiple) ─────────────────────────── */
+  const onFile = useCallback(async (fileList) => {
+    if (!fileList || !fileList.length) return;
+    const files = Array.from(fileList);
+    const firstFile = files[0];
+    setBusy(`Reading ${firstFile.name}\u2026`);
     setNote(null);
     try {
-      if (/\.json$/i.test(file.name)) {
-        ingestJson(await file.text());
+      if (/\.json$/i.test(firstFile.name)) {
+        ingestJson(await firstFile.text(), firstFile.name);
       } else {
         const { extractFromFile } = await import('./cv/extract.js');
-        const { text, format, notes } = await extractFromFile(file);
-        await ingestCv(text, [`Read ${file.name} as ${FORMATS[format] || format}.`, ...notes].join(' '));
+        const { text, format, notes } = await extractFromFile(firstFile);
+        const { cv: parsed, gaps: found } = parseCv(text, { fileName: firstFile.name });
+
+        let currentRecord = parsed;
+        const loadedSources = [{ name: firstFile.name, format }];
+
+        /* If multiple files were dropped together (e.g. CV + LinkedIn PDF), merge them */
+        if (files.length > 1) {
+          for (let i = 1; i < files.length; i++) {
+            const extraFile = files[i];
+            setBusy(`Merging ${extraFile.name}\u2026`);
+            const { text: extraText, format: extraFormat } = await extractFromFile(extraFile);
+            const { cv: incomingCv } = parseCv(extraText, { fileName: extraFile.name });
+            const { merged, notes: mergeNotes } = mergeCvRecords(currentRecord, incomingCv);
+            currentRecord = merged;
+            loadedSources.push({ name: extraFile.name, format: extraFormat, mergedCount: mergeNotes.length });
+          }
+        }
+
+        land(
+          currentRecord,
+          found,
+          `Loaded ${loadedSources.map((s) => s.name).join(' & ')} successfully.`,
+          loadedSources,
+        );
       }
     } catch (e) {
       setNote({ tone: 'bad', text: e.message || String(e) });
     }
     setBusy('');
-  }, [ingestJson, ingestCv]);
+  }, [ingestJson, land]);
 
   /* Pasted text is a data file if it looks like one and a CV if it does not. */
   const onPaste = useCallback(async (text) => {
     setBusy('Reading the text\u2026');
     setNote(null);
     try {
-      if (/^\s*[{[]/.test(text)) ingestJson(text);
-      else await ingestCv(text, 'Read from pasted text.');
+      if (/^\s*[{[]/.test(text)) ingestJson(text, 'pasted_data.json');
+      else await ingestCv(text, 'Read from pasted text.', 'Pasted Text');
     } catch (e) {
       setNote({ tone: 'bad', text: e.message || String(e) });
     }
     setBusy('');
   }, [ingestJson, ingestCv]);
+
+  /* ── supplementary document merge ─────────────────────────────────────── */
+  const onSupplementaryFile = useCallback(async (file) => {
+    if (!file) return;
+    setBusy(`Reading supplementary document: ${file.name}\u2026`);
+    setNote(null);
+    try {
+      let incomingCv = null;
+      let format = 'text';
+      if (/\.json$/i.test(file.name)) {
+        incomingCv = JSON.parse(await file.text());
+        format = 'json';
+      } else {
+        const { extractFromFile } = await import('./cv/extract.js');
+        const extracted = await extractFromFile(file);
+        format = extracted.format;
+        const parsed = parseCv(extracted.text, { fileName: file.name });
+        incomingCv = parsed.cv;
+      }
+      const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
+      setCv(merged);
+      setSources((s) => [...s, { name: file.name, format, mergedCount: mergeNotes.length }]);
+      setShowSuppModal(false);
+      setNote({
+        tone: 'good',
+        text: `Merged data from ${file.name}: ${mergeNotes.length ? mergeNotes.join('; ') : 'All fields synced.'}`,
+      });
+    } catch (e) {
+      setNote({ tone: 'bad', text: `Could not merge document: ${e.message || String(e)}` });
+    }
+    setBusy('');
+  }, [cv]);
+
+  const onSupplementaryPaste = useCallback(async (text) => {
+    if (!text.trim()) return;
+    setBusy('Merging text\u2026');
+    setNote(null);
+    try {
+      let incomingCv = null;
+      if (/^\s*[{[]/.test(text)) {
+        incomingCv = JSON.parse(text);
+      } else {
+        const parsed = parseCv(text, { fileName: 'Pasted Supplementary Text' });
+        incomingCv = parsed.cv;
+      }
+      const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
+      setCv(merged);
+      setSources((s) => [...s, { name: 'Pasted supplementary details', format: 'text', mergedCount: mergeNotes.length }]);
+      setShowSuppModal(false);
+      setSuppPaste('');
+      setNote({
+        tone: 'good',
+        text: `Merged pasted data: ${mergeNotes.length ? mergeNotes.join('; ') : 'All fields synced.'}`,
+      });
+    } catch (e) {
+      setNote({ tone: 'bad', text: `Could not merge text: ${e.message || String(e)}` });
+    }
+    setBusy('');
+  }, [cv]);
+
+  /* ── 1-click auto synthesis & standardization ─────────────────────────── */
+  const handleAutoSynthesize = useCallback(() => {
+    const bullets = synthesizeProfile(cv);
+    setCv((c) => setIn(c, 'professionalSummary', bullets));
+    setNote({ tone: 'good', text: 'Professional summary auto-synthesized from candidate experience, skills, and qualifications.' });
+  }, [cv]);
+
+  const handleStandardize = useCallback(() => {
+    const cleaned = standardizeCv(cv);
+    setCv(cleaned);
+    setNote({ tone: 'good', text: 'Formatting standardized: converted date dashes to en-dashes, cleaned bullet capitalization and punctuation, and formatted job titles.' });
+  }, [cv]);
+
+  const handleAutoAliases = useCallback(() => {
+    setCv((c) => {
+      const next = clone(c);
+      (next.experience || []).forEach((r, i) => {
+        if (!r.alias?.trim()) {
+          const emp = (r.employer || '').toLowerCase();
+          if (/bank|investec|fnb|absa|nedbank|standard\s+bank|capitec/i.test(emp)) r.alias = 'Major South African banking group';
+          else if (/vodacom|mtn|telkom|cell\s+c/i.test(emp)) r.alias = 'Telecommunications enterprise';
+          else if (/retail|shoprite|pick\s+n\s+pay|woolworths|tfg|foschini|mr\s+price/i.test(emp)) r.alias = 'JSE-listed retail group';
+          else if (/insurance|discovery|sanlam|old\s+mutual|momentum|liberty/i.test(emp)) r.alias = 'Financial services and insurance group';
+          else if (/consulting|deloitte|pwc|ey|kpmg|mckinsey|accenture|bcg/i.test(emp)) r.alias = 'Global management consulting firm';
+          else if (/tech|software|derivco|entelect|bbd|amazon|google|microsoft/i.test(emp)) r.alias = 'Technology and software enterprise';
+          else r.alias = `Enterprise employer (${i + 1})`;
+        }
+      });
+      (next.qualifications || []).forEach((q) => {
+        if (q.institution && !q.institutionAlias?.trim()) {
+          const inst = q.institution.toLowerCase();
+          if (/uct|cape\s+town|wits|witwatersrand|stellenbosch|pretoria|up|uj|johannesburg|kzn|ukzn|rhodes|nwu|unisa/i.test(inst)) {
+            q.institutionAlias = 'Leading South African university';
+          } else {
+            q.institutionAlias = 'Accredited tertiary institution';
+          }
+        }
+      });
+      return next;
+    });
+    setNote({ tone: 'good', text: 'Auto-populated blind profile descriptors for employers and institutions.' });
+  }, []);
 
   /* ── build ────────────────────────────────────────────────────────────── */
   const build = useCallback(async () => {
@@ -221,12 +351,11 @@ export default function CvBuilda() {
     [report],
   );
 
-  const ctx = { cv, update, updateList, push, removeAt, issueFor, issueUnder, direct, R, anonymous };
+  const ctx = {
+    cv, update, updateList, push, removeAt, issueFor, issueUnder, direct, R, anonymous,
+    onAutoSynthesize: handleAutoSynthesize, onAutoAliases: handleAutoAliases,
+  };
 
-  /* Entering the editor swaps the whole panel out. Without moving focus a
-     keyboard or screen-reader user is left on a control that no longer exists
-     and silently dropped to the top of the document; this lands them on the
-     editor region, which announces itself. */
   const workRef = useRef(null);
   useEffect(() => {
     if (step === 'edit') workRef.current?.focus({ preventScroll: true });
@@ -234,23 +363,78 @@ export default function CvBuilda() {
 
   return (
     <div className="cvb">
-      <Hero step={step} loaded={loaded} onRestart={() => { setCv(clone(EMPTY)); setStep('start'); setGaps([]); setNote(null); }} />
+      <Hero
+        step={step}
+        loaded={loaded}
+        onRestart={() => {
+          setCv(clone(EMPTY));
+          setStep('start');
+          setGaps([]);
+          setNote(null);
+          setSources([]);
+        }}
+      />
 
-      {note && <div className={`cvb-note cvb-note--${note.tone}`} role={note.tone === 'bad' ? 'alert' : 'status'}>{note.text}</div>}
+      {note && (
+        <div className={`cvb-note cvb-note--${note.tone}`} role={note.tone === 'bad' ? 'alert' : 'status'}>
+          {note.text}
+        </div>
+      )}
 
       {step === 'start' ? (
-        <StartPanel paste={paste} setPaste={setPaste} onLoad={() => onPaste(paste)} onFile={onFile} busy={busy}
-          onBlank={() => { setCv({ ...clone(EMPTY), personal: { ...EMPTY.personal, fullName: 'New candidate' } }); setStep('edit'); }} />
+        <StartPanel
+          paste={paste}
+          setPaste={setPaste}
+          onLoad={() => onPaste(paste)}
+          onFile={onFile}
+          busy={busy}
+          onBlank={() => {
+            setCv({ ...clone(EMPTY), personal: { ...EMPTY.personal, fullName: 'New candidate' } });
+            setStep('edit');
+            setSources([{ name: 'Blank Template', format: 'form' }]);
+          }}
+        />
       ) : (
         <div className="cvb-work" ref={workRef} tabIndex={-1} aria-label="Candidate editor">
           <div className="cvb-form">
+            <IngestionScorecard
+              cv={cv}
+              sources={sources}
+              onOpenSupp={() => setShowSuppModal(true)}
+              onStandardize={handleStandardize}
+              onAutoSynthesize={handleAutoSynthesize}
+            />
+
+            {showSuppModal && (
+              <SupplementaryModal
+                busy={busy}
+                onClose={() => setShowSuppModal(false)}
+                onFile={onSupplementaryFile}
+                paste={suppPaste}
+                setPaste={setSuppPaste}
+                onPaste={() => onSupplementaryPaste(suppPaste)}
+              />
+            )}
+
             {gaps.length > 0 && (
               <div className="cvb-gaps">
                 <p className="cvb-eyebrow">Raised while reading the CV</p>
-                <ul>{gaps.map((gap, i) => <li key={i}>{gap}</li>)}</ul>
-                <p className="cvb-hint">Resolve these with the candidate. Never fill them in yourself.</p>
+                <ul>
+                  {gaps.map((gap, i) => (
+                    <li key={i}>{gap}</li>
+                  ))}
+                </ul>
+                <div className="cvb-gaps-actions">
+                  <button className="cvb-btn cvb-btn--tiny" onClick={() => setShowSuppModal(true)}>
+                    + Add LinkedIn PDF / Supplementary document to auto-fill
+                  </button>
+                  <button className="cvb-btn cvb-btn--tiny" onClick={handleStandardize}>
+                    ⚡ Quick-standardize formatting
+                  </button>
+                </div>
               </div>
             )}
+
             <Editor {...ctx} />
           </div>
           <Sidebar report={report} />
@@ -260,17 +444,28 @@ export default function CvBuilda() {
       {step === 'edit' && (
         <div className="cvb-bar">
           <div className="cvb-bar-inner">
-            <button className="cvb-btn cvb-btn--primary" onClick={build}
-              disabled={!report.ok || !loaded || Boolean(busy)}>
-              {busy || 'Download the profile'}
+            <button
+              className="cvb-btn cvb-btn--primary"
+              onClick={build}
+              disabled={!report.ok || !loaded || Boolean(busy)}
+            >
+              {busy || 'Download the profile (.docx)'}
             </button>
-            <button className="cvb-btn" onClick={exportJson}>Save the data file</button>
+            <button className="cvb-btn" onClick={exportJson}>
+              Save the data file (.json)
+            </button>
+            <button className="cvb-btn cvb-btn--ghost" onClick={() => setShowSuppModal(true)}>
+              + Add Supplementary Document
+            </button>
+            <button className="cvb-btn cvb-btn--ghost" onClick={handleStandardize} title="Standardize hyphens, title casing and bullet punctuation">
+              ⚡ Standardize all
+            </button>
             <span className="cvb-status">
               {!report.ok
                 ? `${report.errors.length} error${report.errors.length === 1 ? '' : 's'} to fix`
                 : report.warnings.length
                   ? `${report.warnings.length} warning${report.warnings.length === 1 ? '' : 's'} to consider`
-                  : 'Clean'}
+                  : 'Clean — ready to build'}
             </span>
           </div>
         </div>
@@ -310,17 +505,21 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
   return (
     <section className="cvb-start">
       <ol className="cvb-steps">
-        <li><span>01</span><h3>Load</h3>
-          <p>Drop the candidate&rsquo;s CV in &mdash; Word, PDF, rich text or plain text.
-            It is read here in your browser and turned into a draft profile.</p></li>
-        <li><span>02</span><h3>Check</h3>
-          <p>Read the draft against the original. Every house rule that can be checked
-            mechanically is checked as you type &mdash; dates, ordering, contact details,
-            gaps in the timeline &mdash; and anything the reader could not resolve is listed
-            for you.</p></li>
-        <li><span>03</span><h3>Build</h3>
-          <p>Download the profile. The layout is fixed, so two consultants working on two
-            candidates produce documents that match exactly.</p></li>
+        <li>
+          <span>01</span>
+          <h3>Upload</h3>
+          <p>Drop the candidate&rsquo;s CV in &mdash; Word (.docx), PDF, LinkedIn profile export, rich text or plain text. You can even drop multiple documents together.</p>
+        </li>
+        <li>
+          <span>02</span>
+          <h3>Auto-Extract</h3>
+          <p>The parser automatically extracts candidate details, roles, dates, qualifications, skills, and synthesizes house-standard profile bullets instantly.</p>
+        </li>
+        <li>
+          <span>03</span>
+          <h3>Build & Download</h3>
+          <p>Preview, fine-tune or merge extra documents, and download the exact Talent Tree branded .docx candidate profile.</p>
+        </li>
       </ol>
 
       <div className="cvb-panel">
@@ -331,21 +530,35 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setOver(true); }}
           onDragLeave={() => setOver(false)}
-          onDrop={(e) => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]); }}
-          role="button" tabIndex={0}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOver(false);
+            if (e.dataTransfer.files?.length) onFile(e.dataTransfer.files);
+          }}
+          role="button"
+          tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
         >
-          Drop the CV here, or choose a file
-          <em>.docx &middot; .pdf &middot; .rtf &middot; .txt &middot; or a saved .json</em>
+          Drop the CV here, or choose file(s)
+          <em>.docx &middot; .pdf &middot; LinkedIn PDF export &middot; .rtf &middot; .txt &middot; .json</em>
         </div>
-        <input ref={inputRef} type="file" hidden
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          hidden
           accept=".docx,.pdf,.rtf,.txt,.md,.doc,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          onChange={(e) => { onFile(e.target.files[0]); e.target.value = ''; }} />
+          onChange={(e) => { if (e.target.files?.length) onFile(e.target.files); e.target.value = ''; }}
+        />
 
         <label className="cvb-field">
-          <span>Or paste the CV text</span>
-          <textarea rows={7} value={paste} onChange={(e) => setPaste(e.target.value)}
-            placeholder={'Paste the whole CV here \u2014 name, contact details, employment history, the lot.'} />
+          <span>Or paste CV / LinkedIn profile text</span>
+          <textarea
+            rows={7}
+            value={paste}
+            onChange={(e) => setPaste(e.target.value)}
+            placeholder={'Paste the whole CV or LinkedIn profile text here \u2014 name, summary, experience, education, skills, the lot.'}
+          />
         </label>
 
         <div className="cvb-actions">
@@ -355,20 +568,123 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
           <button className="cvb-btn" onClick={onBlank} disabled={Boolean(busy)}>Start from blank</button>
         </div>
         <p className="cvb-hint">
-          A Google Doc needs <strong>File &rarr; Download &rarr; Microsoft Word (.docx)</strong> first &mdash;
-          the <code>.gdoc</code> on your desktop is a link, not the document. A scanned PDF has no text
-          in it to read, so it needs the original or an OCR pass.
+          Supports 2-column resumes, Canva PDFs, and LinkedIn PDF exports. If any details are missing on the CV, you can add a supplementary document or LinkedIn profile at any time.
         </p>
       </div>
     </section>
   );
 }
 
+/* ═══════════════════════════════════════════════════ scorecard & helpers ══ */
+
+function IngestionScorecard({ cv, sources, onOpenSupp, onStandardize, onAutoSynthesize }) {
+  const name = cv.personal?.fullName || 'Not specified';
+  const role = cv.meta?.targetRole || 'Not specified';
+  const expCount = (cv.experience || []).length;
+  const qualCount = (cv.qualifications || []).length;
+  const skillCount = (cv.technicalSkills || []).flatMap((g) => g.items || []).length;
+  const summaryCount = (cv.professionalSummary || []).length;
+
+  return (
+    <div className="cvb-scorecard">
+      <div className="cvb-scorecard-header">
+        <div>
+          <span className="cvb-eyebrow cvb-eyebrow--accent">Extracted Profile</span>
+          <h2 className="cvb-scorecard-title">{name}</h2>
+          <p className="cvb-scorecard-sub">{role}</p>
+        </div>
+        <div className="cvb-scorecard-actions">
+          <button className="cvb-btn cvb-btn--tiny" onClick={onOpenSupp}>
+            + Add Document / LinkedIn PDF
+          </button>
+          <button className="cvb-btn cvb-btn--tiny cvb-btn--ghost" onClick={onStandardize} title="Fix dashes, title cases and bullet full stops">
+            ⚡ Standardize
+          </button>
+        </div>
+      </div>
+
+      <div className="cvb-badges">
+        <span className="cvb-badge"><strong>{expCount}</strong> Employer{expCount === 1 ? '' : 's'}</span>
+        <span className="cvb-badge"><strong>{qualCount}</strong> Qualification{qualCount === 1 ? '' : 's'}</span>
+        <span className="cvb-badge"><strong>{skillCount}</strong> Skill{skillCount === 1 ? '' : 's'}</span>
+        <span className="cvb-badge"><strong>{summaryCount}</strong> Summary Bullets</span>
+      </div>
+
+      {sources && sources.length > 0 && (
+        <div className="cvb-sources-list">
+          <span className="cvb-sources-label">Sources:</span>
+          {sources.map((s, idx) => (
+            <span key={idx} className="cvb-source-tag">
+              📄 {s.name} <small>({s.format})</small>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupplementaryModal({ busy, onClose, onFile, paste, setPaste, onPaste }) {
+  const fileRef = useRef(null);
+  const [over, setOver] = useState(false);
+
+  return (
+    <div className="cvb-modal-backdrop" onClick={onClose}>
+      <div className="cvb-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cvb-modal-head">
+          <h3>Add Supplementary Document or LinkedIn Profile</h3>
+          <button className="cvb-x" onClick={onClose}>&#10005;</button>
+        </div>
+        <p className="cvb-hint">
+          Upload an additional document (e.g., LinkedIn Profile PDF, updated CV, certificates, or reference doc).
+          Missing information will be intelligently merged into this candidate profile without overwriting existing data.
+        </p>
+
+        <div
+          className={`cvb-drop cvb-drop--small${over ? ' is-over' : ''}`}
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOver(false);
+            if (e.dataTransfer.files?.[0]) onFile(e.dataTransfer.files[0]);
+          }}
+        >
+          Choose or drop supplementary file
+          <em>.pdf &middot; .docx &middot; LinkedIn profile PDF &middot; .txt</em>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          hidden
+          accept=".docx,.pdf,.rtf,.txt,.md,.doc,.json"
+          onChange={(e) => { if (e.target.files?.[0]) onFile(e.target.files[0]); e.target.value = ''; }}
+        />
+
+        <label className="cvb-field">
+          <span>Or paste additional text / LinkedIn content</span>
+          <textarea
+            rows={4}
+            value={paste}
+            onChange={(e) => setPaste(e.target.value)}
+            placeholder="Paste LinkedIn experience, skills, or education here to merge..."
+          />
+        </label>
+
+        <div className="cvb-actions">
+          <button className="cvb-btn cvb-btn--primary" onClick={onPaste} disabled={!paste.trim() || Boolean(busy)}>
+            {busy || 'Merge Pasted Text'}
+          </button>
+          <button className="cvb-btn cvb-btn--ghost" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═════════════════════════════════════════════════════════════════ fields ══ */
 
-/* A field's path doubles as its anchor, so the data check can scroll to the
-   exact field an issue belongs to, and as the id of its message, so a screen
-   reader reads the reason rather than announcing an unexplained invalid box. */
 const anchorId = (path) => `cvb-${String(path).replace(/[^\w]+/g, '-')}`;
 
 function Field({ path, label, hint, mono, area, rows = 3, placeholder, issueFor, update, cv }) {
@@ -385,11 +701,19 @@ function Field({ path, label, hint, mono, area, rows = 3, placeholder, issueFor,
     <label className="cvb-field" data-anchor={path}>
       <span>{label}</span>
       {area ? (
-        <textarea rows={rows} value={getIn(cv, path) ?? ''}
-          className={issue ? `is-${issue.level}` : ''} {...wiring} />
+        <textarea
+          rows={rows}
+          value={getIn(cv, path) ?? ''}
+          className={issue ? `is-${issue.level}` : ''}
+          {...wiring}
+        />
       ) : (
-        <input type="text" value={getIn(cv, path) ?? ''}
-          className={`${mono ? 'is-mono ' : ''}${issue ? `is-${issue.level}` : ''}`} {...wiring} />
+        <input
+          type="text"
+          value={getIn(cv, path) ?? ''}
+          className={`${mono ? 'is-mono ' : ''}${issue ? `is-${issue.level}` : ''}`}
+          {...wiring}
+        />
       )}
       {issue && <em id={messageId} className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
       {!issue && hint && <em id={messageId} className="cvb-inline">{hint}</em>}
@@ -397,24 +721,11 @@ function Field({ path, label, hint, mono, area, rows = 3, placeholder, issueFor,
   );
 }
 
-/**
- * A list of bullets, one per line.
- *
- * The record holds them trimmed with blank lines dropped, which is right for
- * what is stored and wrong for what is being typed. Applying it to the
- * textarea on every keystroke ate the space at the end of a word and
- * swallowed the blank line that begins the next bullet, so a section could
- * only ever hold one run-together bullet. The field keeps its own text and
- * the record gets the tidy version.
- */
 function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
   const stored = (getIn(cv, path) || []).join('\n');
   const [draft, setDraft] = useState(stored);
   const issue = issueUnder(path);
 
-  /* Resync only when the record changed from somewhere else — a candidate
-     loaded, a card removed — never in reply to this field's own edit, which
-     is what tidy() equalling the stored value tells us. */
   useEffect(() => {
     setDraft((current) => visibleText(current, stored));
   }, [stored]);
@@ -423,12 +734,16 @@ function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
   return (
     <label className="cvb-field" data-anchor={path}>
       <span>{label} <i>one per line</i></span>
-      <textarea rows={Math.max(3, draft.split('\n').length + 1)} value={draft} placeholder={placeholder}
+      <textarea
+        rows={Math.max(3, draft.split('\n').length + 1)}
+        value={draft}
+        placeholder={placeholder}
         className={issue ? `is-${issue.level}` : ''}
         aria-invalid={issue?.level === 'error' ? 'true' : undefined}
         aria-describedby={issue ? messageId : undefined}
         onChange={(e) => { setDraft(e.target.value); updateList(path, e.target.value); }}
-        onBlur={() => setDraft(stored)} />
+        onBlur={() => setDraft(stored)}
+      />
       {issue && <em id={messageId} className={`cvb-inline is-${issue.level}`}>{issue.message}</em>}
     </label>
   );
@@ -437,7 +752,7 @@ function ListField({ path, label, placeholder, cv, updateList, issueUnder }) {
 /* ═════════════════════════════════════════════════════════════════ editor ══ */
 
 function Editor(ctx) {
-  const { cv, push, removeAt, update, direct, R } = ctx;
+  const { cv, push, removeAt, update, direct, R, onAutoSynthesize, onAutoAliases } = ctx;
   const F = (p) => <Field {...ctx} {...p} />;
 
   return (
@@ -445,50 +760,71 @@ function Editor(ctx) {
       <Block title="Positioning">
         <ModeSwitch mode={cv.meta.mode} onChange={(m) => update('meta.mode', m)} />
         <div className="cvb-two">
-          <Field {...ctx} path="meta.targetRole" label="Target role" placeholder="Credit Risk Analyst"
-            hint="The role this CV is positioned for — not always the current title." />
-          <Field {...ctx} path="meta.fileName" label="File name" mono placeholder="Steyn_JJ_TalentTree_CV" />
+          <Field
+            {...ctx}
+            path="meta.targetRole"
+            label="Target role"
+            placeholder="Credit Risk Analyst"
+            hint="The role this CV is positioned for — not always the current title."
+          />
+          <Field
+            {...ctx}
+            path="meta.fileName"
+            label="File name"
+            mono
+            placeholder="Steyn_JJ_TalentTree_CV"
+          />
         </div>
       </Block>
 
-      <RedactionBlock {...ctx} />
+      <RedactionBlock {...ctx} onAutoAliases={onAutoAliases} />
 
-      <Block title="Personal"
-        note={direct
-          ? 'The candidate sends this themselves, so their own contact details belong on it.'
-          : 'No phone number, email, street address or ID number. The client contacts the consultant.'}>
+      <Block title="Personal" note="No phone number, email, street address or ID number. The client contacts the consultant.">
         <div className="cvb-two">
-          <Field {...ctx} path="personal.fullName" label="Full name and surname" />
-          <Field {...ctx} path="personal.citizenship" label="Citizenship" />
-          <Field {...ctx} path="personal.languages" label="Languages" placeholder="English, Afrikaans" />
-          <Field {...ctx} path="personal.dateOfBirth" label="Date of birth" placeholder="18 March 1985" />
-          <Field {...ctx} path="personal.areaOfResidence" label="Area of residence" placeholder="Suburb, City" />
-          <Field {...ctx} path="personal.availability" label="Availability" placeholder="Calendar month" />
-          <Field {...ctx} path="personal.driversLicence" label="Driver’s licence" />
-          <Field {...ctx} path="personal.ownTransport" label="Own transport" />
-          {direct && <Field {...ctx} path="personal.email" label="Email address" mono />}
-          {direct && <Field {...ctx} path="personal.phone" label="Phone number" mono />}
-          {R.areaOfResidence && (
-            <Field {...ctx} path="personal.areaAlias" label="Shown instead of the area"
-              placeholder="Western Cape" hint="Left blank, the area is simply omitted." />
-          )}
+          {F({ path: 'personal.fullName', label: 'Full name and surname' })}
+          {F({ path: 'personal.citizenship', label: 'Citizenship', placeholder: 'South African' })}
         </div>
+        <div className="cvb-two">
+          {F({ path: 'personal.languages', label: 'Languages', placeholder: 'English, Afrikaans' })}
+          {F({ path: 'personal.dateOfBirth', label: 'Date of birth', mono: true, placeholder: '18 March 1985' })}
+        </div>
+        <div className="cvb-two">
+          {F({ path: 'personal.areaOfResidence', label: 'Area of residence', placeholder: 'Northern Suburbs, Cape Town' })}
+          {R.areaOfResidence && F({ path: 'personal.areaAlias', label: 'Shown instead of the area', placeholder: 'Cape Town' })}
+          {F({ path: 'personal.availability', label: 'Availability', placeholder: '30 days / 1 calendar month' })}
+        </div>
+        <div className="cvb-two">
+          {F({ path: 'personal.driversLicence', label: 'Driver’s licence', placeholder: 'Yes / Code B' })}
+          {F({ path: 'personal.ownTransport', label: 'Own transport', placeholder: 'Yes' })}
+        </div>
+        {direct && (
+          <div className="cvb-two">
+            {F({ path: 'personal.email', label: 'Email address (candidate direct)' })}
+            {F({ path: 'personal.phone', label: 'Contact number (candidate direct)' })}
+          </div>
+        )}
       </Block>
 
       {!direct && (
-        <Block title="Presented by"
-          note="Printed on the cover. This is who the client contacts about the candidate.">
+        <Block title="Presented by" note="Printed on the cover. This is who the client contacts about the candidate.">
           <div className="cvb-two">
-            <Field {...ctx} path="consultant.contactPerson" label="Consultant" />
-            <Field {...ctx} path="consultant.contactNumber" label="Contact number" mono />
-            <Field {...ctx} path="consultant.emailAddress" label="Email address" mono />
+            {F({ path: 'consultant.contactPerson', label: 'Consultant' })}
+            {F({ path: 'consultant.contactNumber', label: 'Contact number', mono: true })}
           </div>
+          {F({ path: 'consultant.emailAddress', label: 'Email address' })}
         </Block>
       )}
 
-      <Block title="Profile" note="The first line is the lead. It prints large and has to stand alone.">
-        <ListField {...ctx} path="professionalSummary" label="Profile bullets"
-          placeholder="Complete sentences, ending in a full stop." />
+      <Block
+        title="Profile"
+        note="The first line is the lead. It prints large and has to stand alone. The house minimum is 4 bullets."
+        headerAction={
+          <button className="cvb-btn cvb-btn--tiny" onClick={onAutoSynthesize} title="Synthesize or refresh 4 summary bullets from experience">
+            ✨ Auto-Synthesize Profile
+          </button>
+        }
+      >
+        <ListField {...ctx} path="professionalSummary" label="Profile bullets" />
         <ListField {...ctx} path="careerSummary" label="Career summary (usually empty)" />
       </Block>
 
@@ -496,26 +832,29 @@ function Editor(ctx) {
         {cv.qualifications.map((q, i) => (
           <Card key={i} onRemove={() => removeAt('qualifications', i)}>
             <div className="cvb-row">
-              <div className="cvb-narrow">{F({ path: `qualifications[${i}].year`, label: 'Year', mono: true, placeholder: '2018' })}</div>
+              <div className="cvb-narrow">
+                {F({ path: `qualifications[${i}].year`, label: 'Year', mono: true, placeholder: '2019' })}
+              </div>
               {F({ path: `qualifications[${i}].name`, label: 'Qualification' })}
               {F({ path: `qualifications[${i}].institution`, label: 'Institution' })}
             </div>
-            {R.institutions && (
-              <Field {...ctx} path={`qualifications[${i}].institutionAlias`}
-                label="Shown instead of the institution" placeholder="South African university" />
-            )}
-            <ListField {...ctx} path={`qualifications[${i}].notes`} label="Notes" placeholder="Specialisation: …" />
+            {R.institutions && F({ path: `qualifications[${i}].institutionAlias`,
+              label: 'Shown instead of the institution', placeholder: 'Leading South African university' })}
+            <ListField {...ctx} path={`qualifications[${i}].notes`} label="Notes"
+              placeholder="e.g. Specialisation in Financial Management" />
           </Card>
         ))}
       </Block>
 
       <Block title="Certifications" onAdd={() => push('certifications', blank.certification)} addLabel="certification">
-        {cv.certifications.map((q, i) => (
+        {cv.certifications.map((c, i) => (
           <Card key={i} onRemove={() => removeAt('certifications', i)}>
             <div className="cvb-row">
-              <div className="cvb-narrow">{F({ path: `certifications[${i}].year`, label: 'Year', mono: true })}</div>
+              <div className="cvb-narrow">
+                {F({ path: `certifications[${i}].year`, label: 'Year', mono: true, placeholder: '2021' })}
+              </div>
               {F({ path: `certifications[${i}].name`, label: 'Certification' })}
-              {F({ path: `certifications[${i}].institution`, label: 'Institution' })}
+              {F({ path: `certifications[${i}].institution`, label: 'Provider' })}
             </div>
             {R.institutions && F({ path: `certifications[${i}].institutionAlias`,
               label: 'Shown instead of the institution', placeholder: 'Accredited training provider' })}
@@ -537,8 +876,12 @@ function Editor(ctx) {
 
       <Block title="Experience" onAdd={() => push('experience', blank.employer)} addLabel="employer">
         {cv.experience.map((r, i) => (
-          <Card key={i} live={(r.duration || '').endsWith('Present')}
-            heading={r.employer || 'New employer'} onRemove={() => removeAt('experience', i)}>
+          <Card
+            key={i}
+            live={(r.duration || '').endsWith('Present')}
+            heading={r.employer || 'New employer'}
+            onRemove={() => removeAt('experience', i)}
+          >
             <div className="cvb-row">
               {F({ path: `experience[${i}].employer`, label: 'Employer' })}
               <div className="cvb-wide">
@@ -556,12 +899,21 @@ function Editor(ctx) {
                   {F({ path: `experience[${i}].titles[${j}].duration`, label: 'From – to', mono: true })}
                 </div>
                 {F({ path: `experience[${i}].titles[${j}].title`, label: 'Title' })}
-                <button className="cvb-x" title="Remove title"
-                  onClick={() => removeAt(`experience[${i}].titles`, j)}>&#10005;</button>
+                <button
+                  className="cvb-x"
+                  title="Remove title"
+                  onClick={() => removeAt(`experience[${i}].titles`, j)}
+                >
+                  &#10005;
+                </button>
               </div>
             ))}
-            <button className="cvb-btn cvb-btn--tiny"
-              onClick={() => push(`experience[${i}].titles`, blank.title)}>+ title</button>
+            <button
+              className="cvb-btn cvb-btn--tiny"
+              onClick={() => push(`experience[${i}].titles`, blank.title)}
+            >
+              + title
+            </button>
 
             <div className="cvb-sub">
               {F({ path: `experience[${i}].context`, label: 'Employer context (optional, max 3 sentences)', area: true })}
@@ -605,21 +957,23 @@ const REDACTIONS = [
   { id: 'qualificationYears', label: 'Qualification years', note: 'Years of study can date a candidate as precisely as a birth date.' },
 ];
 
-/**
- * BLIND PROFILE CONTROLS.
- * Ticking a box changes what the document shows, never what is stored. The
- * record keeps the real employer, the real dates and the real person, so the
- * open and blind versions of a candidate are one record rendered twice and
- * can never drift apart.
- */
-function RedactionBlock({ cv, update, R, anonymous, ...rest }) {
+function RedactionBlock({ cv, update, R, anonymous, onAutoAliases, ...rest }) {
   const on = (id) => Boolean(R[id]);
   const toggle = (id) => update(`redact.${id}`, !on(id));
   const count = REDACTIONS.filter((r) => on(r.id)).length;
 
   return (
-    <Block title="Blind profile"
-      note="Tick what the client should not see. Nothing is deleted — the record keeps the real detail, and the same candidate can be sent open or blind without re-keying anything.">
+    <Block
+      title="Blind profile"
+      note="Tick what the client should not see. Nothing is deleted — the record keeps the real detail, and the same candidate can be sent open or blind without re-keying anything."
+      headerAction={
+        anonymous && (
+          <button className="cvb-btn cvb-btn--tiny" onClick={onAutoAliases} title="Auto-fill employer and university descriptors">
+            Auto-generate descriptors
+          </button>
+        )
+      }
+    >
       <div className="cvb-redactions">
         {REDACTIONS.map((r) => (
           <label key={r.id} className={`cvb-check${on(r.id) ? ' is-on' : ''}`}>
@@ -636,9 +990,17 @@ function RedactionBlock({ cv, update, R, anonymous, ...rest }) {
             hidden name still appears in the profile text or the bullets.
           </p>
           {on('candidateName') && (
-            <Field cv={cv} update={update} {...rest} R={R} anonymous={anonymous}
-              path="meta.reference" label="Reference shown instead of the name" mono
-              placeholder="Candidate TT-4821" />
+            <Field
+              cv={cv}
+              update={update}
+              {...rest}
+              R={R}
+              anonymous={anonymous}
+              path="meta.reference"
+              label="Reference shown instead of the name"
+              mono
+              placeholder="Candidate TT-4821"
+            />
           )}
         </>
       )}
@@ -646,12 +1008,6 @@ function RedactionBlock({ cv, update, R, anonymous, ...rest }) {
   );
 }
 
-/**
- * Who is sending this CV. It changes the document, not just the wording:
- * agency gets the cover page, the consultant block and the confidentiality
- * notice; direct gets a masthead with the candidate's own contact details and
- * none of the three. The validator inverts its contact rules to match.
- */
 function ModeSwitch({ mode, onChange }) {
   const options = [
     { id: 'agency', label: 'Talent Tree presents this candidate',
@@ -664,8 +1020,13 @@ function ModeSwitch({ mode, onChange }) {
       <legend className="cvb-eyebrow">Who is sending this</legend>
       {options.map((o) => (
         <label key={o.id} className={`cvb-mode${mode === o.id ? ' is-on' : ''}`}>
-          <input type="radio" name="cvb-mode" value={o.id} checked={mode === o.id}
-            onChange={() => onChange(o.id)} />
+          <input
+            type="radio"
+            name="cvb-mode"
+            value={o.id}
+            checked={mode === o.id}
+            onChange={() => onChange(o.id)}
+          />
           <span>
             <strong>{o.label}</strong>
             <em>{o.note}</em>
@@ -676,10 +1037,13 @@ function ModeSwitch({ mode, onChange }) {
   );
 }
 
-function Block({ title, note, children, onAdd, addLabel }) {
+function Block({ title, note, children, onAdd, addLabel, headerAction }) {
   return (
     <section className="cvb-block">
-      <h2>{title}</h2>
+      <div className="cvb-block-head">
+        <h2>{title}</h2>
+        {headerAction && <div className="cvb-block-action">{headerAction}</div>}
+      </div>
       {note && <p className="cvb-hint">{note}</p>}
       {children}
       {onAdd && <button className="cvb-btn cvb-btn--tiny" onClick={onAdd}>+ {addLabel}</button>}
@@ -702,17 +1066,12 @@ function Card({ heading, live, onRemove, children }) {
 /* ════════════════════════════════════════════════════════════════ sidebar ══ */
 
 function Sidebar({ report }) {
-  /* An issue's field is the path of the input it belongs to, except for the
-     ones raised against a whole list ("professionalSummary",
-     "experience[0].titles"), which match the first field beneath them. */
   const goto = (field) => {
     const el = document.querySelector(`[data-anchor="${field}"]`)
       || document.querySelector(`[data-anchor^="${field}"]`)
       || document.querySelector('.cvb-field:has(.is-error), .cvb-field:has(.is-warning)');
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    /* Scrolling alone leaves a keyboard user where they were, so the caret
-       follows the eye. */
     el.querySelector('input, textarea')?.focus({ preventScroll: true });
   };
 
