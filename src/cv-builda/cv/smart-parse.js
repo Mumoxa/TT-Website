@@ -6,8 +6,8 @@ const MAX_SOURCE_CHARS = 60_000;
 const REQUEST_TIMEOUT_MS = 90_000;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.]+/i;
 const SECTION_LABEL = /^(?:work\s+experience|professional\s+experience|employment\s+history|career\s+history|education|qualifications?|academic\s+history|skills|technical\s+skills|profile|professional\s+profile|summary|references?|referees?|personal\s+details)$/i;
-const SPACED_HEADING = /^(?:[A-Za-z]\\s+){2,}[A-Za-z]$/;
-const QUALIFICATION_LIKE_EMPLOYER = /\\b(?:ndip|national\\s+diploma|diploma|degree|bcom|bsc|btech|mtech|phd|matric|grade\\s*12)\\b/i;
+const SPACED_HEADING = /^(?:[A-Za-z]\s+){2,}[A-Za-z]$/;
+const QUALIFICATION_LIKE_EMPLOYER = /\b(?:ndip|national\s+diploma|diploma|degree|bcom|bsc|btech|mtech|phd|matric|grade\s*12)\b/i;
 
 class SmartParseError extends Error {
   constructor(code, message) {
