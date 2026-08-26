@@ -252,3 +252,109 @@ test('standardizeCv cleans punctuation, hyphens to en-dashes, and uppercase titl
   assert.equal(cleaned.professionalSummary[1], 'Second bullet.');
   assert.deepEqual(cleaned.technicalSkills[0].items, ['Python', 'SQL']);
 });
+
+test('extracts South African Employment Equity status from a CV', () => {
+  const labelled = `Thandi Mokoena\nEmployment Equity: African Female\nLanguages: English, Zulu\n\nEXPERIENCE\nVodacom\nAnalyst\nJanuary 2020 - Present\n• Delivered analytics`;
+  const { cv } = parseCv(labelled);
+  assert.equal(cv.personal.eeStatus, 'African Female');
+
+  const eeAbbrev = `Thabo Dlamini\nEE Status: EE\n\nEXPERIENCE\nDiscovery\nDeveloper\nJanuary 2021 - Present\n• Built tooling`;
+  const { cv: cv2 } = parseCv(eeAbbrev);
+  assert.equal(cv2.personal.eeStatus, 'EE');
+
+  const raceLabel = `Zanele Nkosi\nRace: Coloured\n\nEXPERIENCE\nShoprite\nLead\nJanuary 2019 - Present\n• Managed teams`;
+  const { cv: cv3 } = parseCv(raceLabel);
+  assert.equal(cv3.personal.eeStatus, 'Coloured');
+
+  const designation = `Ayesha Patel\nDesignated Group: African Female\n\nEXPERIENCE\nStandard Bank\nConsultant\nFebruary 2020 - Present\n• Advised clients`;
+  const { cv: cv4 } = parseCv(designation);
+  assert.equal(cv4.personal.eeStatus, 'African Female');
+});
+
+test('merges Employment Equity status from a supplementary document without overwriting existing value', () => {
+  const base = {
+    meta: { targetRole: 'Analyst', fileName: '', mode: 'agency', reference: '' },
+    personal: {
+      fullName: 'LeZaria Khumalo', citizenship: 'South African', languages: '', dateOfBirth: '',
+      areaOfResidence: 'Johannesburg', availability: '', driversLicence: '', ownTransport: '',
+      eeStatus: 'African Female', email: '', phone: '', areaAlias: '',
+    },
+    professionalSummary: ['Lead bullet.', 'Second.', 'Third.', 'Fourth.'],
+    qualifications: [], certifications: [],
+    technicalSkills: [{ group: '', items: ['SQL'] }],
+    experience: [{
+      employer: 'Vodacom', duration: 'January 2021 – Present', alias: '',
+      titles: [{ title: 'Analyst', duration: 'January 2021 – Present' }],
+      context: '', reasonForLeaving: '', responsibilities: ['Analyse'], achievements: ['Improved'],
+    }],
+    earlyCareer: [],
+  };
+  const supplementary = {
+    meta: { targetRole: 'Analyst' },
+    personal: { eeStatus: 'Non-EE' },
+    professionalSummary: [],
+    qualifications: [], certifications: [],
+    technicalSkills: [], experience: [], earlyCareer: [],
+  };
+
+  // Existing EE status is preserved (not overwritten)
+  const kept = mergeCvRecords(base, supplementary);
+  assert.equal(kept.merged.personal.eeStatus, 'African Female');
+
+  // Empty EE status is populated from the supplementary document
+  const blank = JSON.parse(JSON.stringify(base));
+  blank.personal.eeStatus = '';
+  const filled = mergeCvRecords(blank, supplementary);
+  assert.equal(filled.merged.personal.eeStatus, 'Non-EE');
+  assert.ok(filled.notes.some((n) => /Employment Equity/i.test(n)));
+});
+
+test('validator guards Employment Equity status against contact-data leaks', () => {
+  const cv = {
+    meta: { targetRole: 'Analyst', mode: 'agency', fileName: 'x' },
+    redact: {},
+    personal: {
+      fullName: 'LeZaria Khumalo', citizenship: 'South African', languages: 'English, Zulu',
+      dateOfBirth: '14 May 1994', areaOfResidence: 'Johannesburg', availability: '30 Days',
+      driversLicence: 'Code B', ownTransport: 'Yes', eeStatus: 'african@example.com',
+      email: '', phone: '', areaAlias: '',
+    },
+    consultant: { contactPerson: 'Graham Glintenkamp', emailAddress: 'CV@talenttree.co.za' },
+    professionalSummary: ['One.', 'Two.', 'Three.', 'Four.'],
+    qualifications: [], certifications: [],
+    technicalSkills: [{ group: '', items: ['SQL'] }],
+    experience: [{
+      employer: 'Vodacom', duration: 'January 2021 – Present',
+      titles: [{ title: 'Analyst', duration: 'January 2021 – Present' }],
+      responsibilities: ['Analyse'], achievements: ['Improved'],
+    }],
+    earlyCareer: [],
+  };
+  const report = validate(cv);
+  assert.ok(report.errors.some((e) => e.field === 'personal.eeStatus' && /email/i.test(e.message)));
+});
+
+test('validator surfaces an empty Employment Equity status as a warning', () => {
+  const cv = {
+    meta: { targetRole: 'Analyst', mode: 'agency', fileName: 'x' },
+    redact: {},
+    personal: {
+      fullName: 'LeZaria Khumalo', citizenship: 'South African', languages: 'English, Zulu',
+      dateOfBirth: '14 May 1994', areaOfResidence: 'Johannesburg', availability: '30 Days',
+      driversLicence: 'Code B', ownTransport: 'Yes', eeStatus: '',
+      email: '', phone: '', areaAlias: '',
+    },
+    consultant: { contactPerson: 'Graham Glintenkamp', emailAddress: 'CV@talenttree.co.za' },
+    professionalSummary: ['One.', 'Two.', 'Three.', 'Four.'],
+    qualifications: [], certifications: [],
+    technicalSkills: [{ group: '', items: ['SQL'] }],
+    experience: [{
+      employer: 'Vodacom', duration: 'January 2021 – Present',
+      titles: [{ title: 'Analyst', duration: 'January 2021 – Present' }],
+      responsibilities: ['Analyse'], achievements: ['Improved'],
+    }],
+    earlyCareer: [],
+  };
+  const report = validate(cv);
+  assert.ok(report.warnings.some((w) => w.field === 'personal.eeStatus' && /empty/i.test(w.message)));
+});

@@ -23,7 +23,7 @@ const EMPTY = {
   personal: {
     fullName: '', citizenship: '', languages: '', dateOfBirth: '',
     areaOfResidence: '', availability: '', driversLicence: '', ownTransport: '',
-    email: '', phone: '', areaAlias: '',
+    eeStatus: '', email: '', phone: '', areaAlias: '',
   },
   consultant: {
     contactPerson: 'Graham Glintenkamp',
@@ -789,6 +789,7 @@ function Editor(ctx) {
           {F({ path: 'personal.dateOfBirth', label: 'Date of birth', mono: true, placeholder: '18 March 1985' })}
         </div>
         <div className="cvb-two">
+          {F({ path: 'personal.eeStatus', label: 'Employment Equity (EE) status', placeholder: 'EE / Non-EE / African Female / Designated group' })}
           {F({ path: 'personal.areaOfResidence', label: 'Area of residence', placeholder: 'Northern Suburbs, Cape Town' })}
           {R.areaOfResidence && F({ path: 'personal.areaAlias', label: 'Shown instead of the area', placeholder: 'Cape Town' })}
           {F({ path: 'personal.availability', label: 'Availability', placeholder: '30 days / 1 calendar month' })}

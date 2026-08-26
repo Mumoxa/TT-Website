@@ -234,6 +234,7 @@ function metaGrid(cv) {
   const add = (label, value) => { if (isFilled(value)) pairs.push([label, value.trim()]); };
 
   add('Citizenship', p.citizenship);
+  add('Employment equity', p.eeStatus);
   add('Languages', p.languages);
   if (f.dateOfBirth) add('Age', p.ageBand || ageBand(p.dateOfBirth) || '');
   else add('Date of birth', p.dateOfBirth);

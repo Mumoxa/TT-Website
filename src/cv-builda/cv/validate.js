@@ -279,7 +279,7 @@ function validate(cv) {
   const p = cv.personal || {};
   if (!isFilled(p.fullName)) err('personal.fullName', 'is required');
   ['fullName', 'citizenship', 'languages', 'dateOfBirth', 'areaOfResidence',
-    'availability', 'driversLicence', 'ownTransport'].forEach((k) => {
+    'availability', 'driversLicence', 'ownTransport', 'eeStatus'].forEach((k) => {
     checkContactLeak(`personal.${k}`, p[k]);
   });
 
@@ -302,7 +302,7 @@ function validate(cv) {
   if (isFilled(p.areaOfResidence) && /\d{1,4}\s+\w+\s+(street|road|avenue|drive|lane|close)/i.test(p.areaOfResidence)) {
     err('personal.areaOfResidence', 'looks like a street address \u2014 use suburb and city only');
   }
-  ['citizenship', 'languages', 'areaOfResidence', 'availability'].forEach((k) => {
+  ['citizenship', 'languages', 'areaOfResidence', 'availability', 'eeStatus'].forEach((k) => {
     if (!isFilled(p[k])) warn(`personal.${k}`, 'is empty \u2014 confirm the source genuinely does not state it');
   });
 
