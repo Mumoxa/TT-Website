@@ -1,0 +1,192 @@
+name: Bootstrap CV parser stack
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/cv-builda-structured-ai-parser
+    paths:
+      - .ops/cv-parser-bootstrap-trigger
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      N8N_URL: ${{ secrets.N8N_URL }}
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT: tt-website
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate access configuration
+        run: |
+          missing=0
+          for name in N8N_URL N8N_API_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install app and n8n CLI dependencies
+        run: |
+          npm ci
+          npm install --global @n8n/cli
+
+      - name: Verify n8n API access
+        run: |
+          n8n-cli workflow list --limit=1 --json >/tmp/n8n-check.json
+          echo "n8n API access verified"
+
+      - name: Create private parser ingress credential
+        id: ingress
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHARED_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$SHARED_SECRET"
+          echo "CV_PARSE_SHARED_SECRET=$SHARED_SECRET" >> "$GITHUB_ENV"
+
+          existing_ids="$(n8n-cli credential list --json | jq -r '.[] | select(.name=="CV-Builda parser ingress") | .id')"
+          if [ -n "$existing_ids" ]; then
+            while IFS= read -r id; do
+              [ -n "$id" ] && n8n-cli credential delete "$id"
+            done <<< "$existing_ids"
+          fi
+
+          CRED_ID="$(n8n-cli credential create \
+            --type=httpHeaderAuth \
+            --name='CV-Builda parser ingress' \
+            --data="{\"name\":\"X-CV-Parser-Key\",\"value\":\"$SHARED_SECRET\"}" \
+            --format=id-only | tail -n1 | tr -d '\r')"
+
+          if [ -z "$CRED_ID" ]; then
+            echo "::error::n8n did not return a credential ID"
+            exit 1
+          fi
+          echo "credential_id=$CRED_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Publish CV parser workflow to n8n
+        id: workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          CRED_ID="${{ steps.ingress.outputs.credential_id }}"
+          jq --arg id "$CRED_ID" '
+            .nodes |= map(
+              if .name == "CV Parse Webhook"
+              then . + {
+                credentials: {
+                  httpHeaderAuth: {
+                    id: $id,
+                    name: "CV-Builda parser ingress"
+                  }
+                }
+              }
+              else .
+              end
+            )
+            | .active = false
+          ' automation/n8n/cv-builda-parser.workflow.json > /tmp/cv-parser.workflow.json
+
+          WF_ID="$(n8n-cli workflow list --name='CV-Builda Structured CV Parser' --json | jq -r '.[0].id // empty')"
+          if [ -n "$WF_ID" ]; then
+            n8n-cli workflow update "$WF_ID" --file=/tmp/cv-parser.workflow.json >/tmp/workflow-update.json
+          else
+            WF_ID="$(n8n-cli workflow create --file=/tmp/cv-parser.workflow.json --format=id-only | tail -n1 | tr -d '\r')"
+          fi
+
+          if [ -z "$WF_ID" ]; then
+            echo "::error::n8n did not return a workflow ID"
+            exit 1
+          fi
+
+          n8n-cli workflow activate "$WF_ID"
+          echo "workflow_id=$WF_ID" >> "$GITHUB_OUTPUT"
+
+          BASE="${N8N_URL%/}"
+          WEBHOOK_URL="$BASE/webhook/cv-parse"
+          echo "::add-mask::$WEBHOOK_URL"
+          echo "CV_PARSE_UPSTREAM=$WEBHOOK_URL" >> "$GITHUB_ENV"
+
+      - name: Verify n8n can reach Ollama
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/cv-parser-smoke.txt <<'EOF'
+          Example Candidate
+          
+          EDUCATION
+          National Diploma: Industrial Engineering
+          Example University
+          2013 - 2016
+          
+          WORK EXPERIENCE
+          Adcock Ingram
+          Production Planner
+          2019 - 2021
+          Planned production schedules and monitored inventory.
+          EOF
+
+          CV_PARSE_TOKEN="$CV_PARSE_SHARED_SECRET" \
+            node scripts/test-cv-parser.mjs /tmp/cv-parser-smoke.txt "$CV_PARSE_UPSTREAM"
+
+      - name: Configure Cloudflare Pages parser secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$CV_PARSE_UPSTREAM" | npx wrangler pages secret put CV_PARSE_UPSTREAM --project-name="$PAGES_PROJECT"
+          printf '%s' "$CV_PARSE_SHARED_SECRET" | npx wrangler pages secret put CV_PARSE_TOKEN --project-name="$PAGES_PROJECT"
+
+      - name: Build site
+        run: npm run build
+
+      - name: Deploy parser preview
+        id: preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=tt-website --branch=cv-parser-ai --commit-dirty=true
+
+      - name: Verify same-origin parser preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREVIEW_URL="${{ steps.preview.outputs.deployment-url }}"
+          test -n "$PREVIEW_URL"
+          cat > /tmp/cv-parser-preview-smoke.txt <<'EOF'
+          Example Candidate
+          
+          EDUCATION
+          National Diploma: Industrial Engineering
+          Example University
+          2013 - 2016
+          
+          WORK EXPERIENCE
+          Adcock Ingram
+          Production Planner
+          2019 - 2021
+          Planned production schedules and monitored inventory.
+          EOF
+          node scripts/test-cv-parser.mjs /tmp/cv-parser-preview-smoke.txt "$PREVIEW_URL/api/cv-parse"
+
+      - name: Report
+        run: |
+          echo "CV parser bootstrap completed."
+          echo "n8n workflow ID: ${{ steps.workflow.outputs.workflow_id }}"
+          echo "Preview: ${{ steps.preview.outputs.deployment-url }}"
