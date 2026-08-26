@@ -3,6 +3,10 @@ import { validate } from './cv/validate.js';
 import { visibleText } from './cv/list-text.js';
 import { REDACTION_DEFAULTS } from './cv/redact.js';
 import { parseCv, synthesizeProfile, mergeCvRecords, standardizeCv } from './cv/parse.js';
+import {
+  DEFAULT_AI_MODEL,
+  requestLocalInterpretation,
+} from './cv/ai.js';
 import './cv-builda.css';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -92,6 +96,12 @@ export default function CvBuilda() {
   const [sources, setSources] = useState([]);
   const [showSuppModal, setShowSuppModal] = useState(false);
   const [suppPaste, setSuppPaste] = useState('');
+  const [sourceText, setSourceText] = useState('');
+  const [aiEndpoint, setAiEndpoint] = useState(() => import.meta.env.VITE_CV_AI_ENDPOINT || '');
+  const [aiModel, setAiModel] = useState(() => import.meta.env.VITE_CV_AI_MODEL || DEFAULT_AI_MODEL);
+  const [aiProvider, setAiProvider] = useState('ollama');
+  const [aiState, setAiState] = useState({ status: 'idle', suggestions: [], warnings: [], error: '' });
+  const aiRunRef = useRef(0);
 
   const report = useMemo(() => validate(cv), [cv]);
   const loaded = Boolean(cv.personal.fullName.trim());
@@ -101,23 +111,39 @@ export default function CvBuilda() {
 
   useEffect(() => { document.title = 'CV-Builda — Talent Tree'; }, []);
 
-  const update = useCallback((path, value) => setCv((c) => setIn(c, path, value)), []);
+  const clearAiSuggestions = useCallback(() => {
+    aiRunRef.current += 1;
+    setAiState((current) => (current.status !== 'idle' || current.suggestions.length
+      ? { status: 'idle', suggestions: [], warnings: [], error: '' }
+      : current));
+  }, []);
+
+  const update = useCallback((path, value) => {
+    setCv((c) => setIn(c, path, value));
+    clearAiSuggestions();
+  }, [clearAiSuggestions]);
 
   const updateList = useCallback((path, text) => {
     setCv((c) => setIn(c, path, text.split('\n').map((s) => s.trim()).filter(Boolean)));
-  }, []);
+    clearAiSuggestions();
+  }, [clearAiSuggestions]);
 
   const push = useCallback((path, item) => {
     setCv((c) => setIn(c, path, [...(getIn(c, path) || []), clone(item)]));
-  }, []);
+    clearAiSuggestions();
+  }, [clearAiSuggestions]);
 
   const removeAt = useCallback((path, index) => {
     setCv((c) => setIn(c, path, (getIn(c, path) || []).filter((_, i) => i !== index)));
-  }, []);
+    clearAiSuggestions();
+  }, [clearAiSuggestions]);
 
-  const land = useCallback((record, notes, source, sourceFiles = []) => {
+  const land = useCallback((record, notes, source, sourceFiles = [], extractedText = '') => {
+    aiRunRef.current += 1;
     setCv(record);
     setGaps(notes);
+    setSourceText(extractedText);
+    setAiState({ status: 'idle', suggestions: [], warnings: [], error: '' });
     setStep('edit');
     if (sourceFiles.length) setSources(sourceFiles);
     setNote(source ? { tone: 'good', text: source } : null);
@@ -138,7 +164,13 @@ export default function CvBuilda() {
     delete merged.referees;
     if (merged.meta.mode !== 'direct') merged.meta.mode = 'agency';
     const trailing = text.slice(end + 1).replace(/^\s*GAPS:\s*/i, '').trim();
-    land(merged, trailing ? [trailing] : [], '', [{ name: fileName || 'candidate_data.json', format: 'json' }]);
+    land(
+      merged,
+      trailing ? [trailing] : [],
+      '',
+      [{ name: fileName || 'candidate_data.json', format: 'json' }],
+      JSON.stringify(parsed, null, 2),
+    );
   }, [land]);
 
   /* ── the candidate's own CV, in whatever they wrote it in ─────────────── */
@@ -149,6 +181,7 @@ export default function CvBuilda() {
       found,
       `${label} Read every field against the original before you build — that is the part no parser can do.`,
       [{ name: fileName || 'Pasted CV text', format }],
+      text,
     );
   }, [land]);
 
@@ -159,6 +192,9 @@ export default function CvBuilda() {
     const firstFile = files[0];
     setBusy(`Reading ${firstFile.name}\u2026`);
     setNote(null);
+    aiRunRef.current += 1;
+    setSourceText('');
+    setAiState({ status: 'idle', suggestions: [], warnings: [], error: '' });
     try {
       if (/\.json$/i.test(firstFile.name)) {
         ingestJson(await firstFile.text(), firstFile.name);
@@ -168,26 +204,31 @@ export default function CvBuilda() {
         const { cv: parsed, gaps: found } = parseCv(text, { fileName: firstFile.name });
 
         let currentRecord = parsed;
+        const extractedSources = [`--- ${firstFile.name} ---\n${text}`];
         const loadedSources = [{ name: firstFile.name, format }];
+        const extractionGaps = [...found, ...(notes || [])];
 
         /* If multiple files were dropped together (e.g. CV + LinkedIn PDF), merge them */
         if (files.length > 1) {
           for (let i = 1; i < files.length; i++) {
             const extraFile = files[i];
             setBusy(`Merging ${extraFile.name}\u2026`);
-            const { text: extraText, format: extraFormat } = await extractFromFile(extraFile);
-            const { cv: incomingCv } = parseCv(extraText, { fileName: extraFile.name });
+            const { text: extraText, format: extraFormat, notes: extraNotes } = await extractFromFile(extraFile);
+            const { cv: incomingCv, gaps: extraGaps } = parseCv(extraText, { fileName: extraFile.name });
             const { merged, notes: mergeNotes } = mergeCvRecords(currentRecord, incomingCv);
             currentRecord = merged;
+            extractedSources.push(`--- ${extraFile.name} ---\n${extraText}`);
+            extractionGaps.push(...extraGaps, ...(extraNotes || []));
             loadedSources.push({ name: extraFile.name, format: extraFormat, mergedCount: mergeNotes.length });
           }
         }
 
         land(
           currentRecord,
-          found,
+          extractionGaps,
           `Loaded ${loadedSources.map((s) => s.name).join(' & ')} successfully.`,
           loadedSources,
+          extractedSources.join('\n\n'),
         );
       }
     } catch (e) {
@@ -212,23 +253,31 @@ export default function CvBuilda() {
   /* ── supplementary document merge ─────────────────────────────────────── */
   const onSupplementaryFile = useCallback(async (file) => {
     if (!file) return;
+    aiRunRef.current += 1;
     setBusy(`Reading supplementary document: ${file.name}\u2026`);
     setNote(null);
     try {
       let incomingCv = null;
+      let incomingSource = '';
       let format = 'text';
       if (/\.json$/i.test(file.name)) {
-        incomingCv = JSON.parse(await file.text());
+        incomingSource = await file.text();
+        incomingCv = JSON.parse(incomingSource);
         format = 'json';
       } else {
         const { extractFromFile } = await import('./cv/extract.js');
         const extracted = await extractFromFile(file);
+        incomingSource = extracted.text;
         format = extracted.format;
         const parsed = parseCv(extracted.text, { fileName: file.name });
         incomingCv = parsed.cv;
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
       setCv(merged);
+      setSourceText((current) => current
+        ? `${current}\n\n--- supplementary: ${file.name} ---\n${incomingSource}`
+        : incomingSource);
+      setAiState({ status: 'idle', suggestions: [], warnings: [], error: '' });
       setSources((s) => [...s, { name: file.name, format, mergedCount: mergeNotes.length }]);
       setShowSuppModal(false);
       setNote({
@@ -243,6 +292,7 @@ export default function CvBuilda() {
 
   const onSupplementaryPaste = useCallback(async (text) => {
     if (!text.trim()) return;
+    aiRunRef.current += 1;
     setBusy('Merging text\u2026');
     setNote(null);
     try {
@@ -255,6 +305,10 @@ export default function CvBuilda() {
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
       setCv(merged);
+      setSourceText((current) => current
+        ? `${current}\n\n--- supplementary pasted details ---\n${text}`
+        : text);
+      setAiState({ status: 'idle', suggestions: [], warnings: [], error: '' });
       setSources((s) => [...s, { name: 'Pasted supplementary details', format: 'text', mergedCount: mergeNotes.length }]);
       setShowSuppModal(false);
       setSuppPaste('');
@@ -272,14 +326,16 @@ export default function CvBuilda() {
   const handleAutoSynthesize = useCallback(() => {
     const bullets = synthesizeProfile(cv);
     setCv((c) => setIn(c, 'professionalSummary', bullets));
+    clearAiSuggestions();
     setNote({ tone: 'good', text: 'Professional summary auto-synthesized from candidate experience, skills, and qualifications.' });
-  }, [cv]);
+  }, [clearAiSuggestions, cv]);
 
   const handleStandardize = useCallback(() => {
     const cleaned = standardizeCv(cv);
     setCv(cleaned);
+    clearAiSuggestions();
     setNote({ tone: 'good', text: 'Formatting standardized: converted date dashes to en-dashes, cleaned bullet capitalization and punctuation, and formatted job titles.' });
-  }, [cv]);
+  }, [clearAiSuggestions, cv]);
 
   const handleAutoAliases = useCallback(() => {
     setCv((c) => {
@@ -308,8 +364,96 @@ export default function CvBuilda() {
       });
       return next;
     });
+    clearAiSuggestions();
     setNote({ tone: 'good', text: 'Auto-populated blind profile descriptors for employers and institutions.' });
+  }, [clearAiSuggestions]);
+
+  const handleAiInterpret = useCallback(async () => {
+    const runId = ++aiRunRef.current;
+    if (!sourceText.trim()) {
+      setAiState({ status: 'error', suggestions: [], warnings: [], error: 'There is no extracted CV text to review. Load a document first.' });
+      return;
+    }
+    setAiState({ status: 'running', suggestions: [], warnings: [], error: '' });
+    try {
+      const result = await requestLocalInterpretation(sourceText, cv, {
+        endpoint: aiEndpoint,
+        model: aiModel,
+        provider: aiProvider,
+      });
+      if (runId !== aiRunRef.current) return;
+      const suggestions = result.suggestions.map((suggestion) => ({
+        ...suggestion,
+        baseValue: getIn(cv, suggestion.field) ?? '',
+      }));
+      setAiState({ status: suggestions.length ? 'ready' : 'done', suggestions, warnings: result.warnings, error: '' });
+      setNote({
+        tone: 'good',
+        text: suggestions.length
+          ? `Local AI found ${suggestions.length} reviewable suggestion${suggestions.length === 1 ? '' : 's'}. Nothing was applied.`
+          : 'Local AI found no safe changes to suggest. Nothing was changed.',
+      });
+    } catch (error) {
+      if (runId !== aiRunRef.current) return;
+      setAiState({
+        status: 'error',
+        suggestions: [],
+        warnings: [],
+        error: error?.code
+          ? error.message
+          : 'The local AI could not complete the review. The normal CV workflow is still available.',
+      });
+    }
+  }, [aiEndpoint, aiModel, aiProvider, cv, sourceText]);
+
+  const applyAiSuggestion = useCallback((suggestion) => {
+    const currentValue = getIn(cv, suggestion.field) ?? '';
+    if (currentValue !== suggestion.baseValue) {
+      setNote({ tone: 'bad', text: 'That suggestion is stale because the field changed. Run the local review again.' });
+      setAiState((state) => ({
+        ...state,
+        suggestions: state.suggestions.filter((item) => item.id !== suggestion.id),
+      }));
+      return;
+    }
+    setCv((current) => setIn(current, suggestion.field, suggestion.proposedValue));
+    setAiState((state) => ({
+      ...state,
+      status: state.suggestions.length > 1 ? 'ready' : 'done',
+      suggestions: state.suggestions.filter((item) => item.id !== suggestion.id),
+    }));
+    setNote({ tone: 'good', text: `Applied the reviewed suggestion to ${suggestion.field}.` });
+  }, [cv]);
+
+  const rejectAiSuggestion = useCallback((suggestion) => {
+    setAiState((state) => ({
+      ...state,
+      status: state.suggestions.length > 1 ? 'ready' : 'done',
+      suggestions: state.suggestions.filter((item) => item.id !== suggestion.id),
+    }));
   }, []);
+
+  const applyAllAiSuggestions = useCallback(() => {
+    let applied = 0;
+    let stale = 0;
+    let next = cv;
+    aiState.suggestions.forEach((suggestion) => {
+      if ((getIn(next, suggestion.field) ?? '') !== suggestion.baseValue) {
+        stale += 1;
+        return;
+      }
+      next = setIn(next, suggestion.field, suggestion.proposedValue);
+      applied += 1;
+    });
+    setCv(next);
+    setAiState((state) => ({ ...state, status: 'done', suggestions: [] }));
+    setNote({
+      tone: stale ? 'bad' : 'good',
+      text: stale
+        ? `${applied} suggestion${applied === 1 ? '' : 's'} applied; ${stale} stale suggestion${stale === 1 ? '' : 's'} discarded. Review the remaining fields.`
+        : `Applied ${applied} reviewed suggestion${applied === 1 ? '' : 's'}.`,
+    });
+  }, [aiState.suggestions, cv]);
 
   /* ── build ────────────────────────────────────────────────────────────── */
   const build = useCallback(async () => {
@@ -367,9 +511,12 @@ export default function CvBuilda() {
         step={step}
         loaded={loaded}
         onRestart={() => {
+          aiRunRef.current += 1;
           setCv(clone(EMPTY));
           setStep('start');
           setGaps([]);
+          setSourceText('');
+          setAiState({ status: 'idle', suggestions: [], warnings: [], error: '' });
           setNote(null);
           setSources([]);
         }}
@@ -389,7 +536,10 @@ export default function CvBuilda() {
           onFile={onFile}
           busy={busy}
           onBlank={() => {
+            aiRunRef.current += 1;
             setCv({ ...clone(EMPTY), personal: { ...EMPTY.personal, fullName: 'New candidate' } });
+            setSourceText('');
+            setAiState({ status: 'idle', suggestions: [], warnings: [], error: '' });
             setStep('edit');
             setSources([{ name: 'Blank Template', format: 'form' }]);
           }}
@@ -403,6 +553,23 @@ export default function CvBuilda() {
               onOpenSupp={() => setShowSuppModal(true)}
               onStandardize={handleStandardize}
               onAutoSynthesize={handleAutoSynthesize}
+            />
+
+            <AiAssistPanel
+              cv={cv}
+              sourceText={sourceText}
+              state={aiState}
+              endpoint={aiEndpoint}
+              setEndpoint={setAiEndpoint}
+              model={aiModel}
+              setModel={setAiModel}
+              provider={aiProvider}
+              setProvider={setAiProvider}
+              busy={Boolean(busy)}
+              onRun={handleAiInterpret}
+              onApply={applyAiSuggestion}
+              onReject={rejectAiSuggestion}
+              onApplyAll={applyAllAiSuggestions}
             />
 
             {showSuppModal && (
@@ -571,6 +738,177 @@ function StartPanel({ paste, setPaste, onLoad, onFile, onBlank, busy }) {
           Supports 2-column resumes, Canva PDFs, and LinkedIn PDF exports. If any details are missing on the CV, you can add a supplementary document or LinkedIn profile at any time.
         </p>
       </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════ local AI assistant ══ */
+
+function AiAssistPanel({
+  cv,
+  sourceText,
+  state,
+  endpoint,
+  setEndpoint,
+  model,
+  setModel,
+  provider,
+  setProvider,
+  busy,
+  onRun,
+  onApply,
+  onReject,
+  onApplyAll,
+}) {
+  const hasSource = Boolean(sourceText.trim());
+  const running = state.status === 'running';
+  const statusText = running
+    ? 'Reviewing the extracted text…'
+    : state.status === 'error'
+      ? 'Local review failed'
+      : state.status === 'done'
+        ? 'Review complete'
+        : state.status === 'ready'
+          ? `${state.suggestions.length} suggestion${state.suggestions.length === 1 ? '' : 's'} waiting for review`
+          : 'Optional';
+
+  return (
+    <section className="cvb-ai" aria-labelledby="cvb-ai-title">
+      <div className="cvb-ai-head">
+        <div>
+          <p className="cvb-eyebrow cvb-eyebrow--accent">Interpretation layer</p>
+          <h2 id="cvb-ai-title">Ask a local AI to review the draft</h2>
+        </div>
+        <span className={`cvb-ai-status is-${state.status}`}>{statusText}</span>
+      </div>
+
+      <p className="cvb-hint">
+        This is an optional second pair of eyes for messy layouts and misplaced fields. It returns
+        small, traceable suggestions for you to approve — it never rewrites or applies the profile.
+      </p>
+
+      <div className="cvb-ai-boundary">
+        <strong>No paid API is built in.</strong> Use a self-hosted Ollama-compatible model or a
+        same-origin relay that you control. The original CV stays in this tab unless you press
+        the review button; when you do, its extracted text is sent to the endpoint below.
+        No API key is stored or requested here.
+      </div>
+
+      <div className="cvb-ai-settings">
+        <label className="cvb-field">
+          <span>Provider format</span>
+          <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <option value="ollama">Ollama JSON chat</option>
+            <option value="openai">OpenAI-compatible JSON chat</option>
+          </select>
+          <em className="cvb-inline">The provider must be reachable from this browser and allow the site origin.</em>
+        </label>
+        <label className="cvb-field">
+          <span>Endpoint</span>
+          <input
+            type="url"
+            value={endpoint}
+            onChange={(e) => setEndpoint(e.target.value)}
+            placeholder="/api/cv-ai or https://your-ai-server.example/api/chat"
+            autoComplete="off"
+            spellCheck="false"
+          />
+          <em className="cvb-inline">Use a server/LAN URL or same-origin path, not a paid provider key.</em>
+        </label>
+        <label className="cvb-field">
+          <span>Installed model</span>
+          <input
+            type="text"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder="qwen2.5:3b"
+            autoComplete="off"
+            spellCheck="false"
+          />
+          <em className="cvb-inline">The model name must already exist on that service.</em>
+        </label>
+      </div>
+
+      <div className="cvb-ai-actions">
+        <button
+          className="cvb-btn cvb-btn--primary"
+          type="button"
+          onClick={onRun}
+          disabled={!hasSource || !endpoint.trim() || running || busy}
+        >
+          {running ? 'Interpreting locally…' : 'Interpret & suggest formatting'}
+        </button>
+        <span className="cvb-ai-meta">
+          {hasSource ? `${sourceText.length.toLocaleString()} extracted characters ready` : 'Load a CV to enable review'}
+        </span>
+      </div>
+
+      {state.error && (
+        <p className="cvb-ai-error" role="alert">{state.error}</p>
+      )}
+
+      {state.warnings.length > 0 && (
+        <div className="cvb-ai-warnings" role="status">
+          <strong>Review notes</strong>
+          <ul>
+            {state.warnings.map((warning, index) => <li key={index}>{warning}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {state.suggestions.length > 0 && (
+        <div className="cvb-ai-results" aria-live="polite">
+          <div className="cvb-ai-results-head">
+            <div>
+              <h3>Suggestions to approve</h3>
+              <p>Compare each change with the source before applying it.</p>
+            </div>
+            <button className="cvb-btn cvb-btn--tiny" type="button" onClick={onApplyAll}>
+              Approve all shown
+            </button>
+          </div>
+          <div className="cvb-ai-list">
+            {state.suggestions.map((suggestion) => {
+              const currentValue = getIn(cv, suggestion.field) ?? '';
+              const stale = currentValue !== suggestion.baseValue;
+              return (
+                <article className={`cvb-ai-suggestion${stale ? ' is-stale' : ''}`} key={suggestion.id}>
+                  <div className="cvb-ai-suggestion-top">
+                    <span className="cvb-ai-kind">{suggestion.kind}</span>
+                    <code>{suggestion.field}</code>
+                    <span className="cvb-ai-confidence">{suggestion.confidence} confidence</span>
+                  </div>
+                  <div className="cvb-ai-values">
+                    <div>
+                      <span>Current draft</span>
+                      <p>{currentValue || '— empty —'}</p>
+                    </div>
+                    <div>
+                      <span>Suggested</span>
+                      <p>{suggestion.proposedValue}</p>
+                    </div>
+                  </div>
+                  <p className="cvb-ai-reason">{suggestion.reason}</p>
+                  <p className="cvb-ai-source"><span>Source evidence</span> <q>{suggestion.sourceQuote}</q></p>
+                  {stale && <p className="cvb-ai-stale">This field changed after the review. Run it again instead of overwriting the new value.</p>}
+                  <div className="cvb-ai-suggestion-actions">
+                    <button className="cvb-btn cvb-btn--tiny cvb-btn--primary" type="button" onClick={() => onApply(suggestion)}>
+                      Approve
+                    </button>
+                    <button className="cvb-btn cvb-btn--tiny" type="button" onClick={() => onReject(suggestion)}>
+                      Reject
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {state.status === 'done' && !state.suggestions.length && !state.error && (
+        <p className="cvb-ai-complete" role="status">No pending AI changes. The deterministic checker and manual editor remain the source of truth.</p>
+      )}
     </section>
   );
 }
