@@ -20,7 +20,7 @@ All processing happens **client-side in browser memory** — nothing is uploaded
 - No logs of client briefs
 - Original file and extracted text held only in React state
 - "Start Over" or closing tab discards everything
-- Session storage only holds auth timestamp, not client data
+- No authentication or client-data session storage is used; keep this route private and restrict deployment access when stronger access control is required
 
 For teams requiring true server-side processing, wrap this with a Cloudflare Worker or Pages Function that does the same parsing server-side. The current client-side approach is more secure for POPIA than a server that might retain data.
 
@@ -108,7 +108,7 @@ File name: `CleanedTitle_TalentTree_Spec`
 
 ### UI (`src/specs/SpecsApp.jsx` + `specs.css`)
 
-- **Password gate:** Default `TT-Internal-2026`, 5 attempts → 15 min lockout, sessionStorage 8h session. Notes that production should use Cloudflare Access / IP allowlist.
+- **Private route:** The unlisted internal tool has no application password prompt. Use Cloudflare Access or an IP allowlist when deployment-level access control is required.
 - **Input tabs:** Upload (drag & drop), Paste Text, Google Docs link
 - **Pipeline indicator:** Parsing → Sanitizing → Branding → Ready
 - **Processing states:** Spinner + file meta
@@ -126,7 +126,7 @@ Design tokens reuse site's `--ink`, `--paper`, etc., but with own `--specs-*` va
 
 ## Security
 
-- **Password gate:** Frontend deterrent only — any JS password is visible in bundle. For true protection:
+- **Private route:** There is no application password gate. The route is intentionally unlisted and should be kept private; for true access control, use:
   - Cloudflare Pages → Settings → Access → Add Cloudflare Access policy (SSO, email allowlist, IP)
   - Or: Cloudflare Firewall rule → IP allowlist for office
   - Or: Move to Cloudflare Workers with server-side auth
@@ -166,7 +166,7 @@ Cloudflare Pages (existing):
 
 ### Production hardening checklist
 
-- [ ] Change default password in `src/specs/lib`? Actually in `SpecsApp.jsx` constant — replace with env var `VITE_SPECS_PASSWORD` or remove and rely on Cloudflare Access
+- [ ] Keep the unlisted route private in deployment settings
 - [ ] Add Cloudflare Access: Pages → Settings → Access → Require SSO / email domain / IP
 - [ ] Test with real briefs: PDF, DOCX, XLSX, Google Docs link
 - [ ] Verify sanitization: run sample with Shoprite, Vodacom, etc. — check report
