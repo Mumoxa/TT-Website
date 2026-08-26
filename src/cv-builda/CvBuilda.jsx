@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { validate } from './cv/validate.js';
 import { visibleText } from './cv/list-text.js';
 import { REDACTION_DEFAULTS } from './cv/redact.js';
-import { parseCv, synthesizeProfile, mergeCvRecords, standardizeCv } from './cv/parse.js';
+import { synthesizeProfile, mergeCvRecords, standardizeCv } from './cv/parse.js';
+import { parseCvSmart } from './cv/smart-parse.js';
 import {
   DEFAULT_AI_MODEL,
   requestLocalInterpretation,
@@ -14,11 +15,13 @@ import './cv-builda.css';
 
    Turns a candidate's raw CV into a Talent Tree candidate profile.
 
-   The document is generated in the browser. Nothing is uploaded, which is the
-   honest answer to the POPIA question a candidate or client will ask.
+   Document reading and generation stay in the browser. Extracted candidate text
+   is sent only to Talent Tree's controlled same-origin parsing service, which
+   relays it to the private Oracle/n8n/Ollama stack for structured extraction.
 
    Supports multi-column PDFs, LinkedIn profile PDFs, multi-document merging,
-   automated profile synthesis, and one-click data standardization.
+   structured AI extraction with deterministic fallback, automated profile
+   synthesis, and one-click data standardization.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const EMPTY = {
@@ -64,6 +67,7 @@ const FORMATS = {
 };
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
+const CV_PARSE_ENDPOINT = import.meta.env.VITE_CV_PARSE_ENDPOINT || '/api/cv-parse';
 
 /* ── immutable path helpers: "experience[0].titles[1].title" ─────────────── */
 const parsePath = (p) => p.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
@@ -173,17 +177,29 @@ export default function CvBuilda() {
     );
   }, [land]);
 
+  const parseCandidateText = useCallback(async (text, fileName = '', mode = 'agency') => (
+    parseCvSmart(text, {
+      fileName,
+      mode,
+      endpoint: CV_PARSE_ENDPOINT,
+      fallback: true,
+    })
+  ), []);
+
   /* ── the candidate's own CV, in whatever they wrote it in ─────────────── */
   const ingestCv = useCallback(async (text, label, fileName = '', format = 'text') => {
-    const { cv: parsed, gaps: found } = parseCv(text, { fileName });
+    const result = await parseCandidateText(text, fileName);
+    const parserNote = result.parser === 'structured-ai'
+      ? 'Structured AI extraction completed. Review only the highlighted exceptions before building.'
+      : 'The AI service was unavailable, so the legacy parser was used. Review the extracted fields carefully.';
     land(
-      parsed,
-      found,
-      `${label} Read every field against the original before you build — that is the part no parser can do.`,
-      [{ name: fileName || 'Pasted CV text', format }],
+      result.cv,
+      result.gaps,
+      `${label} ${parserNote}`,
+      [{ name: fileName || 'Pasted CV text', format, parser: result.parser }],
       text,
     );
-  }, [land]);
+  }, [land, parseCandidateText]);
 
   /* ── primary file upload (single or multiple) ─────────────────────────── */
   const onFile = useCallback(async (fileList) => {
@@ -201,11 +217,13 @@ export default function CvBuilda() {
       } else {
         const { extractFromFile } = await import('./cv/extract.js');
         const { text, format, notes } = await extractFromFile(firstFile);
-        const { cv: parsed, gaps: found } = parseCv(text, { fileName: firstFile.name });
+        const parsedResult = await parseCandidateText(text, firstFile.name);
+        const parsed = parsedResult.cv;
+        const found = parsedResult.gaps;
 
         let currentRecord = parsed;
         const extractedSources = [`--- ${firstFile.name} ---\n${text}`];
-        const loadedSources = [{ name: firstFile.name, format }];
+        const loadedSources = [{ name: firstFile.name, format, parser: parsedResult.parser }];
         const extractionGaps = [...found, ...(notes || [])];
 
         /* If multiple files were dropped together (e.g. CV + LinkedIn PDF), merge them */
@@ -214,12 +232,19 @@ export default function CvBuilda() {
             const extraFile = files[i];
             setBusy(`Merging ${extraFile.name}\u2026`);
             const { text: extraText, format: extraFormat, notes: extraNotes } = await extractFromFile(extraFile);
-            const { cv: incomingCv, gaps: extraGaps } = parseCv(extraText, { fileName: extraFile.name });
+            const extraResult = await parseCandidateText(extraText, extraFile.name, currentRecord.meta.mode);
+            const incomingCv = extraResult.cv;
+            const extraGaps = extraResult.gaps;
             const { merged, notes: mergeNotes } = mergeCvRecords(currentRecord, incomingCv);
             currentRecord = merged;
             extractedSources.push(`--- ${extraFile.name} ---\n${extraText}`);
             extractionGaps.push(...extraGaps, ...(extraNotes || []));
-            loadedSources.push({ name: extraFile.name, format: extraFormat, mergedCount: mergeNotes.length });
+            loadedSources.push({
+              name: extraFile.name,
+              format: extraFormat,
+              parser: extraResult.parser,
+              mergedCount: mergeNotes.length,
+            });
           }
         }
 
@@ -235,7 +260,7 @@ export default function CvBuilda() {
       setNote({ tone: 'bad', text: e.message || String(e) });
     }
     setBusy('');
-  }, [ingestJson, land]);
+  }, [ingestJson, land, parseCandidateText]);
 
   /* Pasted text is a data file if it looks like one and a CV if it does not. */
   const onPaste = useCallback(async (text) => {
@@ -269,7 +294,7 @@ export default function CvBuilda() {
         const extracted = await extractFromFile(file);
         incomingSource = extracted.text;
         format = extracted.format;
-        const parsed = parseCv(extracted.text, { fileName: file.name });
+        const parsed = await parseCandidateText(extracted.text, file.name, cv.meta.mode);
         incomingCv = parsed.cv;
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
@@ -288,7 +313,7 @@ export default function CvBuilda() {
       setNote({ tone: 'bad', text: `Could not merge document: ${e.message || String(e)}` });
     }
     setBusy('');
-  }, [cv]);
+  }, [cv, parseCandidateText]);
 
   const onSupplementaryPaste = useCallback(async (text) => {
     if (!text.trim()) return;
@@ -300,7 +325,7 @@ export default function CvBuilda() {
       if (/^\s*[{[]/.test(text)) {
         incomingCv = JSON.parse(text);
       } else {
-        const parsed = parseCv(text, { fileName: 'Pasted Supplementary Text' });
+        const parsed = await parseCandidateText(text, 'Pasted Supplementary Text', cv.meta.mode);
         incomingCv = parsed.cv;
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
@@ -320,7 +345,7 @@ export default function CvBuilda() {
       setNote({ tone: 'bad', text: `Could not merge text: ${e.message || String(e)}` });
     }
     setBusy('');
-  }, [cv]);
+  }, [cv, parseCandidateText]);
 
   /* ── 1-click auto synthesis & standardization ─────────────────────────── */
   const handleAutoSynthesize = useCallback(() => {
