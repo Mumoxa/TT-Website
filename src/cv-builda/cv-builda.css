@@ -158,8 +158,6 @@
 }
 
 .cvb-drop {
-  /* Block, not grid: the inline <code> in the middle of the sentence would
-     become its own grid item and break the line in three. */
   display: block;
   margin-bottom: 20px;
   padding: 46px 24px;
@@ -182,6 +180,145 @@
   font-family: var(--cvb-mono);
   font-size: 0.92em;
   color: var(--cvb-ink);
+}
+
+.cvb-drop em {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--cvb-mono);
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  color: var(--cvb-muted);
+}
+
+.cvb-drop--small {
+  padding: 24px 16px;
+  margin-bottom: 16px;
+}
+
+/* ─────────────────────────────────────────────────── scorecards & header ── */
+
+.cvb-scorecard {
+  padding: 24px;
+  margin-bottom: 24px;
+  background: var(--cvb-white);
+  border: 1px solid var(--cvb-line);
+  border-left: 4px solid var(--cvb-accent);
+}
+
+.cvb-scorecard-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.cvb-scorecard-title {
+  margin: 0 0 4px;
+  font-family: var(--cvb-serif);
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 400;
+}
+
+.cvb-scorecard-sub {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--cvb-accent);
+}
+
+.cvb-scorecard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cvb-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cvb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--cvb-soft);
+  border: 1px solid var(--cvb-line);
+  color: var(--cvb-ink);
+}
+
+.cvb-badge strong {
+  font-weight: 700;
+  color: var(--cvb-accent);
+}
+
+.cvb-sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--cvb-muted);
+}
+
+.cvb-sources-label {
+  font-weight: 600;
+}
+
+.cvb-source-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--cvb-soft);
+  border: 1px solid var(--cvb-line);
+  font-family: var(--cvb-mono);
+  font-size: 12px;
+}
+
+/* ───────────────────────────────────────────────────────────── modal ── */
+
+.cvb-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(8, 31, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cvb-modal {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--cvb-white);
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid var(--cvb-line);
+  box-shadow: 0 16px 40px rgba(8, 31, 42, 0.2);
+}
+
+.cvb-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cvb-modal-head h3 {
+  margin: 0;
+  font-family: var(--cvb-serif);
+  font-size: 22px;
+  font-weight: 400;
 }
 
 /* ───────────────────────────────────────────────────────────────── fields ── */
@@ -274,11 +411,25 @@
   border: 1px solid var(--cvb-line);
 }
 
+.cvb-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
 .cvb-block h2 {
-  margin: 0 0 6px;
+  margin: 0;
   font-family: var(--cvb-serif);
   font-weight: 400;
   font-size: 24px;
+}
+
+.cvb-block-action {
+  display: inline-flex;
+  align-items: center;
 }
 
 .cvb-two {
@@ -322,8 +473,6 @@
   display: flex;
   gap: 12px;
   align-items: baseline;
-  /* Most cards have no heading — only employers do — so remove sits right and
-     the heading, when there is one, pushes it there. */
   justify-content: flex-end;
   margin-bottom: 10px;
 }
@@ -417,9 +566,6 @@
   border-color: var(--cvb-accent);
 }
 
-/* styles.css sets `input { width: 100% }` for the enquiry form, which stretches
-   a checkbox to the width of its row and shoves the label off to the right.
-   Ticks and radios opt out of it. */
 .cvb-mode input,
 .cvb-check input {
   flex: 0 0 auto;
@@ -533,6 +679,13 @@
 .cvb-gaps p { font-size: 14px; line-height: 1.6; }
 .cvb-gaps p:last-child { margin-bottom: 0; }
 
+.cvb-gaps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 /* ──────────────────────────────────────────────────────────────────── bar ── */
 
 .cvb-bar {
@@ -561,18 +714,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cvb * { transition-duration: 0.01ms !important; }
-}
-
-/* The drop zone names the formats it accepts, because "a file" is not an
-   answer to "will it take my PDF?". */
-.cvb-drop em {
-  display: block;
-  margin-top: 8px;
-  font-family: var(--cvb-mono);
-  font-size: 12px;
-  font-style: normal;
-  letter-spacing: 0.04em;
-  color: var(--cvb-muted);
 }
 
 .cvb-gaps ul {

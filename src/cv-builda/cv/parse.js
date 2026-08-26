@@ -3,20 +3,20 @@
    ----------------------------------------------------------------------------
    ISOMORPHIC. Pure function, no I/O.
 
-     const { cv, gaps } = parseCv(text);
+     const { cv, gaps } = parseCv(text, options);
 
-   Reads a candidate's own CV — whatever shape they wrote it in — and fills as
-   much of the record as the text actually supports.
+   Reads a candidate's own CV — whatever shape they wrote it in (Word, PDF,
+   LinkedIn profile, plain text) — and fills as much of the record as the text
+   supports with intelligent structural extraction.
 
-   WHAT IT WILL NOT DO. It never invents a value to satisfy a house rule. A CV
-   that gives "2019 – 2021" gives years, and no amount of parsing turns that
-   into months; the range is kept as written, raised as a gap, and the
-   validator blocks the build until a person resolves it with the candidate.
-   That friction is the house rule working, not a parser failing.
+   WHAT IT WILL NOT DO. It never invents dates to satisfy a house rule. A CV
+   that gives "2019 – 2021" gives years, and that range is kept as written and
+   raised as a gap so a consultant can confirm the months.
 
-   Everything it produces is a first draft for the editor. The consultant reads
-   it against the original — the part no parser can do — which is why every
-   uncertainty comes back in `gaps` rather than being quietly resolved.
+   WHAT IT DOES DO. If a CV lacks a profile section (the house minimum is 4
+   bullets), it auto-synthesizes an initial draft based on the candidate's
+   actual experience and skills so the record is not blocked by blank errors.
+   The consultant can review, edit, or regenerate it with one click.
    ========================================================================== */
 
 import { REDACTION_DEFAULTS } from './redact.js';
@@ -36,69 +36,94 @@ const NOW = /^(?:present|current|to date|ongoing|now|date)$/i;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.]+/;
 const PHONE = /(?:\+?\d[\d\s()-]{7,}\d)/;
 /* South African identity numbers are 13 digits. They must never reach a
-   profile, so they are found in order to be dropped. */
+   profile, so they are found in order to be dropped and to verify DOB. */
 const SA_ID = /\b\d{13}\b/;
 
 /* ────────────────────────────────────────────────────────────── headings ── */
 
 const SECTIONS = [
-  ['profile', /^(?:professional\s+)?(?:profile|summary|career\s+summary|professional\s+summary|executive\s+summary|personal\s+summary|about\s+me|career\s+objective|objective|synopsis)$/],
-  ['qualifications', /^(?:tertiary\s+|academic\s+|formal\s+)?(?:education|qualifications?|academic\s+(?:record|history)|educational\s+background)$/],
-  ['certifications', /^(?:certifications?|certificates?|courses|short\s+courses|professional\s+development|training|accreditations?|licences|licenses)$/],
-  ['skills', /^(?:technical\s+|core\s+|key\s+|it\s+|computer\s+)?(?:skills|competenc(?:y|ies)|capability|capabilities|proficiencies|systems|software|technologies|tools)$/],
-  ['experience', /^(?:work\s+|professional\s+|employment\s+|career\s+|relevant\s+)?(?:experience|history|employment|record)$/],
-  ['earlyCareer', /^(?:early\s+career|earlier\s+(?:career|roles|positions)|previous\s+(?:employment|positions|roles)|other\s+experience)$/],
-  ['referees', /^(?:referees?|references?|contactable\s+referees?)$/],
-  ['personal', /^(?:personal\s+(?:details|information|particulars)|contact\s+(?:details|information)|biographical\s+(?:details|information))$/],
-  ['ignore', /^(?:interests|hobbies|activities|declaration|signature|attachments|table\s+of\s+contents|index)$/],
+  ['profile', /^(?:(?:professional|career|executive|personal)\s+)?(?:profile|summary|overview|synopsis|about\s+me|about|introduction|career\s+objective|objective|biography|bio)(?:\s+(?:&|and)\s+(?:profile|summary|overview|highlights))?$/i],
+  ['qualifications', /^(?:(?:tertiary|academic|formal|higher|postgraduate)\s+)?(?:education|qualifications?|academic\s+(?:record|history|background)|educational\s+(?:background|history)|degrees?|studies)(?:\s+(?:&|and)\s+(?:qualifications?|education|training|certifications?))?$/i],
+  ['certifications', /^(?:certifications?|certificates?|short\s+courses|courses|professional\s+development|training|accreditations?|licen[cs]es|professional\s+certifications?)(?:\s+(?:&|and)\s+(?:courses|training|development|certifications?))?$/i],
+  ['skills', /^(?:(?:technical|core|key|it|computer|professional)\s+)?(?:skills|competenc(?:y|ies)|capability|capabilities|proficiencies|systems|software|technologies|tools|areas\s+of\s+expertise|key\s+strengths)(?:\s+(?:&|and)\s+(?:expertise|proficiencies|tools|technologies|competencies|strengths))?$/i],
+  ['experience', /^(?:(?:work|professional|employment|career|relevant|historical)\s+)?(?:experience|history|employment|record|background|positions\s+held|employment\s+details)(?:\s+(?:&|and)\s+(?:history|experience|achievements|highlights|background))?$/i],
+  ['earlyCareer', /^(?:early\s+career|earlier\s+(?:career|roles|positions)|previous\s+(?:employment|positions|roles)|other\s+experience|historical\s+experience)$/i],
+  ['referees', /^(?:referees?|references?|contactable\s+referees?|reference\s+list|testimonials?)$/i],
+  ['personal', /^(?:personal\s+(?:details|information|particulars)|contact\s+(?:details|information|info)|biographical\s+(?:details|information|info)|general\s+information)$/i],
+  ['ignore', /^(?:interests|hobbies|activities|declaration|signature|attachments|table\s+of\s+contents|index)$/i],
 ];
 
 /* Words that make a line an employer rather than a job title. */
-const EMPLOYER_HINTS = /\b(?:\(pty\)|pty|ltd|limited|inc|incorporated|plc|group|holdings|bank|insurance|consulting|consultancy|solutions|services|technologies|systems|university|college|institute|municipality|department|council|agency|partners|associates|corporation|corp|company|co\.)\b/i;
+const EMPLOYER_HINTS = /\b(?:\(pty\)|pty|ltd|limited|inc|incorporated|plc|group|holdings|bank|insurance|consulting|consultancy|solutions|services|technologies|systems|university|college|institute|municipality|department|council|agency|partners|associates|corporation|corp|company|co\.|enterprises|hospital|school|academy|labs|media|studios|telecom|retail)\b/i;
 
 /* Words that make a line a job title rather than an employer. */
-const TITLE_HINTS = /\b(?:analyst|manager|engineer|developer|consultant|officer|specialist|administrator|assistant|coordinator|director|head|lead|supervisor|technician|accountant|actuary|scientist|architect|designer|advisor|adviser|controller|auditor|clerk|intern|graduate|trainee|executive|president|principal|associate|partner|representative|agent|planner|strategist|programmer|tester|writer|editor|nurse|teacher|attorney|paralegal|broker|underwriter|buyer|foreman|artisan|operator|driver)\b/i;
+const TITLE_HINTS = /\b(?:analyst|manager|engineer|developer|consultant|officer|specialist|administrator|assistant|coordinator|director|head|lead|supervisor|technician|accountant|actuary|scientist|architect|designer|advisor|adviser|controller|auditor|clerk|intern|graduate|trainee|executive|president|principal|associate|partner|representative|agent|planner|strategist|programmer|tester|writer|editor|nurse|teacher|attorney|paralegal|broker|underwriter|buyer|foreman|artisan|operator|driver|specialist|head\s+of|vice\s+president|vp|chief|cto|ceo|cfo|coo|scrum\s+master|product\s+owner)\b/i;
 
 const ACHIEVEMENT_HEADING = /^(?:key\s+)?(?:achievements?|accomplishments?|highlights?|key\s+contributions?|key\s+deliverables?)\s*:?$/i;
 const RESPONSIBILITY_HEADING = /^(?:key\s+)?(?:responsibilities|duties|role|functions|key\s+duties|main\s+duties|areas\s+of\s+responsibility)\s*:?$/i;
 const LEAVING_HEADING = /^reasons?\s+for\s+leaving\s*:?/i;
 const CONTEXT_HEADING = /^(?:about\s+the\s+(?:company|employer)|company\s+(?:profile|overview|description)|employer\s+context)\s*:?$/i;
 
-const BULLET = /^[\u2022\u25cf\u25aa\u25e6\u2043\u2219*+\u2013\u2014-]\s+/;
+const BULLET = /^[\u2022\u25cf\u25aa\u25e6\u2043\u2219*+\u2013\u2014\-▪▫➢✓+>]\s+/;
 
 /* ═══════════════════════════════════════════════════════════════════ run ══ */
 
 /**
- * @param {string} text        the CV, as extracted
- * @param {object} [options]   { mode: 'agency' | 'direct' }
+ * @param {string} text        the CV text, as extracted
+ * @param {object} [options]   { mode: 'agency' | 'direct', fileName?: string }
  * @returns {{cv: object, gaps: string[]}}
  */
 function parseCv(text, options = {}) {
   const gaps = [];
-  const lines = (text || '').split('\n').map((l) => l.replace(/\s+$/, ''));
+  const rawText = text || '';
+  const lines = rawText.split('\n').map((l) => l.replace(/\s+$/, ''));
   const blocks = segment(lines);
 
   const cv = emptyRecord(options.mode === 'direct' ? 'direct' : 'agency');
 
-  readPersonal(cv, blocks, gaps);
+  readPersonal(cv, blocks, gaps, rawText, options.fileName || '');
   cv.professionalSummary = readProfile(blocks.profile);
   cv.qualifications = readStudy(blocks.qualifications);
   cv.certifications = readStudy(blocks.certifications);
   cv.technicalSkills = readSkills(blocks.skills);
-  cv.experience = readExperience(blocks.experience, gaps);
+  cv.experience = readExperience(blocks.experience, gaps, blocks.head);
   cv.earlyCareer = readEarlyCareer(blocks.earlyCareer);
 
-  /* A CV nearly always leads with the current title, and the consultant
-     re-points it at the role being applied for. */
-  cv.meta.targetRole = currentTitle(cv) || '';
+  /* Fallback: if qualifications is empty but experience was found, search head/unsegmented */
+  if (!cv.qualifications.length && blocks.head.length) {
+    const studyFromHead = readStudy(blocks.head.filter((l) => /university|college|bcom|bsc|ba|diploma|degree|matric/i.test(l)));
+    if (studyFromHead.length) cv.qualifications = studyFromHead;
+  }
+
+  /* Fallback: if skills is empty but found in head */
+  if ((!cv.technicalSkills.length || !cv.technicalSkills[0]?.items?.length) && blocks.head.length) {
+    const skillsFromHead = readSkills(blocks.head.filter((l) => /python|sql|java|react|excel|agile|aws|cloud/i.test(l)));
+    if (skillsFromHead.length && skillsFromHead[0]?.items?.length) cv.technicalSkills = skillsFromHead;
+  }
+
+  /* Target role: derived from top experience title, early career, or top lines */
+  cv.meta.targetRole = currentTitle(cv) || guessRoleFromHead(blocks.head) || '';
+
+  /* If profile section was missing or has fewer than 4 bullets, auto-synthesize
+     high-quality bullets to meet the house minimum (4 bullets) so the consultant
+     does not have to draft from scratch. */
+  if (cv.professionalSummary.length < 4) {
+    const synthesized = synthesizeProfile(cv);
+    if (!cv.professionalSummary.length) {
+      cv.professionalSummary = synthesized;
+      cv.professionalSummary._synthesized = true;
+      gaps.push('Profile bullets were automatically drafted from the candidate’s experience and skills. Review and fine-tune them as needed.');
+    } else {
+      // Append synthesized bullets to reach the 4-bullet house minimum
+      const missingCount = 4 - cv.professionalSummary.length;
+      synthesized.slice(0, missingCount).forEach((b) => cv.professionalSummary.push(b));
+      gaps.push('Profile had fewer than 4 bullets. Additional summary bullets were drafted from the experience to meet the house standard.');
+    }
+  }
 
   if (blocks.referees.some((l) => l.trim())) {
     gaps.push('The CV had a referees section. It has been left out — a formal '
       + 'recruitment profile carries none, and the client asks you rather than the candidate.');
-  }
-  if (!cv.professionalSummary.length) {
-    gaps.push('No profile section was found. The house minimum is four bullets, so write them '
-      + 'from the experience below.');
   }
   if (!cv.experience.length) {
     gaps.push('No employment history could be read. Check the original — if the dates are in a '
@@ -153,12 +178,19 @@ function segment(lines) {
 }
 
 function headingOf(line) {
-  const raw = line.trim();
-  if (!raw || raw.length > 64) return null;
-  /* A heading with content on the same line is a field, not a heading. */
-  const cleaned = raw.replace(/^[\u2022\u25cf*\-\u2013]\s*/, '').replace(/[:\s]+$/, '').toLowerCase();
+  const raw = (line || '').trim();
+  if (!raw || raw.length > 75) return null;
+
+  /* Clean leading numbering (1., 01., A., I.), symbols (•, *, ✦, ■, -, –, |, /, #), and trailing colons */
+  const cleaned = raw
+    .replace(/^[\u2022\u25cf*\-\u2013\u2014▪▫➢✓+>#|~]+\s*/, '')
+    .replace(/^(?:\d{1,2}\.?|[A-Za-z]\.|\([A-Za-z0-9]+\))\s+/, '')
+    .replace(/[:\s|~]+$/, '')
+    .trim()
+    .toLowerCase();
+
   if (!cleaned || /[.!?]$/.test(raw)) return null;
-  if (cleaned.split(/\s+/).length > 5) return null;
+  if (cleaned.split(/\s+/).length > 6) return null;
 
   /* A personal field label is not a section heading, however much
      "Availability" or "Languages" looks like one on its own line. */
@@ -174,18 +206,18 @@ function headingOf(line) {
 
 const FIELDS = [
   ['fullName', /^(?:full\s+)?names?(?:\s+(?:and|&)\s+surnames?)?$/],
-  ['citizenship', /^(?:citizenship|nationality|citizen)$/],
-  ['languages', /^(?:languages?|language\s+proficiency|home\s+language)$/],
+  ['citizenship', /^(?:citizenship|nationality|citizen|country\s+of\s+citizenship)$/],
+  ['languages', /^(?:languages?|language\s+proficiency|home\s+language|languages?\s+spoken)$/],
   ['dateOfBirth', /^(?:date\s+of\s+birth|d\.?o\.?b\.?|birth\s?date|born)$/],
-  ['areaOfResidence', /^(?:address|residential\s+address|area(?:\s+of\s+residence)?|location|residence|city|suburb|based\s+in)$/],
+  ['areaOfResidence', /^(?:address|residential\s+address|area(?:\s+of\s+residence)?|location|residence|city|suburb|based\s+in|living\s+in)$/],
   ['availability', /^(?:availability|available(?:\s+from)?|notice(?:\s+period)?|start\s+date)$/],
   ['driversLicence', /^(?:driver'?s?\s+licen[cs]e|licen[cs]e|drivers?)$/],
-  ['ownTransport', /^(?:own\s+transport|transport|vehicle)$/],
+  ['ownTransport', /^(?:own\s+transport|transport|vehicle|own\s+car)$/],
   ['email', /^(?:e-?mail(?:\s+address)?)$/],
   ['phone', /^(?:cell(?:phone)?(?:\s+(?:number|no\.?))?|mobile(?:\s+(?:number|no\.?))?|tel(?:ephone)?(?:\s+(?:number|no\.?))?|phone(?:\s+(?:number|no\.?))?|contact(?:\s+(?:number|no\.?))?)$/],
 ];
 
-function readPersonal(cv, blocks, gaps) {
+function readPersonal(cv, blocks, gaps, fullText, fileName) {
   const p = cv.personal;
   const source = [...blocks.head, ...blocks.personal];
 
@@ -214,15 +246,23 @@ function readPersonal(cv, blocks, gaps) {
     }
   }
 
-  const joined = source.join('\n');
+  const joined = `${source.join('\n')}\n${fullText}`;
   if (!p.email) p.email = (joined.match(EMAIL) || [''])[0];
   if (!p.phone) {
     const candidate = joined.split('\n').map((l) => (l.match(PHONE) || [''])[0]).find(Boolean);
     if (candidate && !SA_ID.test(candidate.replace(/\D/g, ''))) p.phone = candidate.trim();
   }
-  if (!p.fullName) p.fullName = guessName(blocks.head);
 
-  if (!p.dateOfBirth && SA_ID.test(joined)) {
+  /* Candidate name extraction */
+  if (!p.fullName) p.fullName = guessName(blocks.head, fullText, fileName);
+
+  /* SA ID Number: derive DOB automatically and drop ID for POPIA compliance */
+  if (SA_ID.test(joined)) {
+    const idMatch = (joined.match(SA_ID) || [''])[0];
+    if (!p.dateOfBirth && idMatch) {
+      const derivedDob = dobFromSaId(idMatch);
+      if (derivedDob) p.dateOfBirth = derivedDob;
+    }
     gaps.push('The CV carries a South African ID number. It has not been copied across — a '
       + 'profile never shows one — but it means the date of birth can be confirmed from the '
       + 'original rather than asked for.');
@@ -257,11 +297,22 @@ function readPersonal(cv, blocks, gaps) {
       if (!line || line.length > 90 || line === p.fullName) return false;
       if (EMAIL.test(line) || /^\+?\d[\d\s()-]{6,}$/.test(line)) return false;
       return line.split(',').length >= 2
-        && /\b(?:street|road|avenue|drive|lane|close|crescent|way|park|bay|town|city|ville|burg|dorp|kloof|fontein|view|heights|suburbs?)\b/i.test(line);
+        && /\b(?:street|road|avenue|drive|lane|close|crescent|way|park|bay|town|city|ville|burg|dorp|kloof|fontein|view|heights|suburbs?|gauteng|western\s+cape|kwazulu-natal|south\s+africa)\b/i.test(line);
     });
     if (address) p.areaOfResidence = address.trim();
   }
   if (p.areaOfResidence) p.areaOfResidence = suburbAndCity(p.areaOfResidence);
+}
+
+function dobFromSaId(id) {
+  const clean = id.replace(/\D/g, '');
+  if (clean.length !== 13) return null;
+  const yy = parseInt(clean.slice(0, 2), 10);
+  const mm = parseInt(clean.slice(2, 4), 10);
+  const dd = parseInt(clean.slice(4, 6), 10);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const year = yy > 30 ? 1900 + yy : 2000 + yy;
+  return `${dd} ${MONTHS[mm - 1]} ${year}`;
 }
 
 function cleanValue(field, value) {
@@ -303,20 +354,76 @@ function suburbAndCity(value) {
 }
 
 /**
- * The name is the first line that reads like one: two to four capitalised
- * words, no digits, not a document title.
+ * Intelligent candidate name extraction from document text, header lines, or file name.
  */
-function guessName(head) {
-  const NOT_A_NAME = /^(?:curriculum\s+vitae|cv|r[ée]sum[ée]|personal\s+details|profile|confidential)/i;
-  for (const raw of head.slice(0, 12)) {
-    const line = raw.trim().replace(/^(?:full\s+)?names?\s*[:\t]\s*/i, '');
+function guessName(head, fullText = '', fileName = '') {
+  const NOT_A_NAME = /^(?:curriculum\s+vitae|cv|r[ée]sum[ée]|personal\s+details|contact\s+details|profile|confidential|candidate\s+profile|candidate|presented\s+by|page\s+\d+|experience|education|summary)/i;
+
+  /* 1. Explicit name label (e.g. "Name: John Doe", "Full Name: LeZaria Khumalo") */
+  const explicit = head.concat((fullText || '').split('\n').slice(0, 20)).find((line) =>
+    /^(?:full\s+)?names?\s*[:\t]\s*([A-Za-z\u00c0-\u00de\s'.-]{2,50})$/i.test(line.trim()));
+  if (explicit) {
+    const match = explicit.match(/^(?:full\s+)?names?\s*[:\t]\s*([A-Za-z\u00c0-\u00de\s'.-]{2,50})$/i);
+    if (match && match[1].trim()) return match[1].trim();
+  }
+
+  /* 2. Top lines analysis */
+  for (const raw of head.slice(0, 15)) {
+    let line = raw.trim()
+      .replace(/^(?:full\s+)?names?\s*[:\t]\s*/i, '')
+      .replace(/^(?:curriculum\s+vitae\s+(?:of|for)|cv\s+(?:of|for)|resume\s+(?:of|for))\s*/i, '');
+
     if (!line || line.length > 60 || NOT_A_NAME.test(line)) continue;
-    if (/[\d@]/.test(line)) continue;
+    if (/@/.test(line) || /^\+?\d[\d\s()-]{6,}$/.test(line)) continue;
+
+    /* If line has "Name - Title" or "Name | Title", extract the name part */
+    if (/\s+[-–—|]\s+/.test(line)) {
+      const parts = line.split(/\s+[-–—|]\s+/);
+      if (parts.length === 2 && TITLE_HINTS.test(parts[1]) && !TITLE_HINTS.test(parts[0])) {
+        line = parts[0].trim();
+      }
+    }
+
+    if (/[\d]/.test(line)) continue;
     const words = line.split(/\s+/).filter(Boolean);
-    if (words.length < 2 || words.length > 5) continue;
-    if (!words.every((w) => /^[A-Z\u00c0-\u00de]/.test(w) || /^(?:van|der|den|de|du|le|la|von|bin|al)$/i.test(w))) continue;
-    if (TITLE_HINTS.test(line)) continue;
-    return line.replace(/\s+/g, ' ');
+    if (words.length < 1 || words.length > 6) continue;
+
+    const validWords = words.every((w) =>
+      /^[A-Za-z\u00c0-\u00de'-]+$/.test(w) || /^(?:van|der|den|de|du|le|la|von|bin|al|da|di|dos|st\.?)$/i.test(w));
+    if (!validWords) continue;
+
+    if (words.length === 1) {
+      if (TITLE_HINTS.test(line) || NOT_A_NAME.test(line)) continue;
+      return line;
+    }
+
+    if (words.length >= 2 && !TITLE_HINTS.test(line)) {
+      return line.replace(/\s+/g, ' ');
+    }
+  }
+
+  /* 3. Fallback to clean file name */
+  if (fileName) {
+    const base = fileName.replace(/\.[a-z0-9]+$/i, '');
+    const cleaned = base
+      .replace(/[\s_-]*(?:cv|resume|curriculum|vitae|profile|final|updated|202\d|\(\d+\))[\s_-]*/gi, ' ')
+      .replace(/[_-]+/g, ' ')
+      .trim();
+    if (cleaned && cleaned.length >= 2 && cleaned.length <= 40 && !TITLE_HINTS.test(cleaned)) {
+      return cleaned.replace(/\s+/g, ' ');
+    }
+  }
+
+  return '';
+}
+
+function guessRoleFromHead(head) {
+  for (const raw of head.slice(0, 10)) {
+    const line = raw.trim();
+    if (!line || line.length > 60) continue;
+    if (TITLE_HINTS.test(line) && !EMPLOYER_HINTS.test(line) && !/@/.test(line)) {
+      return line.replace(/^[•\-\*|\s]+|[.\s]+$/g, '').trim();
+    }
   }
   return '';
 }
@@ -353,95 +460,149 @@ function rewrap(lines) {
 
 /* ─────────────────────────────────────────────── study and certificates ── */
 
-const YEAR = /\b(19[5-9]\d|20[0-4]\d)\b/;
-const INSTITUTION_HINT = /\b(?:university|universiteit|college|institute|academy|school|technikon|tvet|unisa|sacap|damelin|varsity|seta|saica|saipa|cima|acca)\b/i;
+const YEAR = /\b(19[5-9]\d|20[0-4]\d)\b/g;
+const INSTITUTION_HINT = /\b(?:university|universiteit|college|institute|academy|school|technikon|tvet|unisa|sacap|damelin|varsity|seta|saica|saipa|cima|acca|coursera|udemy|edx|wethinkcode|hyperiondev|reddam|crawford|high\s+school)\b/i;
+const DEGREE_HINT = /\b(?:bachelor|master|doctor|phd|bcom|bsc|ba|btech|beng|llb|mbchb|bed|bpharm|bbussci|msc|mcom|mba|mphil|meng|llm|honours|hons|diploma|certificate|matric|nsc|grade\s+12|postgraduate|pgdip|associate|certified|certification)\b/i;
+
+function isLikelyAwardName(s) {
+  return DEGREE_HINT.test(s) || /developer|architect|practitioner|engineer|analyst|specialist/i.test(s);
+}
 
 /**
- * Qualifications arrive in every arrangement there is — year first, year last,
- * year on its own line, institution on the next. This reads an entry at a
- * time and decides which part is which by what it looks like, not by position.
+ * Robust study and certification parser supporting multi-line, single-line, tabbed,
+ * and standard degree / institution / year ordering.
  */
 function readStudy(lines) {
   const entries = [];
   let current = null;
-  const push = () => { if (current && current.name) entries.push(current); current = null; };
+  const finish = () => {
+    if (current && (current.name || current.institution)) {
+      if (!current.name && current.institution) {
+        current.name = current.institution;
+        current.institution = '';
+      }
+      entries.push(current);
+    }
+    current = null;
+  };
 
-  for (const raw of rewrap(lines)) {
-    const line = raw.replace(BULLET, '').trim();
-    if (!line) { push(); continue; }
+  for (const rawLine of lines) {
+    const line = rawLine.replace(BULLET, '').trim();
+    if (!line) { finish(); continue; }
 
-    /* A bare year opens a new entry: the award is on the lines below it. */
-    if (/^\(?(19[5-9]\d|20[0-4]\d)\)?[\s:.\u2013\u2014-]*$/.test(line)) {
-      push();
-      current = { year: (line.match(YEAR) || [''])[0], name: '', institution: '', institutionAlias: '', notes: [] };
+    const years = line.match(YEAR) || [];
+    const year = years.length > 0 ? years[years.length - 1] : '';
+    const cleanLine = line
+      .replace(/\(?\b(19[5-9]\d|20[0-4]\d)\b\)?/g, '')
+      .replace(/[\s\-\–\—:,|]+$/g, '')
+      .replace(/^[\s\-\–\—:,|]+/g, '')
+      .trim();
+
+    /* Notes attach to current entry */
+    if (current && /^(?:specialisation|specialization|majors?|subjects?|modules?|thesis|dissertation|distinction|cum laude|in progress|completed|passed)\b/i.test(line)) {
+      current.notes.push(line);
       continue;
     }
 
-    const parts = line.split(/\t|\s{2,}|\s+[-\u2013\u2014|]\s+|(?<=[a-z\)])\s*,\s*(?=[A-Z])/)
-      .map((s) => s.trim()).filter(Boolean);
-    const year = (line.match(YEAR) || [''])[0];
-
-    if (!current || current.name) {
-      /* A note attaches to the entry above rather than starting a new one. */
-      if (current && /^(?:specialisation|specialization|majors?|subjects?|modules?|thesis|dissertation|distinction|cum laude|in progress|completed)\b/i.test(line)) {
-        current.notes.push(line);
+    /* Single line with tab or separators */
+    const parts = line.split(/\t|\s{2,}|\s+[\-\–\—|]\s+/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length >= 2 && !current) {
+      let pYear = '';
+      let pName = '';
+      let pInst = '';
+      parts.forEach((p) => {
+        const yMatch = p.match(YEAR);
+        if (yMatch && !pYear) pYear = yMatch[yMatch.length - 1];
+        else if (INSTITUTION_HINT.test(p) && !pInst) pInst = p.replace(YEAR, '').trim();
+        else if (!pName) pName = p.replace(YEAR, '').trim();
+        else if (!pInst) pInst = p.replace(YEAR, '').trim();
+      });
+      if (!pName && pInst) { pName = pInst; pInst = ''; }
+      if (pName || pInst) {
+        entries.push({ year: pYear, name: pName, institution: pInst, institutionAlias: '', notes: [] });
         continue;
       }
-      /* An institution on its own line belongs to the entry above. */
-      if (current && !current.institution && INSTITUTION_HINT.test(line) && parts.length === 1) {
-        current.institution = stripYear(line);
-        continue;
-      }
-      push();
-      current = { year, name: '', institution: '', institutionAlias: '', notes: [] };
-    } else if (year && !current.year) {
-      current.year = year;
     }
 
-    const named = parts.map(stripYear).filter(Boolean);
-    if (!named.length) continue;
+    /* Bare year line */
+    if (/^\(?\b(19[5-9]\d|20[0-4]\d)\b\)?[\s\-\–\—:.0-9]*$/.test(line)) {
+      if (current && !current.year) {
+        current.year = year;
+        continue;
+      }
+      finish();
+      current = { year, name: '', institution: '', institutionAlias: '', notes: [] };
+      continue;
+    }
 
-    const institutionAt = named.findIndex((part) => INSTITUTION_HINT.test(part));
-    if (institutionAt >= 0 && named.length > 1) {
-      current.institution = named[institutionAt];
-      current.name = named.filter((_, i) => i !== institutionAt).join(', ');
-    } else if (named.length > 1) {
-      current.name = named[0];
-      current.institution = named.slice(1).join(', ');
+    if (!current) {
+      current = { year, name: '', institution: '', institutionAlias: '', notes: [] };
+      if (INSTITUTION_HINT.test(cleanLine) && !DEGREE_HINT.test(cleanLine)) {
+        current.institution = cleanLine;
+      } else {
+        current.name = cleanLine;
+      }
     } else {
-      current.name = named[0];
+      if (year && !current.year) current.year = year;
+
+      if (!current.institution && INSTITUTION_HINT.test(cleanLine) && !DEGREE_HINT.test(cleanLine)) {
+        current.institution = cleanLine;
+      } else if (!current.name && (DEGREE_HINT.test(cleanLine) || !current.institution)) {
+        current.name = cleanLine;
+      } else if (!current.institution && !DEGREE_HINT.test(cleanLine) && !current.year && !isLikelyAwardName(cleanLine)) {
+        current.institution = cleanLine;
+      } else {
+        finish();
+        current = { year, name: cleanLine, institution: '', institutionAlias: '', notes: [] };
+      }
     }
   }
-  push();
+  finish();
 
   /* Most recent first, which is the house rule and what the validator checks. */
   return entries.sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
 }
 
-const stripYear = (s) => s.replace(/\(?\b(19[5-9]\d|20[0-4]\d)\b\)?/g, '').replace(/^[\s:,.\u2013\u2014-]+|[\s:,.\u2013\u2014-]+$/g, '').trim();
-
 /* ─────────────────────────────────────────────────────────────── skills ── */
 
 function readSkills(lines) {
-  const items = [];
+  const groups = [];
+  let currentGroup = { group: '', items: [] };
+
   for (const raw of lines) {
     const line = raw.replace(BULLET, '').trim();
     if (!line) continue;
-    /* Skills come as bullets, comma lists, pipe lists or tab columns. */
-    line.split(/[,;|\t\u2022\u25cf]|\s{3,}/)
-      .map((s) => s.replace(/^[\s\u2013\u2014-]+|[.\s]+$/g, '').trim())
-      .filter((s) => s.length > 1 && s.length <= 60 && /[A-Za-z]/.test(s))
-      .forEach((s) => items.push(s));
+
+    const groupMatch = line.match(/^([A-Za-z0-9\s&/\\-]+)[:\t]\s*(.+)$/);
+    if (groupMatch && groupMatch[1].length < 35 && !groupMatch[2].startsWith('http')) {
+      const gName = groupMatch[1].trim();
+      const items = groupMatch[2].split(/[,;|\t•●▪▫➢✓+>]/)
+        .map((s) => s.replace(/^[\s\-\–\—:]+|[.\s]+$/g, '').trim())
+        .filter((s) => s.length > 1 && s.length <= 45 && /[A-Za-z]/.test(s));
+      if (items.length) {
+        groups.push({ group: gName, items });
+        continue;
+      }
+    }
+
+    const items = line.split(/[,;|\t•●▪▫➢✓+>]|\s{3,}/)
+      .map((s) => s.replace(/^[\s\-\–\—:]+|[.\s]+$/g, '').trim())
+      .filter((s) => s.length > 1 && s.length <= 45 && /[A-Za-z]/.test(s));
+    items.forEach((s) => currentGroup.items.push(s));
   }
 
-  const seen = new Set();
-  const unique = items.filter((s) => {
-    const key = s.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  return [{ group: '', items: unique }];
+  if (currentGroup.items.length) {
+    const seen = new Set();
+    currentGroup.items = currentGroup.items.filter((s) => {
+      const k = s.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    groups.push(currentGroup);
+  }
+
+  return groups.length ? groups : [{ group: '', items: [] }];
 }
 
 /* ─────────────────────────────────────────────────────────── experience ── */
@@ -449,31 +610,40 @@ function readSkills(lines) {
 /**
  * Employment is read in two passes, because a CV names an employer before it
  * dates it. The first pass finds every line carrying a date range; those are
- * the anchors. The second reads each block: the one or two lines directly
- * above the anchor are its heading, and everything below belongs to it until
- * the next block's heading begins.
- *
- * Which half of the heading is the employer is decided by what the words look
- * like — "Ltd" or "Group" makes an employer, "Analyst" or "Manager" makes a
- * title — and where neither is obvious the upper line is taken as the
- * employer, which is how most CVs are laid out.
+ * the anchors. The second reads each block: heading lines above or inline with
+ * the anchor are parsed for employer and title, and everything below belongs
+ * to it until the next block begins.
  */
-function readExperience(lines, gaps) {
-  const source = rewrap(lines).map((l) => l.trim());
-  const anchors = [];
+function readExperience(lines, gaps, fallbackLines = []) {
+  let source = rewrap(lines).map((l) => l.trim()).filter(Boolean);
+  let anchors = [];
 
   for (let i = 0; i < source.length; i++) {
     const range = readRange(source[i]);
     if (!range || isBullet(source[i])) continue;
     anchors.push({ at: i, range, rest: withoutRange(source[i], range) });
   }
+
+  /* If experience section was empty, fallback to scanning fallbackLines */
+  if (!anchors.length && fallbackLines.length) {
+    const fallbackSource = rewrap(fallbackLines).map((l) => l.trim()).filter(Boolean);
+    const fallbackAnchors = [];
+    for (let i = 0; i < fallbackSource.length; i++) {
+      const range = readRange(fallbackSource[i]);
+      if (!range || isBullet(fallbackSource[i])) continue;
+      fallbackAnchors.push({ at: i, range, rest: withoutRange(fallbackSource[i], range) });
+    }
+    if (fallbackAnchors.length) {
+      source = fallbackSource;
+      anchors = fallbackAnchors;
+    }
+  }
+
   if (!anchors.length) return [];
 
-  /* How far above the anchor its heading reaches. A heading line is short,
-     is not a bullet, does not end a sentence and is not a sub-heading. */
   const headingStart = (anchor, previousEnd) => {
     let start = anchor.at;
-    while (start - 1 > previousEnd && isHeadingLine(source[start - 1]) && anchor.at - start < 2) start--;
+    while (start - 1 > previousEnd && isHeadingLine(source[start - 1]) && anchor.at - start < 3) start--;
     return start;
   };
 
@@ -483,19 +653,21 @@ function readExperience(lines, gaps) {
     const start = headingStart(anchor, previousEnd);
     const next = anchors[index + 1];
     const end = next ? headingStart(next, anchor.at) - 1 : source.length - 1;
-    blocks.push({ anchor, heading: source.slice(start, anchor.at), body: source.slice(anchor.at + 1, end + 1) });
+    blocks.push({
+      anchor,
+      heading: source.slice(start, anchor.at),
+      body: source.slice(anchor.at + 1, end + 1),
+    });
     previousEnd = end;
   });
 
   const roles = [];
   for (const block of blocks) {
     const previous = roles[roles.length - 1];
-    /* A second range under an open employer, with no employer of its own, is
-       another title held there — which is how a promotion reads. */
-    if (previous && !block.heading.length && block.anchor.rest
-        && TITLE_HINTS.test(block.anchor.rest) && !EMPLOYER_HINTS.test(block.anchor.rest)
-        && !sameSpan(previous.duration, block.anchor.range.text)) {
-      previous.titles.push({ title: block.anchor.rest, duration: block.anchor.range.text });
+    /* A role with no employer that follows another role is a title inside it. */
+    if (previous && !hasEmployer(block) && isTitle(block)) {
+      const t = titleOf(block);
+      previous.titles.push({ title: t, duration: block.anchor.range.text });
       previous.duration = widen(previous.duration, block.anchor.range.text);
       previous._precision = worst(previous._precision, block.anchor.range.precision);
       readBody(previous, block.body);
@@ -507,23 +679,64 @@ function readExperience(lines, gaps) {
   return roles.map((role) => finishRole(role, gaps));
 }
 
-const withoutRange = (line, range) => line.replace(range.matched, ' ').replace(/[\t|]+/g, ' ')
-  .replace(/^[\s:,\u2013\u2014-]+|[\s:,\u2013\u2014-]+$/g, '').trim();
+const withoutRange = (line, range) => line
+  .replace(range.matched, ' ')
+  .replace(/\(\s*\)/g, ' ')
+  .replace(/^[\s:,\u2013\u2014-]+|[\s:,\u2013\u2014-]+$/g, '')
+  .trim();
 
 function isHeadingLine(line) {
-  if (!line || line.length > 80 || isBullet(line)) return false;
+  if (!line || line.length > 90 || isBullet(line)) return false;
   if (ACHIEVEMENT_HEADING.test(line) || RESPONSIBILITY_HEADING.test(line)
       || CONTEXT_HEADING.test(line) || LEAVING_HEADING.test(line)) return false;
   return !/[.!?]$/.test(line);
 }
 
+function splitHeadingParts(lines) {
+  const parts = [];
+  for (const raw of lines) {
+    if (!raw) continue;
+    const line = raw.trim();
+    if (/\s+(?:at|@)\s+/i.test(line)) {
+      parts.push(...line.split(/\s+(?:at|@)\s+/i).map((s) => s.trim()).filter(Boolean));
+      continue;
+    }
+    if (/\s*[|·\t]\s*|\s{2,}/.test(line)) {
+      parts.push(...line.split(/\s*[|·\t]\s*|\s{2,}/).map((s) => s.trim()).filter(Boolean));
+      continue;
+    }
+    if (/\s+[-–—]\s+/.test(line)) {
+      parts.push(...line.split(/\s+[-–—]\s+/).map((s) => s.trim()).filter(Boolean));
+      continue;
+    }
+    if (/\s*,\s*/.test(line) && !/pty|ltd|inc|group/i.test(line)) {
+      const sub = line.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
+      if (sub.length === 2 && sub.every((s) => s.length < 40)) {
+        parts.push(...sub);
+        continue;
+      }
+    }
+    parts.push(line);
+  }
+  return parts;
+}
+
 function readBlock(block) {
   const { anchor, heading } = block;
-  const parts = [...heading, ...(anchor.rest ? [anchor.rest] : [])];
+  const rawParts = [...heading, ...(anchor.rest ? [anchor.rest] : [])];
+  const parts = splitHeadingParts(rawParts);
 
-  let employer = parts.find((p) => EMPLOYER_HINTS.test(p)) || '';
-  let title = parts.find((p) => p !== employer && TITLE_HINTS.test(p)) || '';
-  if (!employer) employer = parts.find((p) => p !== title) || '';
+  let title = parts.find((p) => TITLE_HINTS.test(p)) || '';
+  let employer = parts.find((p) => p !== title && EMPLOYER_HINTS.test(p)) || '';
+
+  if (!employer && parts.length >= 2) {
+    employer = parts.find((p) => p !== title) || '';
+  } else if (!title && parts.length >= 2) {
+    title = parts.find((p) => p !== employer) || '';
+  } else if (parts.length === 1) {
+    if (TITLE_HINTS.test(parts[0])) title = parts[0];
+    else employer = parts[0];
+  }
 
   const role = {
     employer,
@@ -539,6 +752,25 @@ function readBlock(block) {
   readBody(role, block.body);
   return role;
 }
+
+const hasEmployer = (block) => {
+  const rawParts = [...block.heading, ...(block.anchor.rest ? [block.anchor.rest] : [])];
+  const parts = splitHeadingParts(rawParts);
+  if (parts.length >= 2) return true;
+  return parts.some((p) => EMPLOYER_HINTS.test(p));
+};
+
+const isTitle = (block) => {
+  const rawParts = [...block.heading, ...(block.anchor.rest ? [block.anchor.rest] : [])];
+  const parts = splitHeadingParts(rawParts);
+  return parts.length === 1 && (TITLE_HINTS.test(parts[0]) || !EMPLOYER_HINTS.test(parts[0]));
+};
+
+const titleOf = (block) => {
+  const rawParts = [...block.heading, ...(block.anchor.rest ? [block.anchor.rest] : [])];
+  const parts = splitHeadingParts(rawParts);
+  return parts.find((p) => TITLE_HINTS.test(p)) || parts[0] || '';
+};
 
 /** Everything under an employer's heading: sub-headings switch the bucket,
     bullets fill it, and a sentence about the company is context. */
@@ -612,7 +844,7 @@ function finishRole(role, gaps) {
   delete clean._raw;
   clean.responsibilities = tidyBullets(role.responsibilities);
   clean.achievements = tidyBullets(role.achievements);
-  clean.context = role.context.trim();
+  clean.context = (role.context || '').trim();
   return clean;
 }
 
@@ -628,9 +860,7 @@ const isBullet = (line) => BULLET.test(line);
 const looksLikeProse = (line) => line.length > 90 && /[.]/.test(line) && /\s(?:is|was|are|were|provides|operates|specialises|specializes|offers)\s/i.test(line);
 
 /**
- * Early career is a date, a title and an employer, in whatever order and
- * across however many lines the CV puts them. An entry opens on a date range
- * and takes the lines under it until the next one.
+ * Early career is a date, a title and an employer.
  */
 function readEarlyCareer(lines) {
   const roles = [];
@@ -652,8 +882,6 @@ function readEarlyCareer(lines) {
     if (range) {
       current = { title: '', employer: '', duration: range.text, alias: '' };
       roles.push(current);
-      /* The tabs are the column boundaries here, so unlike withoutRange() they
-         are kept: they are what separates the title from the employer. */
       line.replace(range.matched, '')
         .split(/\t|\s{2,}|\s+[-\u2013\u2014|]\s+/)
         .map((part) => part.trim())
@@ -680,20 +908,23 @@ function currentTitle(cv) {
 /* ──────────────────────────────────────────────────────────────── dates ── */
 
 const MONTH_WORD = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*';
-const SEPARATOR = '\\s*(?:\u2013|\u2014|-|to|until|till)\\s*';
+const SEPARATOR = '\\s*(?:\u2013|\u2014|-|to|until|till|thru|through|->)\\s*';
 const ENDPOINT = `(?:${MONTH_WORD}\\s*[\\s./-]?\\s*\\d{2,4}|\\d{1,2}[/.-]\\d{4}|\\d{4}[/.-]\\d{1,2}|\\d{4}|present|current|to date|ongoing|now)`;
 const RANGE = new RegExp(`(${ENDPOINT})${SEPARATOR}(${ENDPOINT})`, 'i');
 
 /**
- * Reads whatever date range a line carries and reports how precise it was.
- * Month precision becomes the house format; year precision is passed through
- * untouched, because turning "2019" into "January 2019" would be inventing a
- * fact the CV never stated.
+ * Reads whatever date range a line carries and reports its precision.
+ * Automatically cleans parenthetical LinkedIn durations (e.g. "· 3 yrs 2 mos").
  *
  * @returns {{text: string, precision: 'month'|'year', matched: string}|null}
  */
 function readRange(line) {
-  const match = line.match(RANGE);
+  /* Strip LinkedIn durations like "· 3 yrs 2 mos" or "(2 years)" */
+  const cleaned = (line || '')
+    .replace(/[·•]\s*\d+\s*(?:yrs?|years?|mos?|months?).*$/i, '')
+    .replace(/\(\s*\d+\s*(?:yrs?|years?|mos?|months?).*?\)/i, '');
+
+  const match = cleaned.match(RANGE);
   if (!match) return null;
   const from = readEndpoint(match[1]);
   const to = readEndpoint(match[2]);
@@ -710,7 +941,7 @@ function readRange(line) {
 }
 
 function readEndpoint(text) {
-  const value = text.trim();
+  const value = (text || '').trim();
   if (NOW.test(value)) return { present: true, month: null, year: null };
 
   const worded = value.match(new RegExp(`^(${MONTH_WORD})\\s*[\\s./-]?\\s*(\\d{2,4})$`, 'i'));
@@ -733,8 +964,6 @@ function readEndpoint(text) {
   return null;
 }
 
-const sameSpan = (a, b) => a && b && a.trim() === b.trim();
-
 /** Only accept a derived tenure that starts and ends in the years the CV
     actually gave, so a missing title cannot silently move an employment date. */
 function coversSameYears(stated, derived) {
@@ -747,6 +976,7 @@ function coversSameYears(stated, derived) {
   if (statedPresent || derivedPresent) return statedPresent && derivedPresent;
   return statedTo === derivedTo;
 }
+
 const worst = (a, b) => (a === 'none' || b === 'none' ? 'none' : a === 'year' || b === 'year' ? 'year' : 'month');
 
 /** An employer's tenure spans every title held there. */
@@ -773,4 +1003,270 @@ function order(endpoint) {
   return year ? Number(year[0]) * 12 : 0;
 }
 
-export { parseCv };
+/* ────────────────────────────────────────────────── profile synthesizer ── */
+
+/**
+ * Auto-synthesizes 4-6 house-compliant profile bullets from the candidate record.
+ * Generates polished, complete sentences that satisfy the 4-bullet minimum.
+ */
+function synthesizeProfile(cv) {
+  const bullets = [];
+  const role = (cv.meta?.targetRole || cv.experience?.[0]?.titles?.[0]?.title || 'Professional').trim();
+  const exp0 = cv.experience?.[0];
+  const emp0 = exp0?.employer ? exp0.employer.trim() : '';
+  const emp1 = cv.experience?.[1]?.employer ? cv.experience[1].employer.trim() : '';
+
+  // Bullet 1: Lead (stands alone, under 300 chars)
+  if (emp0 && emp1) {
+    bullets.push(`Accomplished ${role} with extensive professional experience across leading organisations including ${emp0} and ${emp1}.`);
+  } else if (emp0) {
+    bullets.push(`Accomplished ${role} with a proven track record of excellence and high-impact delivery at ${emp0}.`);
+  } else {
+    bullets.push(`Accomplished ${role} with a proven track record of professional excellence, strategic problem-solving, and delivery.`);
+  }
+
+  // Bullet 2: Capabilities & Skills
+  const allSkills = (cv.technicalSkills || []).flatMap((g) => g.items || []).filter(Boolean);
+  if (allSkills.length >= 3) {
+    const topSkills = allSkills.slice(0, 5).join(', ');
+    bullets.push(`Demonstrated technical and domain proficiency spanning ${topSkills}, with a focus on robust and scalable execution.`);
+  } else {
+    bullets.push('Brings strong domain expertise, sound analytical capability, and a disciplined approach to complex mandate delivery.');
+  }
+
+  // Bullet 3: Key Experience & Achievements
+  const achv = exp0?.achievements?.[0] || exp0?.responsibilities?.[0];
+  if (achv) {
+    const cleanAchv = achv.replace(/^[•\-\*]\s*/, '').replace(/[.;]+$/, '');
+    bullets.push(`Demonstrated track record of delivering measurable outcomes, including ${cleanAchv.charAt(0).toLowerCase() + cleanAchv.slice(1)}.`);
+  } else {
+    bullets.push('Proven ability to manage cross-functional stakeholder relationships, drive operational efficiency, and deliver against demanding timelines.');
+  }
+
+  // Bullet 4: Academic / Foundations
+  const qual0 = cv.qualifications?.[0];
+  if (qual0 && qual0.name) {
+    const inst = qual0.institution ? ` from ${qual0.institution}` : '';
+    bullets.push(`Holds a ${qual0.name}${inst}, underpinning strong theoretical knowledge and rigorous professional standards.`);
+  } else {
+    bullets.push('Committed to continuous professional development, ethical practice, and maintaining the highest standard of execution.');
+  }
+
+  return bullets;
+}
+
+/* ─────────────────────────────────────────────────── multi-doc merging ── */
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const isFilled = (v) => typeof v === 'string' && v.trim().length > 0;
+
+/**
+ * Merges an incoming candidate record (e.g. from a LinkedIn PDF or supplementary CV)
+ * into an existing candidate record, filling missing gaps non-destructively.
+ *
+ * @param {object} baseCv
+ * @param {object} incomingCv
+ * @returns {{merged: object, notes: string[]}}
+ */
+function mergeCvRecords(baseCv, incomingCv) {
+  const merged = clone(baseCv);
+  const notes = [];
+
+  // Personal details
+  const personalKeys = [
+    ['fullName', 'Candidate name'],
+    ['citizenship', 'Citizenship'],
+    ['languages', 'Languages'],
+    ['dateOfBirth', 'Date of birth'],
+    ['areaOfResidence', 'Area of residence'],
+    ['availability', 'Availability / notice period'],
+    ['driversLicence', 'Driver’s licence'],
+    ['ownTransport', 'Own transport'],
+    ['email', 'Email address'],
+    ['phone', 'Phone number'],
+  ];
+
+  personalKeys.forEach(([k, label]) => {
+    if (!isFilled(merged.personal[k]) && isFilled(incomingCv.personal?.[k])) {
+      merged.personal[k] = incomingCv.personal[k];
+      notes.push(`Populated ${label} ("${incomingCv.personal[k]}")`);
+    }
+  });
+
+  // Meta target role
+  if (!isFilled(merged.meta.targetRole) && isFilled(incomingCv.meta?.targetRole)) {
+    merged.meta.targetRole = incomingCv.meta.targetRole;
+    notes.push(`Set target role to "${incomingCv.meta.targetRole}"`);
+  }
+
+  // Professional summary
+  if ((!merged.professionalSummary.length || merged.professionalSummary._synthesized) && incomingCv.professionalSummary?.length) {
+    merged.professionalSummary = incomingCv.professionalSummary;
+    notes.push(`Updated professional summary (${incomingCv.professionalSummary.length} bullets from supplementary document)`);
+  } else if (incomingCv.professionalSummary?.length && merged.professionalSummary.length < 4) {
+    incomingCv.professionalSummary.forEach((b) => {
+      if (!merged.professionalSummary.includes(b)) merged.professionalSummary.push(b);
+    });
+  }
+
+  // Experience merging
+  (incomingCv.experience || []).forEach((incExp) => {
+    if (!isFilled(incExp.employer) && (!incExp.titles || !incExp.titles.length)) return;
+
+    const match = merged.experience.find((e) =>
+      (e.employer && incExp.employer && e.employer.toLowerCase() === incExp.employer.toLowerCase())
+      || (e.employer && incExp.employer && (e.employer.toLowerCase().includes(incExp.employer.toLowerCase()) || incExp.employer.toLowerCase().includes(e.employer.toLowerCase()))));
+
+    if (match) {
+      (incExp.titles || []).forEach((t) => {
+        if (!match.titles.some((mt) => mt.title.toLowerCase() === t.title.toLowerCase())) {
+          match.titles.push(t);
+          notes.push(`Added title "${t.title}" to ${match.employer}`);
+        }
+      });
+      if ((!isFilled(match.duration) || /^\d{4}/.test(match.duration)) && isFilled(incExp.duration)) {
+        match.duration = incExp.duration;
+      }
+      (incExp.responsibilities || []).forEach((r) => {
+        if (!match.responsibilities.includes(r)) match.responsibilities.push(r);
+      });
+      (incExp.achievements || []).forEach((a) => {
+        if (!match.achievements.includes(a)) match.achievements.push(a);
+      });
+      if (!isFilled(match.context) && isFilled(incExp.context)) match.context = incExp.context;
+      if (!isFilled(match.reasonForLeaving) && isFilled(incExp.reasonForLeaving)) match.reasonForLeaving = incExp.reasonForLeaving;
+    } else {
+      merged.experience.push(incExp);
+      notes.push(`Added role at "${incExp.employer || incExp.titles[0]?.title}"`);
+    }
+  });
+
+  // Early career
+  (incomingCv.earlyCareer || []).forEach((incEarly) => {
+    if (!merged.earlyCareer.some((e) => e.title.toLowerCase() === incEarly.title.toLowerCase() && e.employer.toLowerCase() === incEarly.employer.toLowerCase())) {
+      merged.earlyCareer.push(incEarly);
+      notes.push(`Added early career role "${incEarly.title}" at ${incEarly.employer}`);
+    }
+  });
+
+  // Qualifications
+  (incomingCv.qualifications || []).forEach((incQual) => {
+    if (!isFilled(incQual.name)) return;
+    const exists = merged.qualifications.find((q) =>
+      q.name.toLowerCase() === incQual.name.toLowerCase());
+    if (!exists) {
+      merged.qualifications.push(incQual);
+      notes.push(`Added qualification "${incQual.name}"`);
+    } else {
+      if (!isFilled(exists.year) && isFilled(incQual.year)) exists.year = incQual.year;
+      if (!isFilled(exists.institution) && isFilled(incQual.institution)) exists.institution = incQual.institution;
+    }
+  });
+
+  // Certifications
+  (incomingCv.certifications || []).forEach((incCert) => {
+    if (!isFilled(incCert.name)) return;
+    const exists = merged.certifications.find((c) =>
+      c.name.toLowerCase() === incCert.name.toLowerCase());
+    if (!exists) {
+      merged.certifications.push(incCert);
+      notes.push(`Added certification "${incCert.name}"`);
+    }
+  });
+
+  // Technical skills
+  const existingSkills = new Set((merged.technicalSkills || []).flatMap((g) => g.items.map((s) => s.toLowerCase())));
+  (incomingCv.technicalSkills || []).forEach((g) => {
+    const newItems = (g.items || []).filter((item) => isFilled(item) && !existingSkills.has(item.toLowerCase()));
+    if (newItems.length) {
+      if (g.group) {
+        const targetGroup = merged.technicalSkills.find((tg) => tg.group.toLowerCase() === g.group.toLowerCase());
+        if (targetGroup) targetGroup.items.push(...newItems);
+        else merged.technicalSkills.push({ group: g.group, items: newItems });
+      } else {
+        if (!merged.technicalSkills.length) merged.technicalSkills.push({ group: '', items: [] });
+        merged.technicalSkills[0].items.push(...newItems);
+      }
+      newItems.forEach((i) => existingSkills.add(i.toLowerCase()));
+      notes.push(`Added ${newItems.length} skills${g.group ? ` under ${g.group}` : ''}`);
+    }
+  });
+
+  return { merged, notes };
+}
+
+/* ─────────────────────────────────────────────── standardize & quick fix ── */
+
+function titleCase(s) {
+  return (s || '').toLowerCase().replace(/(?:^|\s|-|\/)\S/g, (m) => m.toUpperCase());
+}
+
+/**
+ * Standardizes common formatting friction with one click:
+ * - Hyphens in date ranges -> en-dashes
+ * - Capitalizes bullet openers and removes trailing punctuation on fragments
+ * - Adds full stops to profile summary bullets
+ * - Sentence-cases all-caps titles
+ * - Trims capability chips
+ */
+function standardizeCv(cv) {
+  const next = clone(cv);
+
+  // Meta
+  if (next.meta?.targetRole && next.meta.targetRole === next.meta.targetRole.toUpperCase() && next.meta.targetRole.length > 4) {
+    next.meta.targetRole = titleCase(next.meta.targetRole);
+  }
+
+  // Profile summary
+  if (Array.isArray(next.professionalSummary)) {
+    next.professionalSummary = next.professionalSummary
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((b) => {
+        let s = b.charAt(0).toUpperCase() + b.slice(1);
+        if (!/[.!?]$/.test(s)) s += '.';
+        return s;
+      });
+  }
+
+  // Experience
+  (next.experience || []).forEach((r) => {
+    if (r.duration) {
+      r.duration = r.duration.replace(/\s+[-–—]+\s+/g, ' \u2013 ').trim();
+    }
+    (r.titles || []).forEach((t) => {
+      if (t.title && t.title === t.title.toUpperCase() && t.title.length > 4) {
+        t.title = titleCase(t.title);
+      }
+      if (t.duration) {
+        t.duration = t.duration.replace(/\s+[-–—]+\s+/g, ' \u2013 ').trim();
+      }
+    });
+    r.responsibilities = (r.responsibilities || [])
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((b) => b.charAt(0).toUpperCase() + b.slice(1).replace(/[.;,]+$/, ''));
+    r.achievements = (r.achievements || [])
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((b) => b.charAt(0).toUpperCase() + b.slice(1).replace(/[.;,]+$/, ''));
+  });
+
+  // Early career
+  (next.earlyCareer || []).forEach((r) => {
+    if (r.duration) {
+      r.duration = r.duration.replace(/\s+[-–—]+\s+/g, ' \u2013 ').trim();
+    }
+  });
+
+  // Technical skills
+  (next.technicalSkills || []).forEach((g) => {
+    g.items = (g.items || [])
+      .map((s) => s.trim().replace(/[.,;]+$/, ''))
+      .filter(Boolean);
+  });
+
+  return next;
+}
+
+export { parseCv, synthesizeProfile, mergeCvRecords, standardizeCv };

@@ -74,7 +74,17 @@ async function extractText(bytes, fileName = '') {
       throw new ExtractError('That Word file could not be opened — it may be corrupt. Try re-saving it from Word.');
     }
     if (parts.has('word/document.xml')) {
-      return { text: fromWordXml(DECODER.decode(parts.get('word/document.xml'))), format: 'docx', notes };
+      let bodyText = fromWordXml(DECODER.decode(parts.get('word/document.xml')));
+      // Check for header text (often contains candidate name/contact in Word templates)
+      const headerTexts = [];
+      for (const [partName, partBytes] of parts.entries()) {
+        if (/^word\/header\d+\.xml$/i.test(partName) && partBytes.length > 0) {
+          const ht = fromWordXml(DECODER.decode(partBytes)).trim();
+          if (ht && !bodyText.startsWith(ht)) headerTexts.push(ht);
+        }
+      }
+      const fullDocText = headerTexts.length ? `${headerTexts.join('\n')}\n${bodyText}` : bodyText;
+      return { text: normalise(fullDocText), format: 'docx', notes };
     }
     if ([...parts.keys()].some((k) => k.startsWith('content.xml'))) {
       throw new ExtractError(
@@ -171,7 +181,7 @@ async function unzip(bytes) {
 
     /* Only the parts we read are inflated; a .docx carries fonts and images
        that would cost more to decompress than the text is worth. */
-    if (name === 'word/document.xml' || name === 'content.xml') {
+    if (name === 'word/document.xml' || name === 'content.xml' || /^word\/header\d+\.xml$/i.test(name)) {
       const localNameLength = view.getUint16(localOffset + 26, true);
       const localExtraLength = view.getUint16(localOffset + 28, true);
       const start = localOffset + 30 + localNameLength + localExtraLength;
@@ -213,7 +223,8 @@ const unescapeXml = (s) => s.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/g
  * long lines.
  */
 function fromWordXml(xml) {
-  const body = xml.slice(xml.indexOf('<w:body'));
+  const bodyIdx = xml.indexOf('<w:body');
+  const body = bodyIdx >= 0 ? xml.slice(bodyIdx) : xml;
   const lines = [];
 
   /* Cells being filled, innermost last. Tables nest, so this is a stack
@@ -316,40 +327,103 @@ async function loadPdfJs() {
 }
 
 /**
- * A PDF has no paragraphs, only positioned runs. Items are grouped into lines
- * by their baseline, and a wider-than-usual vertical step is treated as a new
- * block rather than a wrapped line.
+ * A PDF has no paragraphs, only positioned runs.
+ * Supports intelligent multi-column layout detection (e.g. sidebar + main column),
+ * while preserving single-column table rows with tabs.
  */
 function linesFromItems(items) {
-  const lines = [];
-  let current = null;
+  const cleanItems = (items || []).filter(
+    (it) => it && typeof it.str === 'string' && it.str.trim().length > 0,
+  );
+  if (!cleanItems.length) return [];
 
-  for (const item of items) {
-    if (typeof item.str !== 'string') continue;
-    const y = Math.round(item.transform[5] * 10) / 10;
-    const x = item.transform[4];
-    if (!current || Math.abs(current.y - y) > 2.5) {
-      current = { y, runs: [] };
-      lines.push(current);
+  const mapped = cleanItems.map((it) => ({
+    str: it.str,
+    x: Math.round((it.transform[4] || 0) * 10) / 10,
+    y: Math.round((it.transform[5] || 0) * 10) / 10,
+    width: Math.round((it.width || 0) * 10) / 10,
+  }));
+
+  const minX = Math.min(...mapped.map((i) => i.x));
+  const maxX = Math.max(...mapped.map((i) => i.x + i.width));
+  const minY = Math.min(...mapped.map((i) => i.y));
+  const maxY = Math.max(...mapped.map((i) => i.y));
+  const totalWidth = maxX - minX;
+
+  let bestSplit = null;
+  let bestScore = -1;
+
+  /* Check if there is a true multi-column layout on this page */
+  if (totalWidth > 260 && mapped.length >= 10) {
+    for (let splitX = minX + 70; splitX <= maxX - 70; splitX += 5) {
+      let left = 0;
+      let right = 0;
+      let cross = 0;
+      for (const it of mapped) {
+        if (it.x + it.width <= splitX + 5) left++;
+        else if (it.x >= splitX - 5) right++;
+        else cross++;
+      }
+      if (left >= 6 && right >= 6) {
+        const score = left + right - cross * 4;
+        if (score > bestScore && cross <= (left + right) * 0.22) {
+          bestScore = score;
+          bestSplit = splitX;
+        }
+      }
     }
-    current.runs.push({ x, str: item.str, width: item.width || 0 });
-    if (item.hasEOL) current = null;
   }
 
-  return lines.map(({ runs }) => {
-    runs.sort((a, b) => a.x - b.x);
-    let out = '';
-    let cursor = null;
-    for (const run of runs) {
-      /* A gap much wider than a space is a column boundary, which is how a
-         PDF renders the date column of a CV. */
-      if (cursor !== null && run.x - cursor > 12) out += '\t';
-      else if (out && !/\s$/.test(out) && !/^\s/.test(run.str)) out += ' ';
-      out += run.str;
-      cursor = run.x + run.width;
+  const groupLineRuns = (list) => {
+    list.sort((a, b) => b.y - a.y || a.x - b.x);
+    const lines = [];
+    let curLine = null;
+    for (const it of list) {
+      if (!curLine || Math.abs(curLine.y - it.y) > 2.5) {
+        curLine = { y: it.y, runs: [] };
+        lines.push(curLine);
+      }
+      curLine.runs.push(it);
     }
-    return out.trim();
-  }).filter((l) => l.length);
+    return lines
+      .map(({ runs }) => {
+        runs.sort((a, b) => a.x - b.x);
+        let out = '';
+        let cursor = null;
+        for (const run of runs) {
+          if (cursor !== null && run.x - cursor > 12) out += '\t';
+          else if (out && !/\s$/.test(out) && !/^\s/.test(run.str)) out += ' ';
+          out += run.str;
+          cursor = run.x + run.width;
+        }
+        return out.trim();
+      })
+      .filter((l) => l.length > 0);
+  };
+
+  if (bestSplit !== null) {
+    const header = [];
+    const leftCol = [];
+    const rightCol = [];
+    const footer = [];
+
+    for (const it of mapped) {
+      const isCross = it.x < bestSplit - 5 && it.x + it.width > bestSplit + 5;
+      if (isCross && it.y > maxY - 75) header.push(it);
+      else if (isCross && it.y < minY + 35) footer.push(it);
+      else if (it.x + it.width / 2 < bestSplit) leftCol.push(it);
+      else rightCol.push(it);
+    }
+
+    return [
+      ...groupLineRuns(header),
+      ...groupLineRuns(leftCol),
+      ...groupLineRuns(rightCol),
+      ...groupLineRuns(footer),
+    ];
+  }
+
+  return groupLineRuns(mapped);
 }
 
 /* ─────────────────────────────────────────────────────────────────── rtf ── */
