@@ -141,7 +141,7 @@ function emptyRecord(mode) {
     personal: {
       fullName: '', citizenship: '', languages: '', dateOfBirth: '',
       areaOfResidence: '', availability: '', driversLicence: '', ownTransport: '',
-      email: '', phone: '', areaAlias: '',
+      eeStatus: '', email: '', phone: '', areaAlias: '',
     },
     consultant: {
       contactPerson: 'Graham Glintenkamp',
@@ -213,6 +213,9 @@ const FIELDS = [
   ['availability', /^(?:availability|available(?:\s+from)?|notice(?:\s+period)?|start\s+date)$/],
   ['driversLicence', /^(?:driver'?s?\s+licen[cs]e|licen[cs]e|drivers?)$/],
   ['ownTransport', /^(?:own\s+transport|transport|vehicle|own\s+car)$/],
+  /* South African Employment Equity status. It is personal information, so it
+     is captured only when a CV actually states it — never inferred. */
+  ['eeStatus', /^(?:employment\s+equity(?:\s+status)?|ee(?:\s+status)?|equity\s+status|race|ethnicity|demographic\s+(?:status|group)|designated\s+group|designation)$/],
   ['email', /^(?:e-?mail(?:\s+address)?)$/],
   ['phone', /^(?:cell(?:phone)?(?:\s+(?:number|no\.?))?|mobile(?:\s+(?:number|no\.?))?|tel(?:ephone)?(?:\s+(?:number|no\.?))?|phone(?:\s+(?:number|no\.?))?|contact(?:\s+(?:number|no\.?))?)$/],
 ];
@@ -1082,6 +1085,7 @@ function mergeCvRecords(baseCv, incomingCv) {
     ['availability', 'Availability / notice period'],
     ['driversLicence', 'Driver’s licence'],
     ['ownTransport', 'Own transport'],
+    ['eeStatus', 'Employment Equity (EE) status'],
     ['email', 'Email address'],
     ['phone', 'Phone number'],
   ];
