@@ -12,7 +12,7 @@ React/Vite website for Talent Tree Consulting.
 ## Routes
 
 - `/` — Main marketing site
-- `/cv-builda` — Internal CV formatter/anonymizer (client-side by default, with an optional zero-cost self-hosted AI review; see `docs/cv-builda-ai.md`)
+- `/cv-builda` — Internal CV formatter/anonymizer with automatic private semantic parsing and deterministic fallback; see `docs/cv-builda-semantic-parser.md`
 - `/specs` — Internal job brief sanitizer (talenttree.co.za/specs) — converts client briefs (PDF, DOCX, XLSX, Google Docs, TXT) into sanitized, branded specs with client names replaced by generic descriptors, contacts removed, links replaced with CV@talenttree.co.za, and TalentTree branding. See `docs/specs.md`.
 
 ## Local development
@@ -32,7 +32,8 @@ npm test
 
 ## Security for internal tools
 
-- `/cv-builda` and `/specs` are frontend-only (no data leaves browser) for POPIA compliance
-- `/specs` is an unlisted private route with no application password gate; restrict the deployment with Cloudflare Access or an IP allowlist if stronger access control is required
-- No client data stored — cleared on reset / tab close
+- `/cv-builda` extracts document text in the browser, then sends the extracted text through the same-origin `/api/cv-parse` Pages Function to Talent Tree's private self-hosted parser. The original PDF/DOCX bytes are not forwarded by this semantic parsing flow.
+- `/specs` remains frontend-only. Both internal tools should be restricted with Cloudflare Access or an equivalent access control.
+- CV-Builda parser secrets stay server-side in Cloudflare environment bindings. Do not expose the n8n webhook token in Vite variables or browser code.
+- Candidate CV text is sensitive data. Production use requires verified n8n execution-data retention/pruning and access controls; see `docs/cv-builda-semantic-parser.md`.
 
