@@ -8,7 +8,7 @@ list of steps.
 
 | | |
 |---|---|
-| `src/cv-builda/` | the page, the composer, the checker, the worked example |
+| `src/cv-builda/` | the page, the composer, the checker, the worked example and optional local AI bridge |
 | `src/main.jsx` | imports `CvBuilda` and renders it when the path is `/cv-builda` |
 | `public/_redirects` | tells Cloudflare Pages to serve the SPA shell for every path, so `/cv-builda` reaches the app instead of 404ing. Vite copies `public/` into `dist/` verbatim |
 | `package.json` | `docx@^9` as a dependency; `npm run cv:samples` rebuilds the sample documents |
@@ -85,7 +85,18 @@ run when changing it is `npm test`: `tests/cv-reading.test.mjs` reads a Talent
 Tree profile back through the whole path and asserts the record it produces
 passes the validator with no errors.
 
-## What it costs the site
+## Optional local AI (zero budget)
+
+The builder now has an optional interpretation layer in `cv/ai.js`. It has no
+paid-provider SDK and no API key: it sends extracted text only after the user
+presses the review button, to an operator-supplied Ollama-compatible endpoint
+or same-origin relay. The deterministic parser, editor, validator,
+standardizer and Word download remain usable without AI.
+
+The panel defaults to the small `qwen2.5:3b` model name but does not download or
+host a model. A self-hosted service must be configured separately. See
+[`docs/cv-builda-ai.md`](../../docs/cv-builda-ai.md) for the zero-subscription
+setup, request limits, safety checks and the exact privacy boundary.
 
 ## Design
 
@@ -122,19 +133,18 @@ nor the line reaches the document.
 
 ## Where the work happens
 
-Reading the CV and building the document both run in the browser tab. Nothing
-is sent anywhere, which is a property of how the page is built rather than a
-promise it makes: there is no server to send to.
+Reading the CV and building the document both run in the browser tab. Uploading,
+editing, standardizing and downloading do not make a network request. The
+optional AI review is the one explicit exception: pressing its button sends the
+extracted text to the endpoint configured in the AI panel. The endpoint is
+operator-supplied, so use a self-hosted service or a controlled same-origin
+relay and verify its logs do not retain request bodies.
 
-The hero states this as a fact about the mechanism and stops there. It does not
-pledge anything about storage or compliance, because `/cv-builda` is reachable
-by anyone and a claim on a public page is a claim you have to stand behind.
-
-It is also why the parser is a set of rules rather than a language model. A
-static site has nowhere safe to keep an API key, so an AI-assisted reader means
-a server, and a server means candidate CVs leaving the browser. That trade is
-available — it would read messy CVs considerably better — but it is a different
-architecture, and the wording here would have to change with it.
+AI suggestions are separate from the record. They are limited to existing field
+paths, must cite source text and preserve protected facts, and are displayed
+for approval rather than applied automatically. Editing the draft clears them.
+The AI path is optional and the validator, manual editor and Word build do not
+depend on it.
 
 ## Tests
 
