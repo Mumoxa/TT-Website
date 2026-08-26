@@ -745,3 +745,30 @@ Covers:
 
 - Broken-word merging is vocabulary-guarded: a split word *not* in the dictionary (e.g. a rare brand) is left as-is rather than risk a wrong merge. Safe to extend `WORDS` as new splits are seen.
 - The reviewer is cosmetic; it neither adds nor removes PII, so it does not change the confidentiality verdict above.
+
+## 17. Post-Audit Follow-up — Brand Hyperlinks in Generated Spec
+
+### Request
+
+In the generated spec document, `CV@talenttree.co.za` should be a working hyperlink, and the Talent Tree logo should link to the talenttree.co.za site.
+
+### Changes
+
+1. **`src/specs/lib/docGenerator.js`**
+   - Every `CV@talenttree.co.za` occurrence in body paragraphs/bullets is emitted as a `mailto:` `ExternalHyperlink` run. Text is split on the address with a **capturing** regex (`/(CV@talenttree\.co\.za)/gi`) so the display text is preserved inside the link (a non-capturing split would have dropped it).
+   - The logo `ImageRun` is wrapped in an `ExternalHyperlink` to `https://talenttree.co.za`; the text fallback logo ("TalentTree") is likewise a site link.
+   - Footer email is a `mailto:` hyperlink (its relationship is registered in the footer part's own `.rels`).
+   - `run()` now supports `underline` styling for link runs.
+2. **`src/specs/SpecsApp.jsx`** — the print/PDF window mirrors the DOCX: the header "TalentTree" links to the site, and email occurrences in body and footer are mailto links (HTML is escaped *before* the fixed anchor tags are injected, so pasted content cannot inject markup). TXT output is intentionally unchanged — plain text, no markup.
+3. **`tests/specs-docx-branding.test.mjs` (new)** — 6 tests that parse the actually-generated DOCX (zip + XML, no fixtures): both brand rels registered; logo `<w:drawing>` sits inside a `<w:hyperlink>` whose rId resolves to `https://talenttree.co.za` and whose blip embeds the media file; every email hyperlink resolves to a mailto rel and preserves its display text; footer email resolves via the footer part's rels; **no other external targets exist** (no client links leak); TXT output carries the plain address without markup.
+
+### Verification
+
+- `npm test`: **135 PASS, 0 FAIL** (was 129 before this change; +6 branding tests).
+- `npm run build`: PASS.
+- Real DOCX XML inspection: `word/_rels/document.xml.rels` registers both external targets; each body hyperlink contains the literal `CV@talenttree.co.za` text; `word/_rels/footer1.xml.rels` maps the footer rId to `mailto:CV@talenttree.co.za`; logo PNG embedded and wrapped.
+
+### Notes
+
+- These are TalentTree's own brand links (company site + application address), not client data — no confidentiality impact.
+- Manual check: open a downloaded DOCX in Word — the logo and every `CV@talenttree.co.za` occurrence should be clickable.

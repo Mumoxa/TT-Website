@@ -540,9 +540,9 @@ export default function SpecsApp() {
               @media print { body { margin: 0; } .no-print { display: none; } }
             </style>
             </head><body>
-            <div class="header"><strong>TalentTree</strong> — Confidential Opportunity</div>
-            <pre style="white-space: pre-wrap; font-family: Calibri, sans-serif;">${text.replace(/</g, "&lt;")}</pre>
-            <div class="footer">Presented by TalentTree · CV@talenttree.co.za · This document has been sanitized</div>
+            <div class="header"><strong><a href="https://talenttree.co.za" style="color:inherit;">TalentTree</a></strong> — Confidential Opportunity</div>
+            <pre style="white-space: pre-wrap; font-family: Calibri, sans-serif;">${text.replace(/</g, "&lt;").replace(/CV@talenttree\.co\.za/g, '<a href="mailto:CV@talenttree.co.za" style="color:#12B5E5;">CV@talenttree.co.za</a>')}</pre>
+            <div class="footer">Presented by <a href="https://talenttree.co.za" style="color:#12B5E5;">TalentTree</a> · <a href="mailto:CV@talenttree.co.za" style="color:#12B5E5;">CV@talenttree.co.za</a> · This document has been sanitized</div>
             <div class="no-print" style="margin-top: 30px; text-align: center;">
               <button onclick="window.print()" style="padding: 12px 24px; background: #136579; color: white; border: none; cursor: pointer; font-weight: 600;">Print / Save as PDF</button>
               <p style="font-size: 12px; color: #666; margin-top: 10px;">Use your browser's Print → Save as PDF</p>

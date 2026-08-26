@@ -100,6 +100,7 @@ Uses `docx` library (already in repo for CV-Builda):
 
 - **Structure detection:** Tries to detect headings (About, Role, Responsibilities, Requirements, etc.) via regex, falls back to intelligent heuristics (first line = title, client descriptor → About, keyword buckets → Responsibilities/Requirements)
 - **Branding:** TalentTree header, cyan accent rule, footer "Presented by TalentTree", page numbers, confidentiality header
+- **Brand hyperlinks (DOCX):** logo image is a hyperlink to `https://talenttree.co.za`; every `CV@talenttree.co.za` occurrence (body bullets/paragraphs + footer) is a `mailto:` hyperlink with display text preserved. The print/PDF window mirrors this (logo + "TalentTree" link to the site, emails as mailto). TXT output stays plain text (no markup)
 - **Sections:** Confidential Opportunity badge, job title, company descriptor, structured content with bullets, footer note
 - **Outputs:** DOCX (primary), TXT (plain), PDF via print dialog (opens new window with print styles + button)
 
