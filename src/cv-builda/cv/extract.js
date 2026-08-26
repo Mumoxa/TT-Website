@@ -57,7 +57,22 @@ async function extractText(bytes, fileName = '') {
   }
 
   if (format === 'docx') {
-    const parts = await unzip(input);
+    if (typeof DecompressionStream === 'undefined') {
+      /* Only .docx needs it. A browser this old can still take a PDF, rich
+         text, or the CV pasted into the box, so the message points there
+         rather than leaving a bare "DecompressionStream is not defined". */
+      throw new ExtractError(
+        'This browser is too old to open a Word file here. Update it, or save the CV '
+        + 'as a PDF, or paste the text into the box below.',
+      );
+    }
+    let parts;
+    try {
+      parts = await unzip(input);
+    } catch (e) {
+      if (e instanceof ExtractError) throw e;
+      throw new ExtractError('That Word file could not be opened — it may be corrupt. Try re-saving it from Word.');
+    }
     if (parts.has('word/document.xml')) {
       return { text: fromWordXml(DECODER.decode(parts.get('word/document.xml'))), format: 'docx', notes };
     }
@@ -70,7 +85,19 @@ async function extractText(bytes, fileName = '') {
   }
 
   if (format === 'pdf') {
-    return { text: await fromPdf(input), format: 'pdf', notes };
+    try {
+      return { text: await fromPdf(input), format: 'pdf', notes };
+    } catch (e) {
+      /* pdf.js throws its own exception types (InvalidPDFException, and others)
+         whose messages read like library internals. Its own guidance —
+         a scanned PDF, the original .docx — is the useful part, so an
+         ExtractError we raised passes through and anything else is reworded. */
+      if (e instanceof ExtractError) throw e;
+      throw new ExtractError(
+        'That PDF could not be read — it may be corrupt or password-protected. '
+        + 'Try the original .docx, or re-export the PDF.',
+      );
+    }
   }
 
   if (format === 'doc') {

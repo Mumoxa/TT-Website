@@ -231,3 +231,22 @@ test('a Talent Tree profile read back in rebuilds itself cleanly', async () => {
 
   assert.deepEqual(validate(cv).errors, [], 'a round-tripped profile should build');
 });
+
+/* ── corrupt input degrades to guidance, never a library exception ───────── */
+
+test('a corrupt PDF is reported as guidance, not a pdf.js exception', async () => {
+  const bytes = new TextEncoder().encode('%PDF-1.4\n not really a pdf \n');
+  await assert.rejects(
+    () => extractText(bytes, 'broken.pdf'),
+    (e) => e.constructor.name === 'ExtractError' && /could not be read/.test(e.message)
+      && !/InvalidPDF|structure/i.test(e.message),
+  );
+});
+
+test('a corrupt Word file is reported as guidance', async () => {
+  const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, ...new Array(200).fill(7)]);
+  await assert.rejects(
+    () => extractText(bytes, 'broken.docx'),
+    (e) => e.constructor.name === 'ExtractError',
+  );
+});
