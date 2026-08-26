@@ -881,7 +881,7 @@ export default function SpecsApp() {
               )}
 
               <div className="specs-report-grid">
-                {["Client Identity", "Contact Information", "Application Links", "Internal References", "Confidential Notes", "External Links", "Location Data", "Sensitive Identifiers"].map(category => {
+                {["Client Identity", "Contact Information", "Application Links", "Internal References", "Confidential Notes", "External Links", "Location Data", "Sensitive Identifiers", "Branding"].map(category => {
                   const items = sanitizedResult.logs.filter(l => l.category === category);
                   if (items.length === 0) return null;
                   return (

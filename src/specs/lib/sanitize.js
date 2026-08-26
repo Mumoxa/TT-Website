@@ -5,6 +5,7 @@
  */
 
 import { COMPANY_MAP, SORTED_COMPANIES, COMPANY_SUFFIXES, inferIndustryFromContext, DEFAULT_DESCRIPTOR } from "./companyMap.js";
+import { reviewText } from "./textReviewer.js";
 
 // ── Regex patterns ──────────────────────────────────────────────────────────
 
@@ -568,6 +569,30 @@ export function sanitizeDocument(rawText, options = {}) {
     .replace(/\[Reference removed\]\s*\[Reference removed\]/g, "[Reference removed]")
     .replace(/\[Link removed\]\s*\[Link removed\]/g, "[Link removed]")
     .trim();
+
+  // 10a. Existing branding removal: canonicalise our own agency name.
+  // Source briefs sometimes say "Talent Tree" (with a space); the generated
+  // spec is branded "TalentTree" so the body should match.
+  const brandMatches = [...text.matchAll(/\bTalent\s+Tree\b/gi)];
+  if (brandMatches.length > 0) {
+    logs.push({
+      type: "branding",
+      original: "Talent Tree",
+      originalMasked: "Talent Tree",
+      replacement: "TalentTree",
+      count: brandMatches.length,
+      confidence: "high",
+      category: "Branding",
+    });
+    text = text.replace(/\bTalent\s+Tree\b/gi, "TalentTree");
+  }
+
+  // 10b. Text review: professional spacing + extraction artifacts
+  // (broken words like "term s", "Full - time", spaces before punctuation,
+  //  bullet spacing, blank lines, duplicate apply lines, legacy
+  //  applications@ address). Idempotent - safe to run after parse.js already
+  //  ran it on file uploads.
+  text = reviewText(text);
 
   // 11. Ensure application instruction exists
   if (!text.toLowerCase().includes("cv@talenttree.co.za")) {
