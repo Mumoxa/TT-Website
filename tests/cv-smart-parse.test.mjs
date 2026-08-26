@@ -75,3 +75,26 @@ test('parseCvSmart falls back to the deterministic parser when AI is disabled', 
   assert.equal(result.parser, 'deterministic');
   assert.equal(result.aiError, null);
 });
+
+
+test('Bomikazi regression rejects spaced headings and qualification text as employers', () => {
+  for (const employer of ['E D U C', 'NDip Industrial', 'W O R K E X P E R I E N C E', '✉ Bomikazi.mditshwa@gmail.com']) {
+    assert.throws(() => normalizeCv({
+      personal: { fullName: 'Bomikazi Mditshwa' },
+      experience: [{ employer, duration: '', titles: [] }],
+    }), (error) => error instanceof SmartParseError && error.code === 'AI_STRUCTURAL_ERROR');
+  }
+});
+
+test('service response converts evidence arrays into field-keyed provenance', () => {
+  const result = normalizeServiceResponse({
+    cv: { personal: { fullName: 'Bomikazi Mditshwa' } },
+    gaps: [],
+    evidence: [
+      { field: 'personal.fullName', quote: 'Bomikazi Mditshwa', confidence: 'high' },
+    ],
+  }, { mode: 'agency' });
+
+  assert.equal(result.evidence['personal.fullName'].quote, 'Bomikazi Mditshwa');
+  assert.equal(result.evidence['personal.fullName'].confidence, 'high');
+});
