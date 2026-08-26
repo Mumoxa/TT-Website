@@ -33,7 +33,7 @@ test('the browser contract sends facts-only rules and no provider credentials', 
   assert.equal(request.rules.neverInventMonths, true);
   assert.equal(request.sourceText.includes('WORK EXPERIENCE'), true);
   assert.equal(Object.prototype.hasOwnProperty.call(request, 'apiKey'), false);
-  assert.equal(DEFAULT_SEMANTIC_ENDPOINT.includes('n8n.mumoxa.co.za'), true);
+  assert.equal(DEFAULT_SEMANTIC_ENDPOINT, '/api/cv-parse');
 });
 
 test('obvious headings and email addresses are not valid employers', () => {
