@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - arena/01a01c0a-tt-website
+      - codex/cv-builda-structured-ai-parser
   pull_request:
     branches:
       - main
