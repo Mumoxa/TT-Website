@@ -309,6 +309,7 @@ export const ALL_DESCRIPTORS = [...new Set([
   "Leading e-commerce platform",
   "Leading private healthcare provider",
   "Major logistics and infrastructure company",
+  "Construction",
 ])].sort();
 
 // Predefined company description templates by descriptor
@@ -327,6 +328,7 @@ export const DESCRIPTOR_TEMPLATES = {
   "Leading organisation in its sector": "Our client is a leading organisation in its sector with a strong market position and reputation for excellence. They offer a dynamic and growth-oriented environment.",
   "Global professional services firm": "Our client is a global professional services firm with a strong South African practice. They advise leading organisations across multiple industries.",
   "Global management consultancy": "Our client is a global management consultancy that works with executive teams on their most critical challenges.",
+  "Construction": "Our client is a well-established construction company delivering building and infrastructure projects across Southern Africa. They are recognised for quality workmanship, safety standards, and project delivery excellence.",
   "Leading payments technology company": "Our client is a leading payments technology company enabling digital commerce across Africa. They operate at the intersection of finance and technology.",
 };
 

@@ -942,21 +942,58 @@
   font-style: italic;
 }
 
+.specs-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--specs-line);
+  background: #fbfaf7;
+}
+
+.specs-preview-toolbar small {
+  flex: 1;
+  font-size: 0.74rem;
+  color: var(--specs-muted);
+}
+
+.specs-preview-count {
+  font-size: 0.7rem;
+  font-family: Consolas, monospace;
+  color: var(--specs-muted);
+  white-space: nowrap;
+}
+
 .specs-preview-body {
-  padding: 20px 24px;
-  max-height: 420px;
-  overflow: auto;
+  padding: 16px 20px 20px;
   background: #fdfcfb;
 }
 
-.specs-preview-body pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
+.specs-preview-editor {
+  display: block;
+  width: 100%;
+  height: 440px;
+  min-height: 260px;
+  resize: vertical;
+  padding: 14px 16px;
+  border: 1px solid var(--specs-line);
+  border-radius: var(--specs-radius-sm);
+  background: white;
   font-family: var(--sans, Inter, sans-serif);
   font-size: 0.88rem;
   line-height: 1.65;
   color: var(--specs-ink);
+}
+
+.specs-preview-editor:focus {
+  outline: none;
+  border-color: var(--specs-accent);
+  box-shadow: 0 0 0 3px rgba(19, 101, 121, 0.12);
+}
+
+.specs-badge-edited {
+  background: #b97324;
+  color: white;
 }
 
 .specs-downloads {
@@ -1146,6 +1183,24 @@
   background: var(--specs-ink-deep);
   border-color: var(--specs-ink-deep);
   color: white;
+}
+
+.specs-field-custom {
+  margin-top: 10px;
+}
+
+.specs-download-edited-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  background: var(--specs-accent-soft);
+  border-left: 3px solid var(--specs-accent);
+  border-radius: var(--specs-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--specs-accent);
 }
 
 .specs-customize-actions {

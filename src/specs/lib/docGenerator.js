@@ -192,7 +192,7 @@ function structureContent(sanitizedText, customCompanyDesc = null, customDescrip
   let currentSection = { title: "Overview", content: [] };
   
   const headingPatterns = [
-    { pattern: /^(?:about\s+(?:the\s+)?(?:company|client|organisation|organization|business|role))[:\-]?\s*$/i, title: "About Our Client" },
+    { pattern: /^(?:about\s+(?:the\s+|our\s+)?(?:company|client|organisation|organization|business|role))[:\-]?\s*$/i, title: "About Our Client" },
     { pattern: /^(?:role|position|job)\s+(?:overview|summary|description)[:\-]?\s*$/i, title: "Role Overview" },
     { pattern: /^(?:key\s+)?responsibilities[:\-]?\s*$/i, title: "Key Responsibilities" },
     { pattern: /^(?:requirements|qualifications|what\s+we'?re\s+looking\s+for|ideal\s+candidate|you\s+will\s+have)[:\-]?\s*$/i, title: "Requirements" },

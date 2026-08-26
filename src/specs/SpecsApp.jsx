@@ -104,6 +104,9 @@ export default function SpecsApp() {
   const [customDescriptor, setCustomDescriptor] = useState("");
   const [customCompanyDescription, setCustomCompanyDescription] = useState("");
   const [showCustomize, setShowCustomize] = useState(false);
+  // null = preview is auto-generated from sanitization + customization settings;
+  // string = user has manually edited the preview (edits win and feed downloads)
+  const [previewOverride, setPreviewOverride] = useState(null);
 
   const fileInputRef = useRef(null);
   const dropRef = useRef(null);
@@ -141,6 +144,7 @@ export default function SpecsApp() {
           const sanitized = sanitizeDocument(result.text);
           console.log("[Specs] Sanitized:", { stats: sanitized.stats, hasUnrecognized: sanitized.hasUnrecognizedCompanies });
           setSanitizedResult(sanitized);
+          setPreviewOverride(null); // new document — discard manual preview edits
           // Auto-set descriptor from first company log
           const firstCompany = sanitized.logs.find(l => l.category === "Client Identity");
           if (firstCompany) {
@@ -206,6 +210,7 @@ export default function SpecsApp() {
       try {
         const sanitized = sanitizeDocument(pastedText);
         setSanitizedResult(sanitized);
+        setPreviewOverride(null); // new document — discard manual preview edits
         const firstCompany = sanitized.logs.find(l => l.category === "Client Identity");
         if (firstCompany) {
           setCustomDescriptor(firstCompany.replacement);
@@ -252,6 +257,7 @@ export default function SpecsApp() {
         try {
           const sanitized = sanitizeDocument(result.text);
           setSanitizedResult(sanitized);
+          setPreviewOverride(null); // new document — discard manual preview edits
           const firstCompany = sanitized.logs.find(l => l.category === "Client Identity");
           if (firstCompany) {
             setCustomDescriptor(firstCompany.replacement);
@@ -279,19 +285,49 @@ export default function SpecsApp() {
 
   // ── Document generation ───────────────────────────────────────────────
 
+  // Auto-generated preview: sanitized text with the customized "About Our
+  // Client" description (and descriptor) prepended. Shown in full — no
+  // truncation — because this exact text is what gets downloaded.
+  const autoPreview = useMemo(() => {
+    if (!sanitizedResult) return "";
+    let preview = sanitizedResult.sanitizedText;
+    if (customCompanyDescription) {
+      preview = `About Our Client\n${customCompanyDescription}\n\n` + preview;
+    }
+    if (customDescriptor && !preview.toLowerCase().includes(customDescriptor.toLowerCase())) {
+      preview = `${customDescriptor}\n\n` + preview;
+    }
+    return preview;
+  }, [sanitizedResult, customCompanyDescription, customDescriptor]);
+
+  // Manual edits in the preview win over the auto-generated text and are
+  // carried through to every download (DOCX / PDF / TXT).
+  const previewText = previewOverride ?? autoPreview;
+  const previewEdited = previewOverride !== null;
+
   const handleDownload = useCallback(async (format) => {
     if (!sanitizedResult || !docData) return;
 
     const jobTitle = fileMeta?.name?.replace(/\.[^.]+$/, "") || "Job Opportunity";
-    
+
+    // The preview is the source of truth: whatever the user sees (and possibly
+    // edited) is what gets downloaded. Fall back to the sanitized text only if
+    // the preview was cleared entirely.
+    const exportText = previewText.trim() ? previewText : sanitizedResult.sanitizedText;
+    // When the preview was manually edited, the "About Our Client" block is
+    // already baked into exportText — pass nulls so the generator does not
+    // overwrite the user's edits with the pristine template.
+    const exportDescriptor = previewEdited ? null : (customDescriptor || null);
+    const exportDescription = previewEdited ? null : (customCompanyDescription || null);
+
     try {
       if (format === "docx") {
         const { Packer } = await import("docx");
-        const { doc, jobTitle: title } = composeJobSpec(sanitizedResult.sanitizedText, {
+        const { doc, jobTitle: title } = composeJobSpec(exportText, {
           originalFileName: fileMeta?.name || "Job Brief",
           sanitizationLogs: sanitizedResult.logs,
-          customDescriptor: customDescriptor || null,
-          customCompanyDescription: customCompanyDescription || null,
+          customDescriptor: exportDescriptor,
+          customCompanyDescription: exportDescription,
         });
         const blob = await Packer.toBlob(doc);
         const url = URL.createObjectURL(blob);
@@ -304,10 +340,10 @@ export default function SpecsApp() {
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else if (format === "txt") {
-        const text = generatePlainText(sanitizedResult.sanitizedText, { 
+        const text = generatePlainText(exportText, {
           jobTitle,
-          customDescriptor: customDescriptor || null,
-          customCompanyDescription: customCompanyDescription || null,
+          customDescriptor: exportDescriptor,
+          customCompanyDescription: exportDescription,
         });
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
@@ -321,10 +357,10 @@ export default function SpecsApp() {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else if (format === "pdf") {
         // For PDF, we generate DOCX and instruct user - or generate via print
-        const text = generatePlainText(sanitizedResult.sanitizedText, { 
+        const text = generatePlainText(exportText, {
           jobTitle,
-          customDescriptor: customDescriptor || null,
-          customCompanyDescription: customCompanyDescription || null,
+          customDescriptor: exportDescriptor,
+          customCompanyDescription: exportDescription,
         });
         const printWindow = window.open("", "_blank");
         if (printWindow) {
@@ -355,7 +391,7 @@ export default function SpecsApp() {
       console.error("[Specs] Download failed", e);
       setError({ message: `Failed to generate ${format.toUpperCase()}`, details: e.message });
     }
-  }, [sanitizedResult, docData, fileMeta, customDescriptor, customCompanyDescription]);
+  }, [sanitizedResult, docData, fileMeta, customDescriptor, customCompanyDescription, previewText, previewEdited]);
 
   const handleReset = useCallback(() => {
     // Secure deletion: clear all sensitive state
@@ -372,6 +408,7 @@ export default function SpecsApp() {
     setCustomDescriptor("");
     setCustomCompanyDescription("");
     setShowCustomize(false);
+    setPreviewOverride(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (typeof window !== "undefined" && window.gc) {
       try { window.gc(); } catch {}
@@ -755,6 +792,9 @@ export default function SpecsApp() {
                         {ALL_DESCRIPTORS.map(desc => (
                           <option key={desc} value={desc}>{desc}</option>
                         ))}
+                        {customDescriptor && !ALL_DESCRIPTORS.includes(customDescriptor) && (
+                          <option value={customDescriptor}>Custom: {customDescriptor}</option>
+                        )}
                       </select>
                       <small>Generic descriptor that replaces client name. E.g., "National retailer"</small>
                     </label>
@@ -762,7 +802,7 @@ export default function SpecsApp() {
                     <div className="specs-field">
                       <span>Template Gallery</span>
                       <div className="specs-template-pills">
-                        {Object.keys(DESCRIPTOR_TEMPLATES).slice(0, 6).map(key => (
+                        {Object.keys(DESCRIPTOR_TEMPLATES).map(key => (
                           <button
                             key={key}
                             type="button"
@@ -776,7 +816,38 @@ export default function SpecsApp() {
                           </button>
                         ))}
                       </div>
-                      <small>Click to apply a pre-written description template</small>
+                      <label className="specs-field specs-field-custom">
+                        <span>None of these? Type your own</span>
+                        <div className="specs-input-group">
+                          <input
+                            type="text"
+                            value={customDescriptor}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCustomDescriptor(val);
+                              // Auto-fill template only when the current description is
+                              // empty or still an untouched template (never clobber edits)
+                              const isTemplate = Object.values(DESCRIPTOR_TEMPLATES).includes(customCompanyDescription) || !customCompanyDescription.trim();
+                              if (isTemplate && DESCRIPTOR_TEMPLATES[val]) {
+                                setCustomCompanyDescription(DESCRIPTOR_TEMPLATES[val]);
+                              }
+                            }}
+                            placeholder="e.g. Construction, logistics startup, mining contractor…"
+                            aria-label="Custom industry descriptor"
+                          />
+                          {customDescriptor && (
+                            <button
+                              type="button"
+                              className="specs-btn specs-btn-ghost specs-btn-sm"
+                              onClick={() => setCustomDescriptor("")}
+                              aria-label="Clear custom descriptor"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </label>
+                      <small>Click a template to apply it, or type any descriptor you like — it replaces the client name in the output.</small>
                     </div>
                   </div>
 
@@ -848,29 +919,40 @@ export default function SpecsApp() {
               )}
             </div>
 
-            {/* Preview */}
+            {/* Preview — editable; edits flow through to every download */}
             <div className="specs-preview">
               <div className="specs-preview-header">
                 <h3>
                   <Icon.Eye />
                   Sanitized Preview
                   {(customDescriptor || customCompanyDescription) && <span className="specs-badge-new" style={{marginLeft: "8px"}}>Customized</span>}
+                  {previewEdited && <span className="specs-badge-new specs-badge-edited" style={{marginLeft: "8px"}}>Edited</span>}
                 </h3>
                 <span className="specs-preview-note">Review before downloading — final check is your responsibility</span>
               </div>
+              <div className="specs-preview-toolbar">
+                <small>Editable — changes here are included in the downloaded document.</small>
+                <span className="specs-preview-count">{previewText.length.toLocaleString()} characters</span>
+                {previewEdited && (
+                  <button
+                    type="button"
+                    className="specs-btn specs-btn-ghost specs-btn-sm"
+                    onClick={() => setPreviewOverride(null)}
+                    title="Discard manual edits and regenerate from the sanitization settings"
+                  >
+                    Revert to auto-generated
+                  </button>
+                )}
+              </div>
               <div className="specs-preview-body">
-                <pre>
-                  {(() => {
-                    let preview = sanitizedResult.sanitizedText.slice(0, 4000);
-                    if (customCompanyDescription) {
-                      preview = `About Our Client\n${customCompanyDescription}\n\n` + preview;
-                    }
-                    if (customDescriptor && !preview.toLowerCase().includes(customDescriptor.toLowerCase())) {
-                      preview = `${customDescriptor}\n\n` + preview;
-                    }
-                    return preview + (sanitizedResult.sanitizedText.length > 4000 ? "\n\n... (truncated in preview, full text in download)" : "");
-                  })()}
-                </pre>
+                <textarea
+                  className="specs-preview-editor"
+                  value={previewText}
+                  onChange={(e) => setPreviewOverride(e.target.value)}
+                  rows={18}
+                  spellCheck={false}
+                  aria-label="Editable sanitized preview — edits are included in the download"
+                />
               </div>
             </div>
 
@@ -878,6 +960,11 @@ export default function SpecsApp() {
             <div className="specs-downloads">
               <h3>Download Branded Document</h3>
               <p>Professional formatting, TalentTree logo, footer: “Presented by TalentTree” · Application method set to CV@talenttree.co.za</p>
+              {previewEdited && (
+                <p className="specs-download-edited-note">
+                  <Icon.Check /> Includes your manual preview edits.
+                </p>
+              )}
               <div className="specs-download-actions">
                 <button onClick={() => handleDownload("docx")} className="specs-btn specs-btn-primary specs-btn-large">
                   <Icon.Download />
