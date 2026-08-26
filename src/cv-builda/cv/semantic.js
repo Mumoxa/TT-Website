@@ -11,8 +11,7 @@
  * before the record reaches the editor.
  */
 
-const DEFAULT_SEMANTIC_ENDPOINT =
-  'https://n8n.mumoxa.co.za/webhook/cv-builda-parse';
+const DEFAULT_SEMANTIC_ENDPOINT = '/api/cv-parse';
 
 const MAX_SOURCE_CHARS = 80_000;
 const MAX_GAPS = 30;
@@ -141,7 +140,7 @@ function normaliseSemanticResponse(raw, fallbackCv) {
 
   base.meta = {
     ...(base.meta || {}),
-    targetRole: clean(candidate?.meta?.targetRole ?? candidate?.targetRole, 180),
+    targetRole: clean(candidate?.meta?.targetRole ?? candidate?.targetRole, 180) || base?.meta?.targetRole || '',
     fileName: clean(candidate?.meta?.fileName, 180) || base?.meta?.fileName || '',
     mode: base?.meta?.mode === 'direct' ? 'direct' : 'agency',
   };
@@ -199,7 +198,7 @@ function buildRequest(sourceText, options = {}) {
     sourceText,
     rules: {
       factsOnly: true,
-      nullWhenMissing: true,
+      emptyWhenMissing: true,
       preserveYearOnlyDates: true,
       neverInventMonths: true,
       neverTreatSectionHeadingsAsEmployers: true,
@@ -217,7 +216,7 @@ async function requestSemanticParse(sourceText, options = {}) {
   }
 
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
-  const timeoutMs = Math.min(Math.max(Number(options.timeoutMs) || 35_000, 5_000), 90_000);
+  const timeoutMs = Math.min(Math.max(Number(options.timeoutMs) || 60_000, 5_000), 90_000);
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
   let response;
