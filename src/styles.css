@@ -498,15 +498,19 @@ section[id] { scroll-margin-top: calc(var(--header-h-scrolled) + 20px); }
 }
 
 /* ============================================================================
-   6. CLIENTS — flagship mandates
+   6. CLIENTS — flagship mandates and the wider mandate book
+   ----------------------------------------------------------------------------
+   One card language for both tiers: white surface, hairline frame, a serif
+   ledger number, an outlined relationship tag and a ruled note pinned to the
+   foot of the card. Only the density changes between the two grids.
    ========================================================================== */
 
 .clients { background: var(--paper-soft); }
 
 .flagship-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-.flagship-list > .reveal, .testimonial-list > .reveal, .why-grid > .reveal { height: 100%; }
+.flagship-list > .reveal, .mandate-grid > .reveal, .testimonial-list > .reveal, .why-grid > .reveal { height: 100%; }
 
-.flagship {
+.flagship, .mandate {
   position: relative;
   height: 100%;
   display: flex;
@@ -520,7 +524,7 @@ section[id] { scroll-margin-top: calc(var(--header-h-scrolled) + 20px); }
   box-shadow: var(--shadow-soft);
   transition: transform 420ms var(--ease), box-shadow 420ms var(--ease), border-color var(--med) ease;
 }
-.flagship::after {
+.flagship::after, .mandate::after {
   content: "";
   position: absolute;
   left: 0; top: 0;
@@ -529,15 +533,15 @@ section[id] { scroll-margin-top: calc(var(--header-h-scrolled) + 20px); }
   background: var(--accent);
   transition: width 460ms var(--ease);
 }
-.flagship:hover {
+.flagship:hover, .mandate:hover {
   transform: translateY(-4px);
   border-color: rgba(19, 101, 121, 0.45);
   box-shadow: var(--shadow-lift);
 }
-.flagship:hover::after { width: 100%; }
+.flagship:hover::after, .mandate:hover::after { width: 100%; }
 
-.flagship-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
-.flagship-number {
+.flagship-head, .mandate-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
+.flagship-number, .mandate-number {
   font-family: var(--serif);
   font-size: 1.9rem;
   line-height: 1;
@@ -545,7 +549,7 @@ section[id] { scroll-margin-top: calc(var(--header-h-scrolled) + 20px); }
   opacity: 0.34;
   font-variant-numeric: tabular-nums;
 }
-.flagship-tag {
+.flagship-tag, .mandate-tag {
   padding: 6px 11px;
   border: 1px solid rgba(19, 101, 121, 0.5);
   border-radius: var(--radius);
@@ -556,7 +560,7 @@ section[id] { scroll-margin-top: calc(var(--header-h-scrolled) + 20px); }
   text-transform: uppercase;
   white-space: nowrap;
 }
-.flagship h3 {
+.flagship h3, .mandate h3 {
   margin: 4px 0 0;
   font-family: var(--serif);
   font-weight: 500;
@@ -565,13 +569,73 @@ section[id] { scroll-margin-top: calc(var(--header-h-scrolled) + 20px); }
   letter-spacing: -0.03em;
 }
 .flagship-mandate { margin: 0; color: var(--ink); font-size: 1rem; }
-.flagship-note {
+.flagship-note, .mandate-note {
   margin: auto 0 0;
   padding-top: 18px;
   width: 100%;
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+/* — The wider book: same cards, two columns, one line per field — */
+.mandate-book { margin-top: clamp(48px, 5.5vw, 76px); }
+
+.mandate-book-head {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.42fr) minmax(0, 1.28fr);
+  gap: clamp(20px, 3.4vw, 48px);
+  align-items: baseline;
+  margin-bottom: clamp(26px, 3vw, 38px);
+  padding-bottom: clamp(20px, 2.4vw, 28px);
+  border-bottom: 1px solid var(--line-strong);
+}
+.mandate-book-head h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: var(--fs-600);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+.mandate-book-head p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: var(--fs-300);
+  line-height: 1.6;
+}
+
+.mandate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.mandate { gap: 13px; padding: 28px 28px 24px; }
+.mandate h3 { font-size: var(--fs-600); line-height: 1.14; }
+.mandate-number { font-size: 1.6rem; }
+.mandate-meta {
+  margin: 0;
+  font-size: var(--fs-100);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mandate-lead { margin: 0; color: var(--ink); font-size: 0.95rem; line-height: 1.62; }
+.mandate-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mandate-focus li {
+  padding: 5px 9px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  border-radius: var(--radius);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .clients-tail { margin-top: clamp(36px, 4.5vw, 52px); padding-top: clamp(24px, 3vw, 32px); border-top: 1px solid var(--line); }
@@ -1103,6 +1167,8 @@ input:focus, select:focus, textarea:focus { border-bottom-color: var(--accent-br
 
 @media (max-width: 900px) {
   .section-heading-row { grid-template-columns: 1fr; gap: 22px; margin-bottom: 40px; }
+  .mandate-book-head { grid-template-columns: 1fr; gap: 12px; margin-bottom: 30px; }
+  .mandate-grid { grid-template-columns: 1fr; }
   .section-kicker::after { display: none; }
   .section-kicker { margin-bottom: 2px; }
 

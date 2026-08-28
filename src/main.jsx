@@ -42,6 +42,105 @@ const flagships = [
   },
 ];
 
+/* The wider mandate book. Client identities stay anonymised by descriptor, in line with
+   the rest of the site and docs/talent-tree-growth-strategy.md ("keep identities anonymous
+   until clients approve attribution"). Sector, heritage and volume claims below are supplied
+   by Talent Tree from its own mandates and need client sign-off before publication.
+   Entry shape is deliberately identical for every card: number / tag / client / meta /
+   lead / focus / note — so wording, emphasis and colour stay uniform across the section. */
+const mandateBook = [
+  {
+    number: '04',
+    tag: 'Specialist talent partner',
+    client: 'Historic JSE-listed financial conglomerate',
+    meta: 'Cape Town · Established 1845',
+    lead: 'Retained as the specialised talent acquisition partner to a historic, JSE-listed financial conglomerate established in Cape Town in 1845. We lead high-impact recruitment mandates that place niche technical talent into the functions at the centre of the business.',
+    focus: ['Actuarial', 'Pricing', 'Underwriting', 'Data Analytics'],
+    note: 'Capability built for Africa’s oldest and most iconic premier financial services group.',
+  },
+  {
+    number: '05',
+    tag: 'Specialist talent partner',
+    client: 'Non-profit open medical scheme',
+    meta: 'Self-administered · Operating since 1968',
+    lead: 'We partner with one of South Africa’s oldest and most established self-administered, non-profit open medical schemes as its specialised talent acquisition consultant, leading high-impact mandates that place elite technical talent across the core risk functions.',
+    focus: ['Actuarial', 'Pricing', 'Underwriting', 'Data Analytics'],
+    note: 'Risk and sustainability frameworks shaped for a scheme covering over 250,000 lives.',
+  },
+  {
+    number: '06',
+    tag: 'Specialist talent partner',
+    client: 'Dual-listed global fintech and IoT group',
+    meta: 'Dual-listed · Global footprint',
+    lead: 'Embedded as the specialised talent acquisition partner to a dual-listed global fintech and IoT powerhouse. Our mandates scale the specialist human capital driving its secure telemetry systems, cloud management suites and global transaction platforms.',
+    focus: ['Secure telemetry', 'Cloud management', 'Transaction platforms'],
+    note: 'The group famously known for dominating the unattended retail and cashless payment sector since 2005.',
+  },
+  {
+    number: '07',
+    tag: 'Trusted talent partner',
+    client: 'Big data, valuation and spatial analytics enterprise',
+    meta: 'Established 2005 · South Africa',
+    lead: 'Serving as trusted talent acquisition partner to South Africa’s premier big data, valuation and spatial analytics enterprise. We lead high-impact recruitment mandates that source elite professionals for the teams behind the country’s most advanced predictive models.',
+    focus: ['Data', 'Cloud AI', 'Analytics'],
+    note: 'Modelling that drives decisions across the property, automotive and business intelligence sectors.',
+  },
+  {
+    number: '08',
+    tag: 'Trusted talent partner',
+    client: 'Retail and value-based fintech platform',
+    meta: 'Over 6,000 stores · Southern Africa',
+    lead: 'The recruitment mandate behind Southern Africa’s largest retail and value-focused fintech platform. We place elite specialists across the teams that keep the transaction infrastructure moving.',
+    focus: ['Data', 'Cloud AI', 'Analytics'],
+    note: 'Infrastructure carrying more than 2 billion consumer transactions every year.',
+  },
+  {
+    number: '09',
+    tag: 'Trusted partner · Executive search',
+    client: 'Group fintech and credit support division',
+    meta: 'Division of a JSE-listed retail conglomerate',
+    lead: 'Trusted by the highly specialised fintech and credit support division of Southern Africa’s largest retail conglomerate for top-tier technical hires. The same standing carries upward: high-profile executive search mandates for the overarching JSE-listed group holding structure.',
+    focus: ['Data', 'Cloud AI', 'Analytics', 'Executive search'],
+    note: 'Centralised tech systems, transactional scoring models and strategic data infrastructure behind two of the country’s most prominent consumer lending and retail store card brands — plus future-ready C-suite appointments.',
+  },
+  {
+    number: '10',
+    tag: 'Trusted talent partner',
+    client: 'Human performance and loyalty technology group',
+    meta: 'Founded 1981 · Globally accredited',
+    lead: 'Working as the trusted talent acquisition partner to a globally accredited pioneer in human performance technology and corporate loyalty solutions, we place elite professionals across its IT and Finance teams.',
+    focus: ['IT', 'Finance'],
+    note: 'Proprietary platforms processing over 20 million behavioural and reward transactions every single day.',
+  },
+  {
+    number: '11',
+    tag: 'Trusted talent partner',
+    client: 'Group logistics and supply chain division',
+    meta: 'Division of a JSE-listed retail conglomerate',
+    lead: 'Assigned to the centralised logistics and supply chain division of Southern Africa’s largest retail conglomerate, we source top-tier specialists who push its advanced digital supply chain journey forward.',
+    focus: ['Transformation'],
+    note: 'Predictive distribution centre operations and proprietary network optimisation algorithms.',
+  },
+  {
+    number: '12',
+    tag: 'Trusted talent partner',
+    client: 'African food ingredient and processing technology group',
+    meta: 'Over 110 years of heritage · Multi-brand',
+    lead: 'Critical recruitment mandates for a prominent, multi-brand African food ingredient and processing technology powerhouse with over 110 years of heritage. We place elite professionals where the technology and the production line meet.',
+    focus: ['Data', 'Cloud AI', 'Analytics'],
+    note: 'Tech architecture behind advanced food manufacturing facilities, smart logistics grids and modern Centres of Excellence.',
+  },
+  {
+    number: '13',
+    tag: 'Trusted talent partner',
+    client: 'Heavy industry investment vehicle',
+    meta: 'Newly incorporated · International backing',
+    lead: 'Tasked with the hiring agenda at a prominent, newly incorporated corporate investment vehicle backed by international technical partners. We lead critical mandates for its finance and management teams as the business is built around the acquisition.',
+    focus: ['Finance', 'Management'],
+    note: 'Supporting a historic JSE-announced R215 million carve-out — nine quarry and ready-mix concrete plants acquired from a major listed mining group to build a newly independent heavy industry giant.',
+  },
+];
+
 const stats = [
   { value: 2013, suffix: '', label: 'Established' },
   { value: 10, suffix: '+', label: 'Years in niche-skills recruitment and executive search' },
@@ -414,8 +513,37 @@ function App() {
               ))}
             </div>
 
+            <div className="mandate-book">
+              <Reveal className="mandate-book-head">
+                <h3>The wider mandate book.</h3>
+                <p>The specialist and executive search mandates we run across financial services, health, fintech, data, logistics, food manufacturing and heavy industry. Client names stay confidential; the weight of the work does not.</p>
+              </Reveal>
+
+              <div className="mandate-grid">
+                {mandateBook.map((item, index) => (
+                  <Reveal delay={index * 60} key={item.number}>
+                    <article className="mandate">
+                      <div className="mandate-head">
+                        <span className="mandate-number" aria-hidden="true">{item.number}</span>
+                        <span className="mandate-tag">{item.tag}</span>
+                      </div>
+                      <h3>{item.client}</h3>
+                      <p className="mandate-meta">{item.meta}</p>
+                      <p className="mandate-lead">{item.lead}</p>
+                      <ul className="mandate-focus">
+                        {item.focus.map((area) => (
+                          <li key={area}>{area}</li>
+                        ))}
+                      </ul>
+                      <p className="mandate-note">{item.note}</p>
+                    </article>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+
             <Reveal className="clients-tail" delay={120}>
-              <p>Alongside the flagship mandates: an extensive client book across the SMME market, valued blue-chip companies, and scaling startups we grow with from first hire to first hundred.</p>
+              <p>Alongside these mandates: an extensive client book across the SMME market, valued blue-chip companies, and scaling startups we grow with from first hire to first hundred.</p>
             </Reveal>
           </div>
         </section>

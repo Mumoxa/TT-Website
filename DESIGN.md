@@ -94,6 +94,14 @@ kicker at 900px. Light bands alternate `paper-soft / paper`; dark bands
 (hero, numbers, approach, contact, footer) share grain + a single radial
 glow.
 
+The clients section is two tiers on one card language: three flagship cards
+in a 3-up grid, then the wider mandate book in a 2-up grid. `.flagship` and
+`.mandate` share the frame, serif ledger number, outlined relationship tag,
+hover accent rule and bottom-pinned note (grouped selectors — the density
+changes, the vocabulary does not). Mandate cards add a `--muted` uppercase
+meta line (heritage, scale) and `--accent-soft` skill chips; no other colour
+is introduced. Client identities stay anonymised by descriptor.
+
 ## Motion
 
 - One curve: `--ease: cubic-bezier(.22, 1, .36, 1)`; durations 180/320/640ms.
