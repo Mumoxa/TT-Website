@@ -7,6 +7,10 @@ import {
   DEFAULT_AI_MODEL,
   requestLocalInterpretation,
 } from './cv/ai.js';
+import {
+  DEFAULT_SEMANTIC_ENDPOINT,
+  requestSemanticParse,
+} from './cv/semantic.js';
 import './cv-builda.css';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -14,11 +18,12 @@ import './cv-builda.css';
 
    Turns a candidate's raw CV into a Talent Tree candidate profile.
 
-   The document is generated in the browser. Nothing is uploaded, which is the
-   honest answer to the POPIA question a candidate or client will ask.
+   The document is generated in the browser. For automatic structuring, the
+   extracted CV text is sent only to Talent Tree's private self-hosted parser.
+   No paid-provider API key or model credential is exposed in the browser.
 
    Supports multi-column PDFs, LinkedIn profile PDFs, multi-document merging,
-   automated profile synthesis, and one-click data standardization.
+   semantic extraction, automated profile synthesis, and data standardization.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const EMPTY = {
@@ -64,6 +69,7 @@ const FORMATS = {
 };
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
+const SEMANTIC_ENDPOINT = import.meta.env.VITE_CV_PARSE_ENDPOINT || DEFAULT_SEMANTIC_ENDPOINT;
 
 /* ── immutable path helpers: "experience[0].titles[1].title" ─────────────── */
 const parsePath = (p) => p.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
@@ -175,11 +181,35 @@ export default function CvBuilda() {
 
   /* ── the candidate's own CV, in whatever they wrote it in ─────────────── */
   const ingestCv = useCallback(async (text, label, fileName = '', format = 'text') => {
-    const { cv: parsed, gaps: found } = parseCv(text, { fileName });
+    const { cv: fallbackCv, gaps: fallbackGaps } = parseCv(text, { fileName });
+    let record = fallbackCv;
+    let found = fallbackGaps;
+    let semantic = false;
+
+    setBusy('Structuring candidate with private AI…');
+    try {
+      const result = await requestSemanticParse(text, {
+        endpoint: SEMANTIC_ENDPOINT,
+        fileName,
+        mode: fallbackCv.meta.mode,
+        fallbackCv,
+      });
+      record = result.cv;
+      found = result.gaps;
+      semantic = true;
+    } catch (error) {
+      found = [
+        `Automatic semantic parsing was unavailable, so the built-in parser was used. ${error?.message || ''}`.trim(),
+        ...fallbackGaps,
+      ];
+    }
+
     land(
-      parsed,
+      record,
       found,
-      `${label} Read every field against the original before you build — that is the part no parser can do.`,
+      semantic
+        ? `${label} Structured by Talent Tree's private AI parser. Review only the items raised below.`
+        : `${label} Loaded with the built-in fallback parser.`,
       [{ name: fileName || 'Pasted CV text', format }],
       text,
     );
@@ -206,29 +236,58 @@ export default function CvBuilda() {
         let currentRecord = parsed;
         const extractedSources = [`--- ${firstFile.name} ---\n${text}`];
         const loadedSources = [{ name: firstFile.name, format }];
-        const extractionGaps = [...found, ...(notes || [])];
+        const fallbackGaps = [...found];
+        const documentNotes = [...(notes || [])];
 
-        /* If multiple files were dropped together (e.g. CV + LinkedIn PDF), merge them */
+        /* Build a deterministic fallback first. If several files are supplied,
+           the semantic parser receives them together so it can reconcile a CV
+           and LinkedIn profile instead of classifying each document in isolation. */
         if (files.length > 1) {
           for (let i = 1; i < files.length; i++) {
             const extraFile = files[i];
-            setBusy(`Merging ${extraFile.name}\u2026`);
+            setBusy(`Reading ${extraFile.name}…`);
             const { text: extraText, format: extraFormat, notes: extraNotes } = await extractFromFile(extraFile);
             const { cv: incomingCv, gaps: extraGaps } = parseCv(extraText, { fileName: extraFile.name });
             const { merged, notes: mergeNotes } = mergeCvRecords(currentRecord, incomingCv);
             currentRecord = merged;
             extractedSources.push(`--- ${extraFile.name} ---\n${extraText}`);
-            extractionGaps.push(...extraGaps, ...(extraNotes || []));
+            fallbackGaps.push(...extraGaps);
+            documentNotes.push(...(extraNotes || []));
             loadedSources.push({ name: extraFile.name, format: extraFormat, mergedCount: mergeNotes.length });
           }
         }
 
+        const combinedSource = extractedSources.join('\n\n');
+        let finalRecord = currentRecord;
+        let finalGaps = [...fallbackGaps, ...documentNotes];
+        let semantic = false;
+
+        setBusy('Structuring candidate with private AI…');
+        try {
+          const result = await requestSemanticParse(combinedSource, {
+            endpoint: SEMANTIC_ENDPOINT,
+            fileName: firstFile.name,
+            mode: currentRecord.meta.mode,
+            fallbackCv: currentRecord,
+          });
+          finalRecord = result.cv;
+          finalGaps = [...result.gaps, ...documentNotes];
+          semantic = true;
+        } catch (error) {
+          finalGaps = [
+            `Automatic semantic parsing was unavailable, so the built-in parser was used. ${error?.message || ''}`.trim(),
+            ...finalGaps,
+          ];
+        }
+
         land(
-          currentRecord,
-          extractionGaps,
-          `Loaded ${loadedSources.map((s) => s.name).join(' & ')} successfully.`,
+          finalRecord,
+          finalGaps,
+          semantic
+            ? `Structured ${loadedSources.map((s) => s.name).join(' & ')} with Talent Tree's private AI parser.`
+            : `Loaded ${loadedSources.map((s) => s.name).join(' & ')} with the built-in fallback parser.`,
           loadedSources,
-          extractedSources.join('\n\n'),
+          combinedSource,
         );
       }
     } catch (e) {
@@ -271,6 +330,21 @@ export default function CvBuilda() {
         format = extracted.format;
         const parsed = parseCv(extracted.text, { fileName: file.name });
         incomingCv = parsed.cv;
+        try {
+          const semantic = await requestSemanticParse(extracted.text, {
+            endpoint: SEMANTIC_ENDPOINT,
+            fileName: file.name,
+            mode: cv.meta.mode,
+            fallbackCv: parsed.cv,
+          });
+          incomingCv = semantic.cv;
+          if (semantic.gaps.length) setGaps((current) => [...new Set([...current, ...semantic.gaps])]);
+        } catch (error) {
+          setGaps((current) => [...new Set([
+            ...current,
+            `Supplementary document used the built-in parser because semantic parsing was unavailable. ${error?.message || ''}`.trim(),
+          ])]);
+        }
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
       setCv(merged);
@@ -302,6 +376,21 @@ export default function CvBuilda() {
       } else {
         const parsed = parseCv(text, { fileName: 'Pasted Supplementary Text' });
         incomingCv = parsed.cv;
+        try {
+          const semantic = await requestSemanticParse(text, {
+            endpoint: SEMANTIC_ENDPOINT,
+            fileName: 'Pasted Supplementary Text',
+            mode: cv.meta.mode,
+            fallbackCv: parsed.cv,
+          });
+          incomingCv = semantic.cv;
+          if (semantic.gaps.length) setGaps((current) => [...new Set([...current, ...semantic.gaps])]);
+        } catch (error) {
+          setGaps((current) => [...new Set([
+            ...current,
+            `Supplementary text used the built-in parser because semantic parsing was unavailable. ${error?.message || ''}`.trim(),
+          ])]);
+        }
       }
       const { merged, notes: mergeNotes } = mergeCvRecords(cv, incomingCv);
       setCv(merged);
@@ -555,22 +644,31 @@ export default function CvBuilda() {
               onAutoSynthesize={handleAutoSynthesize}
             />
 
-            <AiAssistPanel
-              cv={cv}
-              sourceText={sourceText}
-              state={aiState}
-              endpoint={aiEndpoint}
-              setEndpoint={setAiEndpoint}
-              model={aiModel}
-              setModel={setAiModel}
-              provider={aiProvider}
-              setProvider={setAiProvider}
-              busy={Boolean(busy)}
-              onRun={handleAiInterpret}
-              onApply={applyAiSuggestion}
-              onReject={rejectAiSuggestion}
-              onApplyAll={applyAllAiSuggestions}
-            />
+            <div className="cvb-ai-boundary" role="status">
+              <strong>Automatic private AI parsing is on.</strong> Extracted CV text is sent to
+              Talent Tree's self-hosted parser, checked against the CV-Builda schema, and the
+              built-in parser remains available as a fallback.
+            </div>
+
+            <details className="cvb-ai-advanced">
+              <summary>Advanced parser diagnostics</summary>
+              <AiAssistPanel
+                cv={cv}
+                sourceText={sourceText}
+                state={aiState}
+                endpoint={aiEndpoint}
+                setEndpoint={setAiEndpoint}
+                model={aiModel}
+                setModel={setAiModel}
+                provider={aiProvider}
+                setProvider={setAiProvider}
+                busy={Boolean(busy)}
+                onRun={handleAiInterpret}
+                onApply={applyAiSuggestion}
+                onReject={rejectAiSuggestion}
+                onApplyAll={applyAllAiSuggestions}
+              />
+            </details>
 
             {showSuppModal && (
               <SupplementaryModal

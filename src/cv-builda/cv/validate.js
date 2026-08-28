@@ -23,6 +23,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
 const MONTH = `(?:${MONTHS.join('|')})`;
 const RANGE = new RegExp(`^${MONTH} \\d{4} \u2013 (?:Present|${MONTH} \\d{4})$`);
 const YEAR = /^\d{4}$/;
+const YEAR_RANGE = /^\d{4} – (?:Present|\d{4})$/;
 
 /* Openers that are not action verbs. The house rule is that every bullet starts
    with one, and these are the phrases that most often slip through. */
@@ -68,8 +69,12 @@ function checkRange(where, value, { allowEmpty = false } = {}) {
     err(where, `uses a hyphen, not an en dash \u2013 \u2014 "${value}"`);
     return;
   }
+  if (YEAR_RANGE.test(value.trim())) {
+    warn(where, `months were not stated in the source, so the year-only tenure was preserved \u2014 "${value}"`);
+    return;
+  }
   if (!RANGE.test(value.trim())) {
-    err(where, `duration must read "Month YYYY \u2013 Month YYYY" or "Month YYYY \u2013 Present" \u2014 got "${value}"`);
+    err(where, `duration must read "Month YYYY \u2013 Month YYYY", "Month YYYY \u2013 Present", or preserve a source year-only range such as "2019 \u2013 2021" \u2014 got "${value}"`);
     return;
   }
   /* The shape can be right and the tenure still impossible. Ordering checks

@@ -167,9 +167,11 @@ Operations Manager
 • Ran the depot`);
   assert.equal(cv.experience[0].duration, '2019 – 2021');
   assert.ok(gaps.some((g) => /years only/i.test(g)), 'the consultant is told to ask');
-  /* And the validator still blocks the build, because the house format is
-     months. Parsing does not get to waive a house rule. */
-  assert.ok(validate(cv).errors.some((e) => /^experience\[0\]\.duration$/.test(e.field)));
+  /* Missing months are uncertainty, not licence to invent precision. Keep
+     the source as written, surface a warning, and do not block generation. */
+  const report = validate(cv);
+  assert.ok(!report.errors.some((e) => /^experience\[0\]\.duration$/.test(e.field)));
+  assert.ok(report.warnings.some((e) => /^experience\[0\]\.duration$/.test(e.field)));
 });
 
 test('a tenure stated only in the title rows is read off them', () => {
