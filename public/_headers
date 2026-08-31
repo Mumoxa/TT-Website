@@ -15,3 +15,10 @@
 /cv-builda
   Cache-Control: no-store, no-cache, must-revalidate, private
   X-Robots-Tag: noindex, nofollow
+
+# Milkor client microsite changes frequently during review; do not serve stale fragments.
+/clients/Milkor
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/clients/Milkor/*
+  Cache-Control: no-store, no-cache, must-revalidate
