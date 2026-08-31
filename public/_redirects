@@ -1,3 +1,9 @@
-# Cloudflare Pages serves the SPA shell for every path, so /cv-builda reaches
+# Serve the dedicated Milkor client intelligence microsite before the SPA fallback.
+/clients/Milkor   /clients/Milkor/index.html   200
+/clients/Milkor/  /clients/Milkor/index.html   200
+/clients/milkor   /clients/Milkor               301
+/clients/milkor/  /clients/Milkor               301
+
+# Cloudflare Pages serves the SPA shell for every other path, so /cv-builda reaches
 # the app instead of 404ing. Vite copies public/ into dist/ verbatim.
 /*  /index.html  200
