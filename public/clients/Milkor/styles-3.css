@@ -107,3 +107,27 @@ body{font-family:var(--sans);background:
 @media(max-width:650px){.priorityExplain{margin-top:26px}.legendRow{grid-template-columns:auto 1fr}.legendRow strong{grid-column:2;margin-top:4px;font-size:24px}.legendRow small{font-size:11.5px}}
 
 .contactFallback{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;color:var(--muted-on-dark);font-size:13px}.directEmail{color:var(--accent-bright);text-decoration:underline;text-underline-offset:3px}.copyEmail{border:1px solid var(--line);background:transparent;color:var(--white);padding:8px 10px;border-radius:2px;cursor:pointer;font:600 12px var(--sans)}.copyEmail:hover{background:rgba(255,255,255,.06)}.copyStatus{color:var(--accent-bright);min-width:44px}
+
+/* Relevant client experience — intentionally anonymised. */
+.experienceIntro{display:grid;grid-template-columns:.8fr 1.2fr;gap:42px;align-items:center;padding:34px;margin-bottom:18px}
+.experienceIntro h3{font-family:var(--serif);font-size:clamp(28px,3.2vw,42px);font-weight:500;letter-spacing:-.035em;line-height:1.08;margin:0}
+.experienceIntro p{margin:0;color:var(--muted-on-dark);font-size:15px;line-height:1.72}
+.experienceGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.experienceCard{padding:30px;display:flex;flex-direction:column;min-height:420px}
+.experienceCardWide{grid-column:1/-1;min-height:0}
+.expTop{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:26px}
+.expType{font:700 10px var(--sans);letter-spacing:.15em;text-transform:uppercase;color:var(--accent-bright)}
+.expIndex{font:500 28px var(--serif);color:rgba(143,208,226,.28);font-variant-numeric:tabular-nums}
+.experienceCard h3{font-family:var(--serif);font-size:clamp(25px,2.4vw,34px);font-weight:500;letter-spacing:-.03em;line-height:1.08;margin:0 0 15px}
+.experienceCard>p{color:var(--muted-on-dark);font-size:14px;line-height:1.72;margin:0 0 26px;max-width:68ch}
+.expStats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:auto;border:1px solid var(--line);background:var(--line)}
+.expStats span{background:var(--ink-abyss);padding:16px 14px;min-width:0}
+.expStats b{display:block;font:500 21px var(--serif);letter-spacing:-.025em;color:var(--white)}
+.expStats small{display:block;margin-top:4px;color:var(--muted-on-dark);font-size:10px;line-height:1.35}
+.expTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
+.expTags span{padding:7px 9px;border:1px solid rgba(143,208,226,.15);background:rgba(143,208,226,.035);color:var(--accent-bright);font-size:10px;font-weight:600;letter-spacing:.02em;border-radius:2px}
+.experienceBottom{margin-top:22px;padding:26px 0 0;border-top:1px solid var(--line)}
+.experienceBottom p{max-width:970px;color:var(--muted-on-dark);font-size:17px;line-height:1.7;margin:0}
+.experienceBottom strong{color:var(--white);font-weight:600}
+@media(max-width:900px){.experienceIntro{grid-template-columns:1fr;gap:16px}.experienceGrid{grid-template-columns:1fr}.experienceCardWide{grid-column:auto}}
+@media(max-width:650px){.experienceCard{padding:22px;min-height:0}.expStats{grid-template-columns:1fr}.expStats span{padding:12px}.experienceBottom p{font-size:15px}}
