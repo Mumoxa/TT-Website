@@ -1,0 +1,30 @@
+# Talent Tree — Cloudflare Pages project with Pages Functions.
+#
+# Local development / verification (no Cloudflare account needed):
+#   npm install
+#   npx wrangler d1 migrations apply tt-offers --local
+#   npm run build
+#   npx wrangler pages dev dist --port 8788
+#
+# Production (one-time, done by a human with Cloudflare access):
+#   1. npx wrangler d1 create tt-offers        -> paste the real database_id below
+#   2. npx wrangler r2 bucket create tt-offers-private
+#   3. npx wrangler d1 migrations apply tt-offers --remote
+#   4. On the Cloudflare Pages project add bindings:
+#        D1   DB          -> tt-offers
+#        R2   PDF_BUCKET  -> tt-offers-private
+#      and the secret variable ADMIN_KEY (see README; never commit the value).
+#   5. Deploy via git push to main (existing Pages flow) or `npx wrangler pages deploy dist`.
+
+name = "tt-website-offers"
+compatibility_date = "2026-09-08"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"                            # env.DB — offers, acceptances, audit events
+database_name = "tt-offers"
+database_id = "00000000-0000-0000-0000-000000000000"   # placeholder until the DB is created
+
+[[r2_buckets]]
+binding = "PDF_BUCKET"                    # env.PDF_BUCKET — private storage for offer PDFs
+bucket_name = "tt-offers-private"
