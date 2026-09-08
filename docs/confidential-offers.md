@@ -53,8 +53,8 @@ npm run offers:migrate    # applies migrations to the local D1 store
 npm run offers:dev        # vite build, then wrangler pages dev on :8788
 ```
 
-The local simulator uses `.wrangler/` for D1/R2 and reads the local admin key
-from `.dev.vars` (`ADMIN_KEY=LOCAL_DEV_KEY_...`). Open
+The local simulator uses `.wrangler/` for D1/R2 and reads the single internal
+password from `.dev.vars` (`ADMIN_KEY=...`). Open
 `http://localhost:8788/admin/offers`, log in with that key, upload a PDF and
 walk the candidate link. (`npm run dev` still serves the plain marketing site
 without the Functions API.)
