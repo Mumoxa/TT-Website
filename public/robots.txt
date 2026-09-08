@@ -1,0 +1,14 @@
+# Talent Tree — talenttree.co.za
+# Public pages are open to crawlers. Internal tools and candidate-facing
+# secure links are excluded here and also send X-Robots-Tag: noindex
+# (see public/_headers).
+
+User-agent: *
+Allow: /
+Disallow: /specs
+Disallow: /cv-builda
+Disallow: /admin
+Disallow: /offer
+Disallow: /api/
+
+Sitemap: https://talenttree.co.za/sitemap.xml

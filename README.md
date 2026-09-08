@@ -12,6 +12,7 @@ React/Vite website for Talent Tree Consulting.
 ## Routes
 
 - `/` — Main marketing site
+- `/profile` — Public interactive company profile (talenttree.co.za/profile): chaptered profile with scrollspy navigation, animated figures, filterable mandate book, an interactive fee calculator (≈15% of annual CTC vs the 25–35% retained executive search benchmark), accordions and a print/PDF stylesheet. Linked from the site header and footer, listed in `public/sitemap.xml`.
 - `/clients/Milkor` — Public client-facing Milkor sourcing intelligence profile
 - `/cv-builda` — Internal CV formatter/anonymizer (client-side by default, with an optional zero-cost self-hosted AI review; see `docs/cv-builda-ai.md`)
 - `/specs` — Internal job brief sanitizer (talenttree.co.za/specs) — converts client briefs (PDF, DOCX, XLSX, Google Docs, TXT) into sanitized, branded specs with client names replaced by generic descriptors, contacts removed, links replaced with CV@talenttree.co.za, and TalentTree branding. See `docs/specs.md`.

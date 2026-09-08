@@ -102,6 +102,27 @@ changes, the vocabulary does not). Mandate cards add a `--muted` uppercase
 meta line (heritage, scale) and `--accent-soft` skill chips; no other colour
 is introduced. Client identities stay anonymised by descriptor.
 
+## Company profile (`/profile`)
+
+`src/profile/profile.css` is a scoped extension of this system, not a second
+one: every colour, face, radius and duration resolves to the tokens above
+(`tp-` prefix so nothing collides with the marketing site). It reuses the
+site classes for the brand lockup, eyebrow, section kicker, ghost numerals
+and skip link.
+
+- Chapters alternate `paper-soft / paper` with dark `ink-deep` bands for the
+  cover, the mandate method, the fee section and contact — the same
+  light-dark thread the home page uses.
+- The fee calculator is a white card inside a dark band: bars use `--accent`
+  (Talent Tree) against a 28% ink wash (market benchmark), and the saving
+  panel is the one `--accent-soft` moment on the page.
+- Interaction: sticky chapter rail with scrollspy + a 2px `--accent-bright`
+  reading-progress bar, accordions (`aria-expanded`/`aria-controls`), a
+  roving-tabindex stepper (`role="tablist"`), filter chips (`aria-pressed`),
+  clipboard buttons with `role="status"` feedback.
+- `@media print` flattens the dark bands to paper, opens every collapsed
+  panel and hides the controls, so the page doubles as the PDF profile.
+
 ## Motion
 
 - One curve: `--ease: cubic-bezier(.22, 1, .36, 1)`; durations 180/320/640ms.

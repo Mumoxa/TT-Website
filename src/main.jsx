@@ -17,6 +17,7 @@ const CvBuilda = lazy(() => import('./cv-builda/CvBuilda.jsx'));
 const SpecsApp = lazy(() => import('./specs/SpecsApp.jsx'));
 const OfferApp = lazy(() => import('./offers/OfferApp.jsx'));
 const AdminApp = lazy(() => import('./offers/AdminApp.jsx'));
+const ProfileApp = lazy(() => import('./profile/ProfileApp.jsx'));
 
 function RouteFallback() {
   return (
@@ -460,6 +461,7 @@ function App() {
             <a href="#why" onClick={closeMenu} aria-current={activeSection === 'why' ? 'true' : undefined}>Why us</a>
             <a href="#about" onClick={closeMenu} aria-current={activeSection === 'about' ? 'true' : undefined}>About</a>
             <a href="#faq" onClick={closeMenu} aria-current={activeSection === 'faq' ? 'true' : undefined}>FAQ</a>
+            <a href="/profile" onClick={closeMenu}>Profile</a>
             <a className="nav-contact" href="#contact" onClick={closeMenu}>Discuss a brief</a>
           </nav>
           <button
@@ -811,6 +813,7 @@ function App() {
             </div>
             <div className="footer-email">
               <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
+              <p className="footer-line"><a href="/profile">Read the full company profile</a></p>
             </div>
           </div>
           <div className="footer-legal">
@@ -824,11 +827,13 @@ function App() {
 
 /* Path-based routing without a router library.
    Trailing slashes are stripped so /cv-builda and /cv-builda/ are the same page.
+   /profile is the public, interactive company profile.
    /specs is the internal job brief sanitizer.
    /offer/<secure-token> is the confidential employment offer delivery flow.
    /admin/offers is the internal offer-creation tool (server-side key gate). */
 function Root() {
   const path = window.location.pathname.replace(/\/+$/, '');
+  if (path === '/profile') return withFallback(<ProfileApp />);
   if (path === '/cv-builda') return withFallback(<CvBuilda />);
   if (path === '/specs') return withFallback(<SpecsApp />);
   if (path === '/offer' || path.startsWith('/offer/')) {
