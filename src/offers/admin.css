@@ -1,7 +1,7 @@
 /* ============================================================================
    TALENT TREE — INTERNAL OFFER DELIVERY TOOL (/admin/offers, MVP)
-   Uses the site design tokens from src/styles.css. Internal utility styling —
-   functional first, still on-brand and responsive.
+   Site tokens (src/styles.css), same buttons/typography language as the main
+   site. Clean, fast, mobile-usable — not a heavyweight dashboard.
    ========================================================================== */
 
 .adm-page {
@@ -20,25 +20,25 @@
 .adm-header-inner {
   width: min(1040px, 100% - clamp(20px, 4vw, 48px) * 2);
   margin-inline: auto;
-  min-height: 72px;
+  min-height: 76px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 .adm-header-inner img {
-  height: 40px;
+  height: 42px;
   width: auto;
-  filter: none;
 }
 .adm-header-name {
-  font-size: var(--fs-300);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: var(--serif);
+  font-size: clamp(1rem, 2.6vw, 1.2rem);
+  letter-spacing: 0.01em;
+  color: var(--white);
 }
 .adm-header-tag {
   display: inline-block;
   margin-left: 10px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border: 1px solid var(--line-invert);
   border-radius: var(--radius-pill);
   color: var(--muted-on-dark);
@@ -46,7 +46,7 @@
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  vertical-align: 1px;
+  vertical-align: 2px;
 }
 
 .adm-main {
@@ -59,12 +59,21 @@
 .adm-card {
   background: var(--paper-soft);
   border: 1px solid var(--line);
-  border-radius: calc(var(--radius) + 6px);
-  box-shadow: var(--shadow-soft);
+  border-radius: calc(var(--radius) + 8px);
+  box-shadow: var(--shadow-soft), 0 30px 70px -55px rgba(7, 26, 35, 0.4);
   padding: clamp(20px, 4vw, 32px);
+  position: relative;
+}
+.adm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: calc(var(--radius) + 8px) calc(var(--radius) + 8px) 0 0;
+  background: linear-gradient(90deg, var(--ink-deep) 0%, var(--accent) 60%, var(--accent-bright) 100%);
 }
 .adm-card--narrow {
-  max-width: 460px;
+  max-width: 480px;
   margin-inline: auto;
 }
 
@@ -95,7 +104,7 @@ code {
 .adm-stack {
   display: grid;
   gap: 16px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 .adm-grid {
   display: grid;
@@ -110,7 +119,7 @@ code {
 .adm-field-label {
   font-size: var(--fs-200);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -121,51 +130,67 @@ code {
 }
 .adm-field input {
   width: 100%;
-  min-height: 46px;
-  padding: 10px 12px;
+  min-height: 48px;
+  padding: 11px 13px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--white);
   color: var(--ink);
+  transition: border-color var(--fast) ease, box-shadow var(--fast) ease;
 }
-.adm-field input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.adm-field input:hover:not(:focus) {
+  border-color: rgba(18, 48, 61, 0.6);
+}
+.adm-field input:focus {
+  outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.adm-field input:disabled {
+  opacity: 0.6;
 }
 
 .adm-cta {
-  min-height: 48px;
+  min-height: 50px;
   font-size: var(--fs-300);
   justify-self: start;
+  cursor: pointer;
 }
 .adm-cta:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
 }
+.adm-cta svg {
+  width: 16px;
+  height: 16px;
+}
 
 .adm-error {
   margin: 0;
   padding: 12px 14px;
-  border: 1px solid rgba(180, 90, 30, 0.45);
-  background: rgba(255, 244, 229, 0.85);
-  color: #7a4a1d;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: var(--white);
+  color: var(--ink-deep);
   border-radius: var(--radius);
   font-size: var(--fs-300);
+  font-weight: 500;
 }
 
+/* ---------- created / copy-link ---------- */
+
 .adm-created {
-  margin-top: 18px;
-  padding: clamp(16px, 3vw, 22px);
+  margin-top: 20px;
+  padding: clamp(16px, 3.4vw, 24px);
   border: 1px solid var(--accent-soft);
   background: var(--white);
-  border-radius: calc(var(--radius) + 2px);
+  border-radius: calc(var(--radius) + 4px);
 }
 .adm-created-label {
   font-weight: 600;
   color: var(--ink-deep);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .adm-link {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -174,28 +199,30 @@ code {
   word-break: break-all;
   background: var(--paper);
   border: 1px dashed var(--line-strong);
-  padding: 10px 12px;
+  padding: 11px 13px;
   border-radius: var(--radius);
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 .adm-created-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
+
+/* ---------- recent offers table ---------- */
 
 .adm-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--white);
 }
 .adm-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--fs-300);
-  background: var(--white);
-  min-width: 640px;
+  min-width: 720px;
 }
 .adm-table th {
   text-align: left;
@@ -204,14 +231,20 @@ code {
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 10px 12px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
 .adm-table td {
-  padding: 12px;
-  border-bottom: 1px solid rgba(18, 48, 61, 0.08);
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(18, 48, 61, 0.07);
   vertical-align: top;
+}
+.adm-table tbody tr {
+  transition: background var(--fast) ease;
+}
+.adm-table tbody tr:hover {
+  background: rgba(221, 235, 238, 0.35);
 }
 .adm-table tbody tr:last-child td {
   border-bottom: none;
@@ -225,20 +258,20 @@ code {
   display: block;
   color: var(--muted);
   font-size: var(--fs-100);
-  margin-top: 2px;
+  margin-top: 3px;
   word-break: break-word;
 }
 .adm-state {
   display: inline-block;
-  padding: 2px 9px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
   background: var(--accent-soft);
   color: var(--accent-deep);
   font-size: var(--fs-100);
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 .adm-state--accepted {
   background: rgba(19, 101, 121, 0.16);
@@ -258,7 +291,7 @@ code {
   background: var(--white);
   color: var(--ink-deep);
   border-radius: var(--radius);
-  padding: 7px 12px;
+  padding: 8px 13px;
   font-size: var(--fs-200);
   font-weight: 600;
   cursor: pointer;
@@ -269,22 +302,28 @@ code {
   border-color: var(--ink-deep);
   color: var(--white);
 }
+.adm-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- audit trail ---------- */
 
 .adm-events {
-  margin-top: 18px;
+  margin-top: 20px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 4px);
   background: var(--white);
-  padding: clamp(14px, 3vw, 20px);
+  padding: clamp(14px, 3.4vw, 22px);
 }
 .adm-events-title {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   font-family: var(--serif);
   font-size: 1.1rem;
   color: var(--ink-deep);
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 .adm-close {
   border: none;
@@ -294,11 +333,12 @@ code {
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
+  padding: 4px;
 }
 .adm-events-block + .adm-events-block {
-  margin-top: 12px;
+  margin-top: 14px;
   border-top: 1px solid var(--line);
-  padding-top: 12px;
+  padding-top: 14px;
 }
 .adm-events-label {
   font-size: var(--fs-100);
@@ -306,12 +346,12 @@ code {
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--accent-deep);
-  margin: 0 0 6px;
+  margin: 0 0 8px;
 }
 .adm-events-line {
   font-size: var(--fs-200);
   color: var(--ink);
-  margin: 0 0 5px;
+  margin: 0 0 6px;
   word-break: break-word;
 }
 
@@ -324,5 +364,8 @@ code {
   }
   .adm-cta {
     width: 100%;
+  }
+  .adm-table {
+    min-width: 560px;
   }
 }

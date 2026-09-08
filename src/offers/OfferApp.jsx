@@ -1,6 +1,8 @@
 /* Talent Tree — confidential employment offer delivery.
    Candidate-facing flow at /offer/<secure-token>.
-   Copy here follows the approved 2026-09-08 wording exactly. */
+   Copy follows the approved 2026-09-08 wording exactly. UI follows the site
+   design system (src/styles.css tokens) + UI-UX-Pro-Max trust/authority rules:
+   strong hierarchy, quiet reassurance, no alarm styling, mobile-first. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
@@ -26,6 +28,33 @@ const formatWhen = (iso) => {
   }).format(d);
 };
 
+/* Small inline SVG set — consistent 1.5px stroke, no emoji icons. */
+const IconArrow = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 12h13M13 6l6 6-6 6" />
+  </svg>
+);
+
+const IconLock = () => (
+  <svg className="tt-glyph" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="9" rx="1.5" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+
+const IconShield = () => (
+  <svg className="tt-glyph" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3l7 3v5.5c0 4.5-3 8.2-7 9.5-4-1.3-7-5-7-9.5V6z" />
+    <path d="M9.3 12l1.9 1.9 3.6-3.8" />
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg className="tt-glyph" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);
+
 function Logo() {
   return (
     <div className="tt-lockup">
@@ -36,10 +65,14 @@ function Logo() {
 
 function Unavailable() {
   return (
-    <main className="offer-shell">
-      <section className="offer-panel offer-panel--slim" aria-live="polite">
+    <main className="offer-shell offer-shell--slim">
+      <section className="offer-state" aria-live="polite">
+        <span className="offer-state-glyph">
+          <IconShield />
+        </span>
         <p className="offer-eyebrow">Secure offer delivery</p>
-        <h1 className="offer-title">{UNAVAILABLE_TEXT}</h1>
+        <h1 className="offer-state-title">{UNAVAILABLE_TEXT}</h1>
+        <p className="offer-muted">No further action is needed on your side.</p>
       </section>
     </main>
   );
@@ -47,8 +80,8 @@ function Unavailable() {
 
 function Loading() {
   return (
-    <main className="offer-shell">
-      <section className="offer-panel offer-panel--slim" aria-live="polite">
+    <main className="offer-shell offer-shell--slim">
+      <section className="offer-state" aria-live="polite">
         <p className="offer-muted">Opening your secure offer…</p>
       </section>
     </main>
@@ -63,29 +96,33 @@ function Locked({ offer, onAgree, busy, error }) {
   return (
     <main className="offer-shell">
       <article className="offer-panel">
-        <p className="offer-eyebrow">Talent Tree · Secure offer delivery</p>
-        <h1 className="offer-title">Your Confidential Employment Offer</h1>
+        <header className="offer-head">
+          <p className="offer-eyebrow">
+            <IconLock /> Confidential · Secure offer delivery
+          </p>
+          <h1 className="offer-title">Your Confidential Employment Offer</h1>
+        </header>
 
         <dl className="offer-facts">
-          <div>
+          <div className="offer-fact">
             <dt>Candidate</dt>
             <dd>{offer.candidate_name}</dd>
           </div>
-          <div>
+          <div className="offer-fact">
             <dt>Position</dt>
             <dd>{offer.position_title}</dd>
           </div>
-          <div>
+          <div className="offer-fact">
             <dt>Client</dt>
             <dd>{offer.client_name}</dd>
           </div>
         </dl>
 
-        <p className="offer-intro">
+        <p className="offer-lead">
           Congratulations. A formal employment offer has been made available to you through Talent
           Tree.
         </p>
-        <p className="offer-intro">
+        <p className="offer-lead">
           Employment offers contain private remuneration, employment and commercial information and
           are therefore delivered through Talent Tree’s secure offer process.
         </p>
@@ -128,7 +165,7 @@ function Locked({ offer, onAgree, busy, error }) {
         </label>
 
         {error && (
-          <p className="offer-error" role="alert">
+          <p className="offer-note offer-note--alert" role="alert">
             {error}
           </p>
         )}
@@ -140,6 +177,7 @@ function Locked({ offer, onAgree, busy, error }) {
           onClick={onAgree}
         >
           <span>{busy ? 'Recording your agreement…' : 'Agree & View Offer'}</span>
+          {!busy && <IconArrow />}
         </button>
 
         <p className="offer-subtle">
@@ -147,6 +185,15 @@ function Locked({ offer, onAgree, busy, error }) {
           prospective employer. The employment offer itself is made by the employer identified in
           the offer document.
         </p>
+
+        <ul className="offer-reassure">
+          <li>
+            <IconLock /> Your offer is shared only with you, through a private secure link.
+          </li>
+          <li>
+            <IconShield /> Talent Tree never stores or records the contents of the offer document.
+          </li>
+        </ul>
       </article>
     </main>
   );
@@ -157,21 +204,25 @@ function Locked({ offer, onAgree, busy, error }) {
 function Confirmed({ offer, acceptedAt, downloadUrl, downloadReady }) {
   return (
     <main className="offer-shell">
-      <article className="offer-panel">
-        <p className="offer-eyebrow">Talent Tree · Secure offer delivery</p>
-        <h1 className="offer-title">Confidentiality Confirmed</h1>
-        <p className="offer-thanks">
+      <article className="offer-panel offer-panel--confirmed">
+        <header className="offer-head">
+          <span className="offer-confirmed-glyph">
+            <IconCheck />
+          </span>
+          <p className="offer-eyebrow">Talent Tree · Secure offer delivery</p>
+          <h1 className="offer-title">Confidentiality Confirmed</h1>
+        </header>
+
+        <p className="offer-lead offer-lead--large">
           Thank you, {FIRST_NAME(offer.candidate_name)}.
         </p>
-        <p className="offer-intro">
+        <p className="offer-lead">
           Your confidentiality undertaking was recorded on {formatWhen(acceptedAt)}. You may now
           access your formal employment offer.
         </p>
 
-        <div className="offer-details">
-          <p className="offer-muted">
-            {offer.position_title} · {offer.client_name}
-          </p>
+        <div className="offer-detail-chip">
+          {offer.position_title} · {offer.client_name}
         </div>
 
         <a
@@ -183,6 +234,7 @@ function Confirmed({ offer, acceptedAt, downloadUrl, downloadReady }) {
           }}
         >
           <span>View / Download Offer</span>
+          <IconArrow />
         </a>
 
         <p className="offer-subtle">

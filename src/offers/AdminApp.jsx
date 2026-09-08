@@ -1,7 +1,7 @@
 /* Talent Tree — internal offer creation (MVP).
-   Minimal protected tool at /admin/offers: upload a candidate's offer PDF,
-   enter the offer details, copy the secure link, and verify acceptance /
-   audit events. Access is gated by the shared ADMIN_KEY (server-side). */
+   Minimal, low-friction tool at /admin/offers: upload a candidate's offer PDF,
+   enter the offer details, copy the secure link, and verify acceptance / audit
+   events. Guarded by a single server-side ADMIN_KEY. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
@@ -61,6 +61,26 @@ const emptyForm = () => {
     file: null,
   };
 };
+
+const IconLink = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+    <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+  </svg>
+);
+
+const IconEye = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </svg>
+);
+
+const IconPlus = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
 
 function Field({ label, children, hint }) {
   return (
@@ -161,6 +181,7 @@ export default function AdminApp() {
     e.preventDefault();
     setFormError('');
     setCopiedUrl(null);
+    setCreated(null);
 
     const f = form;
     if (!f.candidateName.trim() || !f.candidateEmail.trim() || !f.clientName.trim() || !f.positionTitle.trim()) {
@@ -322,8 +343,8 @@ export default function AdminApp() {
         <section className="adm-card">
           <h1 className="adm-title">Create an offer</h1>
           <p className="adm-hint">
-            The candidate will receive a secure, private link. The PDF is stored privately and is
-            only released after the candidate agrees to the confidentiality undertaking.
+            The candidate receives a secure private link. The PDF stays private and is only
+            released after they accept the confidentiality undertaking.
           </p>
 
           <form onSubmit={submitCreate} className="adm-stack">
@@ -364,7 +385,7 @@ export default function AdminApp() {
             </div>
 
             <div className="adm-grid">
-              <Field label="Offer expires" hint="After this time the secure link stops working.">
+              <Field label="Offer expires">
                 <input
                   type="datetime-local"
                   value={form.expiresAt}
@@ -394,6 +415,7 @@ export default function AdminApp() {
 
             <button type="submit" className="button adm-cta" disabled={formBusy}>
               <span>{formBusy ? 'Creating secure offer…' : 'Create offer & generate secure link'}</span>
+              {!formBusy && <IconPlus />}
             </button>
           </form>
 
@@ -404,14 +426,15 @@ export default function AdminApp() {
               <div className="adm-created-actions">
                 <button type="button" className="button adm-cta" onClick={() => copyOfferLink(created.url)}>
                   <span>{copiedUrl === created.url ? 'Copied ✓' : 'Copy link'}</span>
+                  <IconLink />
                 </button>
                 <a className="button button-quiet adm-cta" href={created.url} target="_blank" rel="noreferrer">
                   <span>Open as candidate</span>
+                  <IconEye />
                 </a>
               </div>
               <p className="adm-hint">
-                Expires {formatWhen(created.expires_at)} · sent to {created.candidate_email} ·{' '}
-                {created.client_name} · {created.position_title}
+                Expires {formatWhen(created.expires_at)} · {created.client_name} · {created.position_title}
               </p>
             </div>
           )}
@@ -432,7 +455,7 @@ export default function AdminApp() {
                   <tr>
                     <th>Candidate</th>
                     <th>Client / position</th>
-                    <th>Expiry</th>
+                    <th>Status</th>
                     <th>Confidentiality</th>
                     <th aria-label="actions">Actions</th>
                   </tr>
@@ -515,7 +538,7 @@ function Header() {
 
 function OfferRow({ offer, copiedUrl, onCopy, onEvents }) {
   const accepted = offer.accepted_at ? formatWhen(offer.accepted_at) : null;
-  const stateLabel = offer.status !== 'active' ? 'closed' : offer.expired ? 'expired' : 'live';
+  const stateLabel = offer.status !== 'active' ? 'Closed' : offer.expired ? 'Expired' : 'Live';
   return (
     <tr>
       <td>
