@@ -1080,6 +1080,18 @@ input:focus, select:focus, textarea:focus { border-bottom-color: var(--accent-br
   padding: clamp(56px, 7vw, 88px) 0 clamp(40px, 5vw, 64px);
 }
 .footer-line { margin: 24px 0 0; max-width: 46ch; color: rgba(255, 255, 255, 0.58); font-size: 0.85rem; line-height: 1.7; }
+/* The footer link through to the public company profile (/profile). */
+.footer-line a {
+  color: var(--accent-bright);
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  padding-bottom: 2px;
+  transition: color var(--fast) ease, background-size var(--med) var(--ease);
+}
+.footer-line a:hover { color: var(--white); background-size: 0% 1px; }
 .site-footer .logo img { height: 46px; }
 .footer-email { justify-self: end; text-align: right; }
 .footer-email .email-link { margin-top: 2px; font-size: clamp(1.15rem, 1.8vw, 1.35rem); }
