@@ -5,3 +5,7 @@ dist/
 .DS_Store
 .vscode/
 coverage/
+
+# Local offer-flow simulation state + dev secrets (never committed)
+.wrangler/
+.dev.vars

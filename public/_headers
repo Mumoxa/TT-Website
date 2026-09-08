@@ -22,3 +22,17 @@
 
 /clients/Milkor/*
   Cache-Control: no-store, no-cache, must-revalidate
+
+# Confidential employment offer delivery — never cache candidate or internal pages,
+# and keep offers + the admin tool out of search indexes.
+/offer*
+  Cache-Control: no-store, no-cache, must-revalidate, private
+  X-Robots-Tag: noindex, nofollow
+
+/admin*
+  Cache-Control: no-store, no-cache, must-revalidate, private
+  X-Robots-Tag: noindex, nofollow
+
+/api/*
+  Cache-Control: no-store, no-cache, must-revalidate, private
+  X-Robots-Tag: noindex, nofollow

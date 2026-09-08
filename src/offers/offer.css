@@ -1,0 +1,235 @@
+/* ============================================================================
+   TALENT TREE — CONFIDENTIAL EMPLOYMENT OFFER (candidate page)
+   Built on the site design tokens in src/styles.css (same colours, type,
+   buttons, radii). Mobile-first — candidates typically open the link from a
+   phone (often WhatsApp).
+   ========================================================================== */
+
+.offer-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1200px 420px at 50% -160px, var(--accent-soft), transparent 70%),
+    var(--paper);
+}
+
+.tt-lockup {
+  display: flex;
+  justify-content: center;
+  padding: clamp(26px, 6vw, 56px) var(--gutter) 0;
+}
+.tt-lockup img {
+  width: clamp(96px, 24vw, 132px);
+  height: auto;
+}
+
+.offer-shell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: clamp(26px, 5vw, 44px) var(--gutter) clamp(64px, 10vw, 96px);
+  flex: 1;
+}
+
+.offer-panel {
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  box-shadow: var(--shadow-soft), 0 30px 60px -50px rgba(7, 26, 35, 0.35);
+  padding: clamp(26px, 6vw, 54px);
+}
+
+.offer-panel--slim {
+  text-align: center;
+}
+
+.offer-eyebrow {
+  font-size: var(--fs-100);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: clamp(14px, 3vw, 22px);
+}
+.offer-panel--slim .offer-eyebrow {
+  margin-bottom: 12px;
+}
+
+.offer-title {
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 5.4vw, 2.6rem);
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  margin: 0 0 clamp(18px, 4vw, 28px);
+  color: var(--ink-deep);
+}
+
+.offer-panel--slim .offer-title {
+  font-family: var(--sans);
+  font-size: clamp(1.05rem, 3.4vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.offer-facts {
+  margin: 0 0 clamp(20px, 4vw, 30px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.offer-facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 12px 16px;
+  background: var(--white);
+}
+.offer-facts > div + div {
+  border-top: 1px solid var(--line);
+}
+.offer-facts dt {
+  flex: 0 0 auto;
+  width: 96px;
+  font-size: var(--fs-200);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 1px;
+}
+.offer-facts dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.offer-intro,
+.offer-thanks {
+  font-size: var(--fs-400);
+  color: var(--ink);
+  line-height: 1.7;
+  margin: 0 0 14px;
+}
+
+.offer-thanks {
+  font-family: var(--serif);
+  font-size: clamp(1.25rem, 3.6vw, 1.55rem);
+  color: var(--ink-deep);
+  margin-bottom: 10px;
+}
+
+.offer-h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.2rem, 3.4vw, 1.5rem);
+  color: var(--ink-deep);
+  margin: clamp(24px, 5vw, 36px) 0 12px;
+}
+
+.undertaking {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: clamp(16px, 3.6vw, 26px) clamp(16px, 3.6vw, 26px) 2px;
+}
+.undertaking p {
+  font-size: var(--fs-300);
+  line-height: 1.68;
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+
+.agree-check {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin: clamp(18px, 4vw, 28px) 0 6px;
+  cursor: pointer;
+  font-size: var(--fs-300);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.agree-check input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  margin-top: 1px;
+  border: 1.5px solid var(--ink-deep);
+  border-radius: 3px;
+  background: var(--white);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: background var(--fast) ease, border-color var(--fast) ease;
+}
+.agree-check input:checked {
+  background: var(--ink-deep);
+  border-color: var(--ink-deep);
+}
+.agree-check input:checked::after {
+  content: "";
+  width: 12px;
+  height: 7px;
+  border-left: 2px solid var(--white);
+  border-bottom: 2px solid var(--white);
+  transform: rotate(-45deg) translate(0.5px, -1px);
+}
+.agree-check input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.offer-cta {
+  width: 100%;
+  margin-top: 18px;
+  min-height: 54px;
+  font-size: var(--fs-300);
+}
+.offer-cta:disabled {
+  --btn-bg: var(--muted);
+  border-color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.offer-cta--pending {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.offer-subtle {
+  margin: 18px 0 0;
+  font-size: var(--fs-200);
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.offer-details {
+  margin-top: 6px;
+}
+.offer-muted {
+  color: var(--muted);
+  font-size: var(--fs-300);
+  margin: 0 0 14px;
+}
+
+.offer-error {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 90, 30, 0.4);
+  background: rgba(255, 244, 229, 0.8);
+  color: #7a4a1d;
+  border-radius: var(--radius);
+  font-size: var(--fs-300);
+}
+
+@media (max-width: 560px) {
+  .offer-facts dt {
+    width: 84px;
+  }
+}

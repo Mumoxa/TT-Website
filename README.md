@@ -15,6 +15,8 @@ React/Vite website for Talent Tree Consulting.
 - `/clients/Milkor` — Public client-facing Milkor sourcing intelligence profile
 - `/cv-builda` — Internal CV formatter/anonymizer (client-side by default, with an optional zero-cost self-hosted AI review; see `docs/cv-builda-ai.md`)
 - `/specs` — Internal job brief sanitizer (talenttree.co.za/specs) — converts client briefs (PDF, DOCX, XLSX, Google Docs, TXT) into sanitized, branded specs with client names replaced by generic descriptors, contacts removed, links replaced with CV@talenttree.co.za, and TalentTree branding. See `docs/specs.md`.
+- `/offer/<secure-token>` — Confidential employment offer delivery for candidates (secure link; PDF released only after the confidentiality undertaking is accepted). See `docs/confidential-offers.md`.
+- `/admin/offers` — Internal offer creation + acceptance verification tool (ADMIN_KEY gate). See `docs/confidential-offers.md`.
 
 ## Local development
 
@@ -23,6 +25,16 @@ npm install
 npm run dev
 # Open http://localhost:5173/specs for the private specs generator
 ```
+
+The offer flow needs the Cloudflare Functions simulator (D1 + R2 + ADMIN_KEY):
+
+```bash
+npm run offers:migrate   # apply D1 schema to the local simulator
+npm run offers:dev       # build, then serve site + offer API on http://localhost:8788
+```
+
+`ADMIN_KEY` for local use lives in `.dev.vars` (gitignored). In production it is
+a secret on the Cloudflare Pages project — see `docs/confidential-offers.md`.
 
 ## Production build
 
@@ -36,3 +48,5 @@ npm test
 - `/cv-builda` and `/specs` are frontend-only (no data leaves browser) for POPIA compliance
 - `/specs` is an unlisted private route with no application password gate; restrict the deployment with Cloudflare Access or an IP allowlist if stronger access control is required
 - No client data stored — cleared on reset / tab close
+- `/admin/offers` is gated by a server-side `ADMIN_KEY` (HttpOnly SameSite=Strict session); offer PDFs sit in a private R2 bucket and are only streamed after the candidate accepts the confidentiality undertaking
+- `/offer*`, `/admin*` and `/api/*` send `no-store` + `noindex` headers

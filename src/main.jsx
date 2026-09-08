@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource/inter/latin-400.css';
 import '@fontsource/inter/latin-500.css';
@@ -8,9 +8,34 @@ import '@fontsource/fraunces/latin-400.css';
 import '@fontsource/fraunces/latin-400-italic.css';
 import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
-import CvBuilda from './cv-builda/CvBuilda.jsx';
-import SpecsApp from './specs/SpecsApp.jsx';
 import './styles.css';
+
+/* Route-level pages are loaded on demand so a candidate opening a secure offer
+   link never downloads the marketing site or the internal CV/specs tooling.
+   The heavy CV/specs libraries (docx, pdfjs, xlsx) stay out of every other page. */
+const CvBuilda = lazy(() => import('./cv-builda/CvBuilda.jsx'));
+const SpecsApp = lazy(() => import('./specs/SpecsApp.jsx'));
+const OfferApp = lazy(() => import('./offers/OfferApp.jsx'));
+const AdminApp = lazy(() => import('./offers/AdminApp.jsx'));
+
+function RouteFallback() {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        background: 'var(--paper)',
+        color: 'var(--ink-deep)',
+        fontFamily: 'var(--sans)',
+      }}
+    >
+      <p style={{ margin: 0 }}>Loading…</p>
+    </div>
+  );
+}
+
+const withFallback = (element) => <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
 
 const Arrow = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -797,13 +822,22 @@ function App() {
   );
 }
 
-/* The site now has three pages and still does not need a router.
+/* Path-based routing without a router library.
    Trailing slashes are stripped so /cv-builda and /cv-builda/ are the same page.
-   /specs is the internal job brief sanitizer. */
+   /specs is the internal job brief sanitizer.
+   /offer/<secure-token> is the confidential employment offer delivery flow.
+   /admin/offers is the internal offer-creation tool (server-side key gate). */
 function Root() {
   const path = window.location.pathname.replace(/\/+$/, '');
-  if (path === '/cv-builda') return <CvBuilda />;
-  if (path === '/specs') return <SpecsApp />;
+  if (path === '/cv-builda') return withFallback(<CvBuilda />);
+  if (path === '/specs') return withFallback(<SpecsApp />);
+  if (path === '/offer' || path.startsWith('/offer/')) {
+    const token = path.slice('/offer/'.length);
+    return withFallback(<OfferApp token={token} />);
+  }
+  if (path === '/admin' || path.startsWith('/admin')) {
+    return withFallback(<AdminApp />);
+  }
   return <App />;
 }
 
