@@ -23,7 +23,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"                            # env.DB — offers, acceptances, audit events
 database_name = "tt-offers"
-database_id = "00000000-0000-0000-0000-000000000000"   # placeholder until the DB is created
+database_id = "4eafef72-b7cc-4e83-8681-fac4893711fd"
 
 [[r2_buckets]]
 binding = "PDF_BUCKET"                    # env.PDF_BUCKET — private storage for offer PDFs
