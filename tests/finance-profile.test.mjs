@@ -25,7 +25,6 @@ test('the page carries the supplied finance facts without invention', () => {
     'Pick n Pay Group',
     'Novus Holdings',
     'Super Group / Super Group Rent',
-    'Lufthansa',
     'Nayax / OTI PetroSmart',
     'Crown National',
     'Old Mutual',
@@ -34,6 +33,14 @@ test('the page carries the supplied finance facts without invention', () => {
     'Nonprofit Sector',
   ].forEach((fact) => assert.ok(app.includes(fact), `missing supplied fact: ${fact}`));
   assert.doesNotMatch(app, /href="#"|href=""|TODO|Lorem/i);
+});
+
+test('aeronautics references are fully gone: no Lufthansa, no aviation, no radar visual', () => {
+  assert.doesNotMatch(app, /Lufthansa/i);
+  assert.doesNotMatch(app, /Aviation/);
+  assert.doesNotMatch(app, /MarketRadar|radarPoints/);
+  assert.doesNotMatch(css, /tf-radar|tf-sweep|tf-ping|tf-lock/);
+  assert.ok(!fs.existsSync(new URL('../public/logos/clients/lufthansa.png', import.meta.url)));
 });
 
 test('all five professional accounting pathways are represented', () => {
@@ -65,7 +72,7 @@ test('the finance page keeps the brand palette: tokens only', () => {
 
 test('every named client is represented by its real logo asset on disk', () => {
   const expected = [
-    'pepkor', 'checkers', 'picknpay', 'novus', 'supergroup', 'lufthansa',
+    'pepkor', 'checkers', 'picknpay', 'novus', 'supergroup',
     'fnb', 'nayax', 'otipetrosmart', 'crownnational', 'oldmutual', 'boschendal',
   ];
   expected.forEach((key) => {
