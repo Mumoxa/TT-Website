@@ -806,3 +806,13 @@ Review `talenttree.co.za/profile/finance` as a QA squad: remove the decorative p
 
 - To restore the CIMA tile: replace `public/logos/bodies/cima.png` with clean official artwork and revert the `logo: null` quarantine in `FinanceApp.jsx` (one field).
 - If Talent Tree supplies the Karoo Bioscience wordmark (currently a documented typographic fallback), wire it through `clientLogos` the same way.
+
+## 2026-09-09 — Company profile (/profile) UI/UX redesign (PRO MAX pass)
+
+**Squad:** IA · Visual · Motion · A11y · Content · Perf · QA. **Scope:** `src/profile/*` only — `main.jsx`/`styles.css` client-book code untouched (pinned by `client-mandates.test.mjs`). **Result:** 188/188 tests, build PASS. Standalone copy: `company-profile-standalone.html` (84 KB, self-contained, vanilla JS, `node --check` clean).
+
+**Critical (fixed):** "Six reasons" heading listed 5 items → heading/lede rewritten around five (algolia: "Six reasons" now zero hits in profile code). Mandate leads trimmed to ≤ 63 words (presentation-only, facts preserved; banned-name/fee/href="#" scans clean).
+
+**High (implemented):** full-viewport art-directed cover (meta ledger, 3-line serif H1, dossier contents index, fact ledger, anonymised-descriptor trust ticker — CSS-only marquee, `aria-hidden`, pause-on-hover, reduced-motion/static fallback); sticky numbered chapter nav with scrollspy (`aria-current` on links + index); mandates split into flagship features + ruled book table with tier/sector filters (`aria-pressed`, live count); method rebuilt as dark timeline (progress rail + prev/next + roving-tabindex tabs); services → numbered index rows; testimonials unboxed to editorial quotes matching the site voice; contact gained a "good first brief" checklist.
+
+**Polish:** drop cap + pull-quote in Who-we-are, tabular numerals + hairline ledgers throughout, print stylesheet expanded for the full v2 layout, footer with giant watermark + chapter/company nav, single-spacing/no-Oxford-comma voice preserved.

@@ -6,6 +6,8 @@
    Content rules followed here (AGENTS.md rule zero — no invented facts):
    - Every company claim below already exists on the public site (src/main.jsx).
    - Client identities stay anonymised by descriptor (docs/talent-tree-growth-strategy.md).
+   - Long mandate leads are trimmed for presentation only; no fact is added or
+     altered, and the site voice (single spacing, no Oxford comma) is preserved.
 
    Design: no new colours, no new type. Everything resolves to the tokens in
    src/styles.css (DESIGN.md) — one ink, one paper, one accent. */
@@ -29,6 +31,26 @@ const chapters = [
   ['why', 'Why us'],
   ['faq', 'FAQ'],
   ['contact', 'Contact'],
+];
+
+const coverFacts = [
+  ['Established', '2013'],
+  ['Home', 'South Africa'],
+  ['Model', 'Headhunting only'],
+  ['Focus', 'Niche skills · Executive search'],
+];
+
+/* Anonymised trust strip for the cover ticker. Every descriptor is drawn from
+   the mandate book below — no names, no new claims. */
+const tickerItems = [
+  'JSE-listed retail group',
+  'Nasdaq-listed payments technology',
+  'International automotive manufacturer',
+  'Historic financial conglomerate · est. 1845',
+  'Dual-listed fintech & IoT group',
+  'Open medical scheme · since 1968',
+  'Food technology · 110 years of heritage',
+  'Heavy industry investment',
 ];
 
 const stats = [
@@ -89,7 +111,8 @@ const method = [
 ];
 
 /* Mandate book — identical shape to the public site, with a filter facet added.
-   Client identities remain anonymised by descriptor. */
+   Client identities remain anonymised by descriptor. Leads are the public-site
+   leads, trimmed for presentation only. */
 const mandates = [
   {
     number: '01',
@@ -127,7 +150,7 @@ const mandates = [
     tag: 'Specialist talent partner',
     client: 'Historic JSE-listed financial conglomerate',
     meta: 'Cape Town · Established 1845',
-    lead: 'Retained as the specialised talent acquisition partner to a historic, JSE-listed financial conglomerate established in Cape Town in 1845. We lead high-impact recruitment mandates that place niche technical talent into the functions at the centre of the business.',
+    lead: 'Specialised talent acquisition partner to a historic JSE-listed financial conglomerate established in Cape Town in 1845 — placing niche technical talent into the functions at the centre of the business.',
     focus: ['Actuarial', 'Pricing', 'Underwriting', 'Data Analytics'],
     sector: 'Financial services',
   },
@@ -137,7 +160,7 @@ const mandates = [
     tag: 'Specialist talent partner',
     client: 'Non-profit open medical scheme',
     meta: 'Self-administered · Operating since 1968',
-    lead: 'We partner with one of South Africa’s oldest and most established self-administered, non-profit open medical schemes as its specialised talent acquisition consultant, leading high-impact mandates that place elite technical talent across the core risk functions.',
+    lead: 'Specialised talent acquisition consultant to one of South Africa’s oldest and most established self-administered, non-profit open medical schemes — elite technical talent across the core risk functions.',
     focus: ['Actuarial', 'Pricing', 'Underwriting', 'Data Analytics'],
     sector: 'Healthcare',
   },
@@ -147,7 +170,7 @@ const mandates = [
     tag: 'Specialist talent partner',
     client: 'Dual-listed global fintech and IoT group',
     meta: 'Dual-listed · Global footprint',
-    lead: 'Embedded as the specialised talent acquisition partner to a dual-listed global fintech and IoT powerhouse. Our mandates scale the specialist human capital driving its secure telemetry systems, cloud management suites and global transaction platforms.',
+    lead: 'Specialised talent acquisition partner to a dual-listed global fintech and IoT powerhouse — scaling the specialist human capital behind its secure telemetry systems, cloud management suites and global transaction platforms.',
     focus: ['Secure telemetry', 'Cloud management', 'Transaction platforms'],
     sector: 'Technology',
   },
@@ -157,7 +180,7 @@ const mandates = [
     tag: 'Trusted talent partner',
     client: 'Big data, valuation and spatial analytics enterprise',
     meta: 'Established 2005 · South Africa',
-    lead: 'Serving as trusted talent acquisition partner to South Africa’s premier big data, valuation and spatial analytics enterprise. We lead high-impact recruitment mandates that source elite professionals for the teams behind the country’s most advanced predictive models.',
+    lead: 'Trusted talent acquisition partner to South Africa’s premier big data, valuation and spatial analytics enterprise — elite professionals for the teams behind the country’s most advanced predictive models.',
     focus: ['Data', 'Cloud AI', 'Analytics'],
     sector: 'Technology',
   },
@@ -167,7 +190,7 @@ const mandates = [
     tag: 'Trusted talent partner',
     client: 'Retail and value-based fintech platform',
     meta: 'Over 6,000 stores · Southern Africa',
-    lead: 'The recruitment mandate behind Southern Africa’s largest retail and value-focused fintech platform. We place elite specialists across the teams that keep the transaction infrastructure moving.',
+    lead: 'The recruitment mandate behind Southern Africa’s largest retail and value-focused fintech platform — elite specialists across the teams that keep the transaction infrastructure moving.',
     focus: ['Data', 'Cloud AI', 'Analytics'],
     sector: 'Retail',
   },
@@ -177,7 +200,7 @@ const mandates = [
     tag: 'Trusted partner · Executive search',
     client: 'Group fintech and credit support division',
     meta: 'Division of a JSE-listed retail conglomerate',
-    lead: 'Trusted by the highly specialised fintech and credit support division of Southern Africa’s largest retail conglomerate for top-tier technical hires. The same standing carries upward: high-profile executive search mandates for the overarching JSE-listed group holding structure.',
+    lead: 'Top-tier technical hires for the specialist fintech and credit support division of Southern Africa’s largest retail conglomerate — plus high-profile executive search for the overarching JSE-listed group holding structure.',
     focus: ['Data', 'Cloud AI', 'Analytics', 'Executive search'],
     sector: 'Financial services',
   },
@@ -187,7 +210,7 @@ const mandates = [
     tag: 'Trusted talent partner',
     client: 'Human performance and loyalty technology group',
     meta: 'Founded 1981 · Globally accredited',
-    lead: 'Working as the trusted talent acquisition partner to a globally accredited pioneer in human performance technology and corporate loyalty solutions, we place elite professionals across its IT and Finance teams.',
+    lead: 'Trusted talent acquisition partner to a globally accredited pioneer in human performance technology and corporate loyalty solutions — elite professionals across its IT and Finance teams.',
     focus: ['IT', 'Finance'],
     sector: 'Technology',
   },
@@ -197,7 +220,7 @@ const mandates = [
     tag: 'Trusted talent partner',
     client: 'Group logistics and supply chain division',
     meta: 'Division of a JSE-listed retail conglomerate',
-    lead: 'Assigned to the centralised logistics and supply chain division of Southern Africa’s largest retail conglomerate, we source top-tier specialists who push its advanced digital supply chain journey forward.',
+    lead: 'Top-tier specialists for the centralised logistics and supply chain division of Southern Africa’s largest retail conglomerate — pushing its advanced digital supply chain journey forward.',
     focus: ['Transformation'],
     sector: 'Retail',
   },
@@ -207,7 +230,7 @@ const mandates = [
     tag: 'Trusted talent partner',
     client: 'African food ingredient and processing technology group',
     meta: 'Over 110 years of heritage · Multi-brand',
-    lead: 'Critical recruitment mandates for a prominent, multi-brand African food ingredient and processing technology powerhouse with over 110 years of heritage. We place elite professionals where the technology and the production line meet.',
+    lead: 'Critical recruitment mandates for a prominent multi-brand African food ingredient and processing technology powerhouse with over 110 years of heritage — elite professionals where technology and the production line meet.',
     focus: ['Data', 'Cloud AI', 'Analytics'],
     sector: 'Industrial',
   },
@@ -217,7 +240,7 @@ const mandates = [
     tag: 'Trusted talent partner',
     client: 'Heavy industry investment vehicle',
     meta: 'Newly incorporated · International backing',
-    lead: 'Tasked with the hiring agenda at a prominent, newly incorporated corporate investment vehicle backed by international technical partners. We lead critical mandates for its finance and management teams as the business is built around the acquisition.',
+    lead: 'The hiring agenda at a prominent, newly incorporated corporate investment vehicle backed by international technical partners — critical mandates for its finance and management teams as the business is built around the acquisition.',
     focus: ['Finance', 'Management'],
     sector: 'Industrial',
   },
@@ -247,11 +270,23 @@ const faqs = [
   ['Does Talent Tree work from South Africa?', 'Yes. Established in 2013 and operating from South Africa, working with local and international clients.'],
 ];
 
+const briefChecklist = [
+  ['01', 'The skill', 'The scarce capability you need, in plain terms.'],
+  ['02', 'The market', 'Where that capability sits — or where you suspect it does.'],
+  ['03', 'The deadline', 'When the hire has to be contributing, not just signed.'],
+];
+
 /* ── Small pieces ───────────────────────────────────────────────────────── */
 
 const Arrow = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M5 12h13M13 6l6 6-6 6" />
+  </svg>
+);
+
+const ArrowDown = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 5v13M6 13l6 6 6-6" />
   </svg>
 );
 
@@ -350,6 +385,20 @@ function Counter({ value, suffix, label, plain }) {
   );
 }
 
+/* The normalised section header: kicker column + headline column + lede.
+   Keeps one hierarchy, one rhythm and one reading measure across chapters. */
+function SectionHead({ index, eyebrow, id, title, lede }) {
+  return (
+    <div className="tp-section-head">
+      <Reveal className="section-kicker"><span>{index}</span> {eyebrow}</Reveal>
+      <Reveal delay={80}>
+        <h2 id={id}>{title}</h2>
+        {lede ? <p className="tp-section-lede">{lede}</p> : null}
+      </Reveal>
+    </div>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function ProfileApp() {
@@ -409,6 +458,15 @@ export default function ProfileApp() {
     return mandates.filter((item) => item.sector === mandateFilter);
   }, [mandateFilter]);
 
+  const flagshipMandates = useMemo(
+    () => visibleMandates.filter((item) => item.tier === 'Flagship'),
+    [visibleMandates]
+  );
+  const bookMandates = useMemo(
+    () => visibleMandates.filter((item) => item.tier !== 'Flagship'),
+    [visibleMandates]
+  );
+
   const copyEmail = useCallback(async (address) => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
@@ -444,6 +502,10 @@ export default function ProfileApp() {
     }
   };
 
+  const goStep = (direction) => {
+    setActiveStep((index) => (index + direction + method.length) % method.length);
+  };
+
   return (
     <div className="tp" id="profile-top">
       <a className="skip-link" href="#profile-main">Skip to profile content</a>
@@ -462,12 +524,13 @@ export default function ProfileApp() {
             </span>
           </a>
           <nav className="tp-chapters" aria-label="Profile chapters">
-            {chapters.map(([id, label]) => (
+            {chapters.map(([id, label], index) => (
               <a
                 key={id}
                 href={`#${id}`}
                 aria-current={activeChapter === id ? 'true' : undefined}
               >
+                <span className="tp-chapter-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
                 {label}
               </a>
             ))}
@@ -482,42 +545,80 @@ export default function ProfileApp() {
         {/* ── Cover ─────────────────────────────────────────────────────── */}
         <section className="tp-cover" aria-labelledby="profile-heading">
           <div className="tp-shell">
-            <p className="eyebrow">Company profile · Established 2013 · South Africa</p>
-            <h1 id="profile-heading">
-              Niche skills. Executive search. <em>Headhunted, never advertised.</em>
-            </h1>
-            <p className="tp-lead">
-              Talent Tree is a specialist recruitment and executive search firm, established in South
-              Africa in 2013 and powered by industry specialists with more than ten years in
-              niche-skills hiring. We headhunt the in-demand professionals who never answer job ads —
-              and position your opportunity so the right person takes the call.
-            </p>
+            <div className="tp-cover-meta">
+              <span>Company profile</span>
+              <span>Est. 2013</span>
+              <span>South Africa</span>
+            </div>
 
-            <div className="tp-cover-actions">
-              <a className="tp-button tp-button-light" href={mailto('Mandate enquiry — Talent Tree profile')}>
-                <span>Discuss a brief</span>
-                <Arrow />
-              </a>
-              <button className="tp-button tp-button-ghost" type="button" onClick={() => window.print()}>
-                <span>Print / save as PDF</span>
-                <Arrow />
-              </button>
+            <div className="tp-cover-grid">
+              <div className="tp-cover-main">
+                <p className="eyebrow">Niche skills · Executive search · South Africa</p>
+                <h1 id="profile-heading">
+                  <span className="tp-h1-line">Niche skills.</span>
+                  <span className="tp-h1-line">Executive search.</span>
+                  <span className="tp-h1-line"><em>Headhunted, never advertised.</em></span>
+                </h1>
+                <p className="tp-lead">
+                  Talent Tree is a specialist recruitment and executive search firm, established in South
+                  Africa in 2013 and powered by industry specialists with more than ten years in
+                  niche-skills hiring. We headhunt the in-demand professionals who never answer job ads —
+                  and position your opportunity so the right person takes the call.
+                </p>
+
+                <div className="tp-cover-actions">
+                  <a className="tp-button tp-button-light" href={mailto('Mandate enquiry — Talent Tree profile')}>
+                    <span>Discuss a brief</span>
+                    <Arrow />
+                  </a>
+                  <button className="tp-button tp-button-ghost" type="button" onClick={() => window.print()}>
+                    <span>Print / save as PDF</span>
+                    <Arrow />
+                  </button>
+                </div>
+                <p className="tp-cover-alt">
+                  <a href="#mandates">Read the mandate book <ArrowDown /></a>
+                </p>
+              </div>
+
+              <nav className="tp-index" aria-label="Profile contents">
+                <p className="tp-index-title">Contents</p>
+                <ol>
+                  {chapters.map(([id, label], index) => (
+                    <li key={id}>
+                      <a href={`#${id}`} aria-current={activeChapter === id ? 'true' : undefined}>
+                        <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                        {label}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
             </div>
 
             <dl className="tp-cover-facts">
-              <div>
-                <dt>Established</dt>
-                <dd>2013</dd>
-              </div>
-              <div>
-                <dt>Based in</dt>
-                <dd>South Africa</dd>
-              </div>
-              <div>
-                <dt>Model</dt>
-                <dd>Headhunting only</dd>
-              </div>
+              {coverFacts.map(([term, value]) => (
+                <div key={term}>
+                  <dt>{term}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
             </dl>
+          </div>
+
+          <div className="tp-ticker" aria-hidden="true">
+            <div className="tp-ticker-track">
+              {[0, 1].map((group) => (
+                <span className="tp-ticker-group" key={group}>
+                  {tickerItems.map((item) => (
+                    <span className="tp-ticker-item" key={item}>
+                      {item}
+                      <span className="tp-ticker-dot">·</span>
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -525,12 +626,15 @@ export default function ProfileApp() {
         <section className="tp-section tp-paper-soft" id="who-we-are" aria-labelledby="who-heading">
           <span className="section-numeral" aria-hidden="true">01</span>
           <div className="tp-shell tp-split">
-            <Reveal>
+            <Reveal className="tp-split-sticky">
               <div className="section-kicker"><span>01</span> Who we are</div>
               <h2 id="who-heading">Specialists in the markets you are hiring from.</h2>
+              <a className="tp-inline-link tp-split-link" href={mailto('Introduction — Talent Tree profile')}>
+                Start a conversation with us
+              </a>
             </Reveal>
-            <Reveal delay={110}>
-              <p>
+            <Reveal delay={110} className="tp-split-copy">
+              <p className="tp-dropcap">
                 Talent Tree was built on a simple conviction: the best people are rarely available,
                 and never advertised. So we spent years building our own talent databases and
                 networking them personally, so that when a brief lands we already know who to call.
@@ -546,33 +650,35 @@ export default function ProfileApp() {
                   long before the role exists.
                 </p>
               </blockquote>
-              <a className="tp-inline-link" href={mailto('Introduction — Talent Tree profile')}>
-                Start a conversation with us
-              </a>
             </Reveal>
           </div>
         </section>
 
         {/* ── Numbers ───────────────────────────────────────────────────── */}
         <section className="tp-stats" id="numbers" aria-label="Talent Tree in numbers">
-          <div className="tp-shell tp-stats-grid">
-            {stats.map((stat) => (
-              <Counter key={stat.label} {...stat} />
-            ))}
+          <div className="tp-shell">
+            <Reveal className="tp-stats-head">
+              <span className="tp-stats-kicker"><span aria-hidden="true">02</span> In numbers</span>
+            </Reveal>
+            <div className="tp-stats-grid">
+              {stats.map((stat) => (
+                <Counter key={stat.label} {...stat} />
+              ))}
+            </div>
           </div>
         </section>
 
         {/* ── Services ──────────────────────────────────────────────────── */}
         <section className="tp-section tp-paper" id="services" aria-labelledby="services-heading">
-          <span className="section-numeral" aria-hidden="true">02</span>
+          <span className="section-numeral" aria-hidden="true">03</span>
           <div className="tp-shell">
-            <div className="tp-heading-row">
-              <Reveal className="section-kicker"><span>02</span> What we do</Reveal>
-              <Reveal delay={80}>
-                <h2 id="services-heading">Four ways we put scarce skills in your business.</h2>
-                <p>Select a service to see how the mandate runs.</p>
-              </Reveal>
-            </div>
+            <SectionHead
+              index="03"
+              eyebrow="What we do"
+              id="services-heading"
+              title="Four ways we put scarce skills in your business."
+              lede="Select a service to see how the mandate runs."
+            />
 
             <div className="tp-services">
               {services.map((service, index) => {
@@ -612,16 +718,19 @@ export default function ProfileApp() {
         {/* ── Method ────────────────────────────────────────────────────── */}
         <section className="tp-section tp-dark" id="method" aria-labelledby="method-heading">
           <div className="tp-shell">
-            <div className="tp-heading-row">
-              <Reveal className="section-kicker"><span>03</span> How a mandate runs</Reveal>
-              <Reveal delay={80}>
-                <h2 id="method-heading">Brief to signed offer.</h2>
-                <p>Four stages. Click a stage to see what happens inside it.</p>
-              </Reveal>
-            </div>
+            <SectionHead
+              index="04"
+              eyebrow="How a mandate runs"
+              id="method-heading"
+              title="Brief to signed offer."
+              lede="Four stages, one accountable thread. Select a stage — or step through the mandate in order."
+            />
 
             <div className="tp-stepper">
               <div className="tp-steps" role="tablist" aria-label="Mandate stages" onKeyDown={onStepKeyDown}>
+                <span className="tp-steps-rail" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${(activeStep + 1) / method.length})` }} />
+                </span>
                 {method.map(([title], index) => (
                   <button
                     key={title}
@@ -652,6 +761,15 @@ export default function ProfileApp() {
                   <span className="tp-step-phase">{phase}</span>
                   <h3>{title}</h3>
                   <p>{text}</p>
+                  <div className="tp-step-nav">
+                    <button type="button" onClick={() => goStep(-1)}>
+                      <span aria-hidden="true">←</span> Previous stage
+                    </button>
+                    <span aria-hidden="true">{String(index + 1).padStart(2, '0')} / {String(method.length).padStart(2, '0')}</span>
+                    <button type="button" onClick={() => goStep(1)}>
+                      Next stage <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -660,19 +778,15 @@ export default function ProfileApp() {
 
         {/* ── Mandates ──────────────────────────────────────────────────── */}
         <section className="tp-section tp-paper-soft" id="mandates" aria-labelledby="mandates-heading">
-          <span className="section-numeral" aria-hidden="true">04</span>
+          <span className="section-numeral" aria-hidden="true">05</span>
           <div className="tp-shell">
-            <div className="tp-heading-row">
-              <Reveal className="section-kicker"><span>04</span> Who we partner with</Reveal>
-              <Reveal delay={80}>
-                <h2 id="mandates-heading">Sole. Preferred. Dedicated. <em>Earned.</em></h2>
-                <p>
-                  These are not vendor listings. They are the mandates companies hand to one partner.
-                  Client names stay confidential; the weight of the work does not. Filter the book by
-                  tier or sector.
-                </p>
-              </Reveal>
-            </div>
+            <SectionHead
+              index="05"
+              eyebrow="Who we partner with"
+              id="mandates-heading"
+              title={<>Sole. Preferred. Dedicated. <em>Earned.</em></>}
+              lede="These are not vendor listings. They are the mandates companies hand to one partner. Client names stay confidential; the weight of the work does not. Filter the book by tier or sector."
+            />
 
             <div className="tp-filters" role="group" aria-label="Filter mandates">
               {mandateFilters.map((filter) => (
@@ -693,28 +807,56 @@ export default function ProfileApp() {
               {mandateFilter !== 'All' ? ` · ${mandateFilter}` : ''}
             </p>
 
-            <div className="tp-mandates">
-              {visibleMandates.map((item, index) => (
-                <article
-                  className={item.tier === 'Flagship' ? 'tp-mandate is-flagship' : 'tp-mandate'}
-                  key={item.number}
-                  style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
-                >
-                  <div className="tp-mandate-head">
-                    <span className="tp-mandate-number" aria-hidden="true">{item.number}</span>
-                    <span className="tp-mandate-tag">{item.tag}</span>
-                  </div>
-                  <h3>{item.client}</h3>
-                  <p className="tp-mandate-meta">{item.meta}</p>
-                  <p className="tp-mandate-lead">{item.lead}</p>
-                  <ul className="tp-mandate-focus">
-                    {item.focus.map((area) => (
-                      <li key={area}>{area}</li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-            </div>
+            {flagshipMandates.length > 0 && (
+              <div className="tp-flagships">
+                {flagshipMandates.map((item, index) => (
+                  <article
+                    className="tp-flagship"
+                    key={item.number}
+                    style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
+                  >
+                    <span className="tp-flagship-number" aria-hidden="true">{item.number}</span>
+                    <div className="tp-flagship-main">
+                      <span className="tp-flagship-tag">{item.tag}</span>
+                      <h3>{item.client}</h3>
+                      <p className="tp-flagship-lead">{item.lead}</p>
+                    </div>
+                    <p className="tp-flagship-meta">{item.meta}</p>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {bookMandates.length > 0 && (
+              <div className="tp-book">
+                <div className="tp-book-head" aria-hidden="true">
+                  <span>No.</span>
+                  <span>Client</span>
+                  <span>Standing</span>
+                  <span>Focus</span>
+                </div>
+                {bookMandates.map((item, index) => (
+                  <article
+                    className="tp-book-row"
+                    key={item.number}
+                    style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
+                  >
+                    <span className="tp-book-number" aria-hidden="true">{item.number}</span>
+                    <div className="tp-book-client">
+                      <h3>{item.client}</h3>
+                      <p className="tp-book-meta">{item.meta}</p>
+                      <p className="tp-book-lead">{item.lead}</p>
+                    </div>
+                    <span className="tp-book-tag">{item.tag}</span>
+                    <ul className="tp-book-focus">
+                      {item.focus.map((area) => (
+                        <li key={area}>{area}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            )}
 
             <p className="tp-tail">
               Alongside these mandates: an extensive client book across the SMME market, valued
@@ -728,16 +870,16 @@ export default function ProfileApp() {
 
         {/* ── Why us ────────────────────────────────────────────────────── */}
         <section className="tp-section tp-paper" id="why" aria-labelledby="why-heading">
-          <span className="section-numeral" aria-hidden="true">05</span>
+          <span className="section-numeral" aria-hidden="true">06</span>
           <div className="tp-shell">
-            <div className="tp-heading-row">
-              <Reveal className="section-kicker"><span>05</span> Why Talent Tree</Reveal>
-              <Reveal delay={80}>
-                <h2 id="why-heading">A headhunting model, not a job-board model.</h2>
-                <p>Six reasons our clients stop advertising roles and start briefing us instead.</p>
-              </Reveal>
-            </div>
-            <div className="tp-why-grid">
+            <SectionHead
+              index="06"
+              eyebrow="Why Talent Tree"
+              id="why-heading"
+              title="A headhunting model, not a job-board model."
+              lede="Five reasons our clients stop advertising roles and start briefing us instead."
+            />
+            <div className="tp-why-list">
               {differentiators.map(([number, title, text], index) => (
                 <Reveal delay={index * 50} key={number}>
                   <article className="tp-why">
@@ -769,10 +911,10 @@ export default function ProfileApp() {
 
         {/* ── FAQ ───────────────────────────────────────────────────────── */}
         <section className="tp-section tp-paper-soft" id="faq" aria-labelledby="faq-heading">
-          <span className="section-numeral" aria-hidden="true">06</span>
+          <span className="section-numeral" aria-hidden="true">07</span>
           <div className="tp-shell tp-faq-grid">
-            <Reveal>
-              <div className="section-kicker"><span>06</span> FAQ</div>
+            <Reveal className="tp-faq-sticky">
+              <div className="section-kicker"><span>07</span> FAQ</div>
               <h2 id="faq-heading">Straight answers before you brief us.</h2>
               <p className="tp-faq-aside">
                 Something not answered here?{' '}
@@ -840,6 +982,20 @@ export default function ProfileApp() {
                 </div>
               </Reveal>
 
+              <Reveal className="tp-brief" delay={120}>
+                <h3>What makes a good first brief</h3>
+                <ol>
+                  {briefChecklist.map(([number, title, text]) => (
+                    <li key={number}>
+                      <span aria-hidden="true">{number}</span>
+                      <div>
+                        <strong>{title}</strong>
+                        <p>{text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </Reveal>
             </div>
 
             <p className="tp-status" role="status" aria-live="polite">
@@ -866,7 +1022,7 @@ export default function ProfileApp() {
       <footer className="tp-footer">
         <div className="tp-shell">
           <div className="tp-footer-top">
-            <div>
+            <div className="tp-footer-brand">
               <a className="logo" href="/" aria-label="Talent Tree home">
                 <img src={talentTreeLogo} alt="Talent Tree" width="132" height="108" />
                 <span className="brand-lockup" aria-hidden="true">
@@ -878,12 +1034,19 @@ export default function ProfileApp() {
                 Talent Tree Consulting · Established 2013 · South Africa · Niche-skills recruitment
                 and executive search
               </p>
+              <p className="tp-footer-word" aria-hidden="true">Talent Tree</p>
             </div>
-            <nav className="tp-footer-nav" aria-label="Footer">
+            <nav className="tp-footer-nav" aria-label="Profile chapters">
+              <p>Profile</p>
+              {chapters.map(([id, label]) => (
+                <a key={id} href={`#${id}`}>{label}</a>
+              ))}
+            </nav>
+            <nav className="tp-footer-nav" aria-label="Company">
+              <p>Company</p>
               <a href="/">Home</a>
               <a href="/#clients">Clients</a>
               <a href="/#services">Services</a>
-              <a href="/profile">Company profile</a>
               <a href="/downloads">Downloads</a>
               <a href={mailto('Mandate enquiry — Talent Tree profile')}>Contact us</a>
             </nav>
@@ -893,6 +1056,7 @@ export default function ProfileApp() {
             <p>
               <a className="email-link" href={mailto('Mandate enquiry — Talent Tree profile')}>{EMAIL}</a>
             </p>
+            <p><a className="tp-to-top" href="#profile-top">Back to top ↑</a></p>
           </div>
         </div>
       </footer>
