@@ -1,13 +1,11 @@
 /* Talent Tree — public company profile at /profile.
    An interactive version of the Talent Tree company profile: the same facts the
    marketing site publishes (src/main.jsx), restructured as a chaptered profile a
-   client can read, filter, calculate against and print.
+   client can read, filter and print.
 
    Content rules followed here (AGENTS.md rule zero — no invented facts):
    - Every company claim below already exists on the public site (src/main.jsx).
    - Client identities stay anonymised by descriptor (docs/talent-tree-growth-strategy.md).
-   - The fee position (≈15% of annual CTC) is supplied by Talent Tree; the market
-     benchmark it is compared against is sourced and cited in the fee section.
 
    Design: no new colours, no new type. Everything resolves to the tokens in
    src/styles.css (DESIGN.md) — one ink, one paper, one accent. */
@@ -19,23 +17,6 @@ import './profile.css';
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
 const EMAIL = 'hello@talenttree.co.za';
-const CV_EMAIL = 'CV@talenttree.co.za';
-const SITE = 'https://talenttree.co.za';
-
-/* The published fee position. One source of truth for every number on the page. */
-const FEE_RATE = 0.15;
-/* Market benchmark for retained executive search, as published by the sources
-   cited in the fee section (25–35% of first-year total remuneration). */
-const BENCHMARKS = [25, 30, 35];
-const DEFAULT_BENCHMARK = 30;
-
-const zar = new Intl.NumberFormat('en-ZA', {
-  style: 'currency',
-  currency: 'ZAR',
-  maximumFractionDigits: 0,
-});
-const money = (value) => zar.format(Math.round(value)).replace(/\u00A0/g, ' ');
-
 const mailto = (subject, body) =>
   `mailto:${EMAIL}?subject=${encodeURIComponent(subject)}${body ? `&body=${encodeURIComponent(body)}` : ''}`;
 
@@ -45,7 +26,6 @@ const chapters = [
   ['services', 'What we do'],
   ['method', 'How we work'],
   ['mandates', 'Mandates'],
-  ['fees', 'Fees'],
   ['why', 'Why us'],
   ['faq', 'FAQ'],
   ['contact', 'Contact'],
@@ -251,7 +231,6 @@ const differentiators = [
   ['03', 'Storytellers, not CV-forwarders', 'We build interest, spark curiosity and position your opportunity so it creates real pull. The best candidates do not respond to vacancies; they respond to a story that fits where their career is going.'],
   ['04', 'An extension of your HR team', 'We represent your brand in the market with the same professionalism and discretion you would. Every approach, every conversation, every decline is handled as though it came from you.'],
   ['05', 'Ultra-proactive by design', 'We out-phone the competition. Proactive outreach, relentless follow-through and a bias to pick up the phone is why our mandates close when others stall.'],
-  ['06', 'Cost-effective on mission-critical talent', 'Our fees sit at around 15% of annual CTC — roughly half of the retained executive search benchmark — while delivering the mission-critical people traditional methods miss entirely.'],
 ];
 
 const testimonials = [
@@ -261,8 +240,6 @@ const testimonials = [
 ];
 
 const faqs = [
-  ['What do you charge?', 'Our fees are deliberately reasonable: around 15% of the successful candidate’s annual CTC — almost half of what comparable executive search firms charge. The exact rate and payment terms are confirmed in writing per mandate before any work begins.'],
-  ['Why are your fees lower than a traditional search firm?', 'Because our cost base is our own network, not advertising spend, bought-in databases or a layered account structure. The saving is passed to the client instead of funding overhead.'],
   ['Why do you not use job ads or bought-in databases?', 'Because the people worth hiring are not answering them. Our model runs on proprietary databases we have built over years and networks we work every day, which is how we reach professionals before they ever start looking.'],
   ['What kind of hiring does Talent Tree focus on?', 'Niche-skills recruitment and executive search — the roles where the skill is scarce, the market is small and getting it wrong is expensive.'],
   ['How do you protect our brand while you are in the market?', 'We work as an extension of your HR team. Approaches are made with the professionalism and discretion you would use yourself, and your opportunity is positioned rather than broadcast.'],
@@ -373,139 +350,6 @@ function Counter({ value, suffix, label, plain }) {
   );
 }
 
-/* ── Fee calculator ─────────────────────────────────────────────────────── */
-
-const CTC_MIN = 400000;
-const CTC_MAX = 5000000;
-const CTC_STEP = 50000;
-
-const clampCtc = (value) => Math.min(Math.max(value, CTC_MIN), CTC_MAX);
-const groupDigits = (value) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-
-function FeeCalculator() {
-  /* The amount is held as text so the field can be cleared and retyped freely;
-     it is clamped to the supported range on blur and by the slider. */
-  const [ctcText, setCtcText] = useState('1 200 000');
-  const [benchmark, setBenchmark] = useState(DEFAULT_BENCHMARK);
-
-  const typed = Number(ctcText.replace(/[^\d]/g, ''));
-  const safeCtc = clampCtc(Number.isFinite(typed) && typed > 0 ? typed : CTC_MIN);
-  const ourFee = safeCtc * FEE_RATE;
-  const marketFee = safeCtc * (benchmark / 100);
-  const saving = marketFee - ourFee;
-  const savingPct = Math.round((saving / marketFee) * 100);
-  const barOur = Math.round((ourFee / marketFee) * 100);
-
-  const enquiryBody = [
-    'Hi Talent Tree,',
-    '',
-    `I used the fee calculator on ${SITE}/profile:`,
-    `• Annual CTC of the role: ${money(safeCtc)}`,
-    `• Talent Tree fee at 15%: ${money(ourFee)}`,
-    `• Benchmark at ${benchmark}%: ${money(marketFee)}`,
-    '',
-    'The role I would like to discuss is:',
-    '',
-  ].join('\n');
-
-  return (
-    <div className="tp-calc" id="fee-calculator">
-      <div className="tp-calc-controls">
-        <div className="tp-field">
-          <label htmlFor="ctc-input">Annual CTC of the role</label>
-          <div className="tp-amount">
-            <span aria-hidden="true">R</span>
-            <input
-              id="ctc-input"
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              value={ctcText}
-              onChange={(event) => setCtcText(groupDigits(event.target.value.replace(/[^\d]/g, '')))}
-              onBlur={() => setCtcText(groupDigits(safeCtc))}
-              aria-describedby="ctc-hint"
-            />
-          </div>
-          <input
-            className="tp-range"
-            type="range"
-            min={CTC_MIN}
-            max={CTC_MAX}
-            step={CTC_STEP}
-            value={safeCtc}
-            onChange={(event) => setCtcText(groupDigits(event.target.value))}
-            aria-label="Annual CTC of the role"
-          />
-          <p className="tp-hint" id="ctc-hint">
-            {money(CTC_MIN)} – {money(CTC_MAX)} · drag or type an amount
-          </p>
-        </div>
-
-        <fieldset className="tp-field tp-benchmark">
-          <legend>Compare against a retained search firm at</legend>
-          <div className="tp-segmented" role="group" aria-label="Benchmark fee percentage">
-            {BENCHMARKS.map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                className={rate === benchmark ? 'is-active' : ''}
-                aria-pressed={rate === benchmark}
-                onClick={() => setBenchmark(rate)}
-              >
-                {rate}%
-              </button>
-            ))}
-          </div>
-          <p className="tp-hint">
-            Published retained executive search fees run 25–35% of first-year total remuneration.
-          </p>
-        </fieldset>
-      </div>
-
-      <div className="tp-calc-output" aria-live="polite">
-        <div className="tp-bar-row">
-          <div className="tp-bar-head">
-            <span className="tp-bar-label">Talent Tree · 15% of annual CTC</span>
-            <strong>{money(ourFee)}</strong>
-          </div>
-          <div className="tp-bar">
-            <span className="tp-bar-fill is-ours" style={{ width: `${barOur}%` }} />
-          </div>
-        </div>
-
-        <div className="tp-bar-row">
-          <div className="tp-bar-head">
-            <span className="tp-bar-label">Comparable executive search · {benchmark}%</span>
-            <strong>{money(marketFee)}</strong>
-          </div>
-          <div className="tp-bar">
-            <span className="tp-bar-fill is-market" style={{ width: '100%' }} />
-          </div>
-        </div>
-
-        <div className="tp-saving">
-          <div>
-            <span className="tp-saving-label">Your saving on this hire</span>
-            <strong className="tp-saving-value">{money(saving)}</strong>
-          </div>
-          <p className="tp-saving-note">
-            {savingPct}% less than a {benchmark}% retained search fee on the same appointment.
-          </p>
-        </div>
-
-        <a className="tp-button tp-button-dark" href={mailto('Fee discussion — role from the Talent Tree profile', enquiryBody)}>
-          <span>Discuss this mandate</span>
-          <Arrow />
-        </a>
-        <p className="tp-hint tp-disclaimer">
-          Illustrative only. Our indicative rate is around 15% of annual CTC; the exact fee, payment
-          terms and replacement guarantee are confirmed in writing per mandate before work begins.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function ProfileApp() {
@@ -526,7 +370,7 @@ export default function ProfileApp() {
     if (meta) {
       meta.setAttribute(
         'content',
-        'The Talent Tree company profile: a South African niche-skills recruitment and executive search firm established in 2013. Headhunting-only model, sole and preferred mandates with JSE- and Nasdaq-listed clients, and fees of around 15% of annual CTC — almost half the comparable executive search benchmark.'
+        'The Talent Tree company profile: a South African niche-skills recruitment and executive search firm established in 2013. Headhunting-only model, sole and preferred mandates with JSE- and Nasdaq-listed clients.'
       );
     }
     return () => {
@@ -654,10 +498,6 @@ export default function ProfileApp() {
                 <span>Discuss a brief</span>
                 <Arrow />
               </a>
-              <a className="tp-button tp-button-ghost" href="#fees">
-                <span>See our fees</span>
-                <Arrow />
-              </a>
               <button className="tp-button tp-button-ghost" type="button" onClick={() => window.print()}>
                 <span>Print / save as PDF</span>
                 <Arrow />
@@ -676,12 +516,6 @@ export default function ProfileApp() {
               <div>
                 <dt>Model</dt>
                 <dd>Headhunting only</dd>
-              </div>
-              <div>
-                <dt>Fee</dt>
-                <dd>
-                  <a href="#fees">≈15% of annual CTC</a>
-                </dd>
               </div>
             </dl>
           </div>
@@ -892,84 +726,12 @@ export default function ProfileApp() {
           </div>
         </section>
 
-        {/* ── Fees ──────────────────────────────────────────────────────── */}
-        <section className="tp-section tp-dark tp-fees" id="fees" aria-labelledby="fees-heading">
-          <div className="tp-shell">
-            <div className="tp-heading-row">
-              <Reveal className="section-kicker"><span>05</span> Fees</Reveal>
-              <Reveal delay={80}>
-                <h2 id="fees-heading">
-                  Around 15% of annual CTC — <em>almost half</em> the executive search benchmark.
-                </h2>
-                <p>
-                  We charge reasonable, transparent fees: approximately 15% of the successful
-                  candidate’s annual cost to company. Comparable executive search firms publish
-                  retained fees of 25–35% of first-year total remuneration, with 30% the most common
-                  rate — so the same appointment typically costs you about half through us.
-                </p>
-              </Reveal>
-            </div>
-
-            <div className="tp-fee-grid">
-              <Reveal className="tp-fee-points">
-                <div className="tp-fee-point">
-                  <strong>15%</strong>
-                  <span>of annual CTC, our indicative rate across specialist and executive mandates</span>
-                </div>
-                <div className="tp-fee-point">
-                  <strong>25–35%</strong>
-                  <span>the published range for retained executive search fees</span>
-                </div>
-                <div className="tp-fee-point">
-                  <strong>≈50%</strong>
-                  <span>less than a 30% retained fee on the same appointment</span>
-                </div>
-                <ul className="tp-fee-list">
-                  <li>No advertising costs, no database licence charges, no hidden extras.</li>
-                  <li>Fee is confirmed in writing per mandate before any work starts.</li>
-                  <li>Same headhunting depth on every mandate, whatever the seniority.</li>
-                  <li>
-                    Volume, retained and multi-role arrangements are negotiated on the same honest
-                    basis —{' '}
-                    <a className="tp-inline-link" href={mailto('Fee schedule request — Talent Tree profile')}>
-                      request a fee schedule
-                    </a>
-                    .
-                  </li>
-                </ul>
-              </Reveal>
-
-              <Reveal className="tp-fee-calc-wrap" delay={120}>
-                <h3 className="tp-calc-title">What that means for your next hire</h3>
-                <FeeCalculator />
-              </Reveal>
-            </div>
-
-            <p className="tp-source">
-              Benchmark sources: published 2026 fee guidance putting retained executive search at
-              25–35% of first-year total compensation —{' '}
-              <a href="https://interviewcost.com/executive" target="_blank" rel="noopener noreferrer">
-                Interview Cost
-              </a>
-              ,{' '}
-              <a href="https://ikonsearch.com/feeds/blog/ea-ceo-recruiter-pricing" target="_blank" rel="noopener noreferrer">
-                Ikon Search
-              </a>{' '}
-              and{' '}
-              <a href="https://www.caglobalint.com/post/executive-search-agency-benefits" target="_blank" rel="noopener noreferrer">
-                CA Global (Africa)
-              </a>
-              . Talent Tree’s own rate is indicative and confirmed per mandate.
-            </p>
-          </div>
-        </section>
-
         {/* ── Why us ────────────────────────────────────────────────────── */}
         <section className="tp-section tp-paper" id="why" aria-labelledby="why-heading">
-          <span className="section-numeral" aria-hidden="true">06</span>
+          <span className="section-numeral" aria-hidden="true">05</span>
           <div className="tp-shell">
             <div className="tp-heading-row">
-              <Reveal className="section-kicker"><span>06</span> Why Talent Tree</Reveal>
+              <Reveal className="section-kicker"><span>05</span> Why Talent Tree</Reveal>
               <Reveal delay={80}>
                 <h2 id="why-heading">A headhunting model, not a job-board model.</h2>
                 <p>Six reasons our clients stop advertising roles and start briefing us instead.</p>
@@ -1007,10 +769,10 @@ export default function ProfileApp() {
 
         {/* ── FAQ ───────────────────────────────────────────────────────── */}
         <section className="tp-section tp-paper-soft" id="faq" aria-labelledby="faq-heading">
-          <span className="section-numeral" aria-hidden="true">07</span>
+          <span className="section-numeral" aria-hidden="true">06</span>
           <div className="tp-shell tp-faq-grid">
             <Reveal>
-              <div className="section-kicker"><span>07</span> FAQ</div>
+              <div className="section-kicker"><span>06</span> FAQ</div>
               <h2 id="faq-heading">Straight answers before you brief us.</h2>
               <p className="tp-faq-aside">
                 Something not answered here?{' '}
@@ -1063,7 +825,7 @@ export default function ProfileApp() {
             <div className="tp-contact-grid">
               <Reveal className="tp-contact-card" delay={60}>
                 <h3>Hiring a specialist or an executive</h3>
-                <p>Briefs, mandates, fee schedules and market mapping requests.</p>
+                <p>Briefs, mandates and market mapping requests.</p>
                 <a className="email-link" href={mailto('Mandate enquiry — Talent Tree profile')}>
                   {EMAIL}
                 </a>
@@ -1078,28 +840,6 @@ export default function ProfileApp() {
                 </div>
               </Reveal>
 
-              <Reveal className="tp-contact-card" delay={120}>
-                <h3>Candidates and confidential conversations</h3>
-                <p>
-                  The professionals we place are not job hunting. Every conversation is confidential,
-                  and nothing moves without your say-so.
-                </p>
-                <a className="email-link" href={`mailto:${CV_EMAIL}?subject=${encodeURIComponent('Confidential conversation — Talent Tree profile')}`}>
-                  {CV_EMAIL}
-                </a>
-                <div className="tp-contact-actions">
-                  <a
-                    className="tp-button tp-button-light"
-                    href={`mailto:${CV_EMAIL}?subject=${encodeURIComponent('Confidential conversation — Talent Tree profile')}`}
-                  >
-                    <span>Start a confidential chat</span>
-                    <Arrow />
-                  </a>
-                  <button className="tp-button tp-button-ghost" type="button" onClick={() => copyEmail(CV_EMAIL)}>
-                    <span>{copied === CV_EMAIL ? 'Address copied' : 'Copy address'}</span>
-                  </button>
-                </div>
-              </Reveal>
             </div>
 
             <p className="tp-status" role="status" aria-live="polite">
@@ -1144,7 +884,6 @@ export default function ProfileApp() {
               <a href="/#clients">Clients</a>
               <a href="/#services">Services</a>
               <a href="/profile">Company profile</a>
-              <a href="#fees">Fees</a>
               <a href={mailto('Mandate enquiry — Talent Tree profile')}>Contact us</a>
             </nav>
           </div>
