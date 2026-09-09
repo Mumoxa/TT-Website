@@ -4,6 +4,13 @@
 /clients/milkor   /clients/Milkor               301
 /clients/milkor/  /clients/Milkor               301
 
+# The finance capability page is canonically /profile/finance (singular, matching
+# /profile). Redirect the plural spelling so shared links cannot 404.
+/profiles/finance   /profile/finance   301
+/profiles/finance/  /profile/finance   301
+/profiles           /profile           301
+/profiles/          /profile           301
+
 # Cloudflare Pages serves the SPA shell for every other path, so /cv-builda reaches
 # the app instead of 404ing. Vite copies public/ into dist/ verbatim.
 /*  /index.html  200

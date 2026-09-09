@@ -835,6 +835,11 @@ function App() {
    /admin/offers is the internal offer-creation tool (server-side key gate). */
 function Root() {
   const path = window.location.pathname.replace(/\/+$/, '');
+  /* /profiles/... is a common mistyping of the canonical singular /profile/...
+     public/_redirects handles it at the edge; this is the in-app safety net for
+     client-side navigation, where no server redirect runs. */
+  if (path === '/profiles/finance') return withFallback(<FinanceApp />);
+  if (path === '/profiles') return withFallback(<ProfileApp />);
   if (path === '/profile/finance') return withFallback(<FinanceApp />);
   if (path === '/profile') return withFallback(<ProfileApp />);
   if (path === '/cv-builda') return withFallback(<CvBuilda />);
