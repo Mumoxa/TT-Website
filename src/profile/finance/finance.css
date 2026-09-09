@@ -49,12 +49,12 @@
   position: sticky;
   top: 0;
   z-index: 110;
-  background: rgba(8, 26, 35, 0.94);
+  background: rgba(7, 31, 45, 0.94);
   box-shadow: 0 1px 0 var(--line-invert), var(--shadow-header);
 }
 @supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
   .tf-header {
-    background: rgba(8, 26, 35, 0.84);
+    background: rgba(7, 31, 45, 0.84);
     -webkit-backdrop-filter: blur(14px) saturate(1.35);
     backdrop-filter: blur(14px) saturate(1.35);
   }
@@ -173,7 +173,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: var(--grain), radial-gradient(120% 90% at 78% 8%, rgba(19, 101, 121, 0.5), transparent 62%);
+  background-image: var(--grain), radial-gradient(120% 90% at 78% 8%, rgba(0, 109, 163, 0.5), transparent 62%);
   opacity: 0.5;
   pointer-events: none;
   z-index: -1;
@@ -247,26 +247,23 @@
   white-space: nowrap;
 }
 /* One optical height for every logo, whatever its aspect ratio. */
-.tf-marquee-item .tf-logo-tile { height: 46px; padding: 0 14px; border-radius: var(--radius); }
+.tf-marquee-item .tf-logo-tile { height: 52px; padding: 8px 20px; background: var(--white); border-radius: var(--radius); }
 .tf-marquee-item .tf-logo-tile img {
-  height: 30px;
+  max-height: 34px;
   max-width: 168px;
-  opacity: 0.9;
-  transition: opacity var(--fast) ease;
 }
-.tf-marquee-item .tf-tone-dark { background: var(--white); }
-.tf-marquee-item .tf-tone-dark img { opacity: 1; }
-.tf-marquee-item .tf-logo-word { color: var(--muted-on-dark); font-size: var(--fs-300); }
-.tf-marquee-item:hover .tf-logo-tile img { opacity: 1; }
+.tf-marquee-item .tf-logo-word { color: var(--ink); font-size: var(--fs-300); }
 .tf-marquee:hover .tf-marquee-track { animation-play-state: paused; }
 
 @keyframes tf-marquee { to { transform: translateX(-50%); } }
 
 
 /* ── Real brand logos ─────────────────────────────────────────────────── */
-/* Client and professional-body logos are the organisations' own marks.
-   `tf-tone-dark` marks are dark/navy artwork, so on the ink bands they get a
-   white tile to stay legible; `tf-tone-light` artwork sits directly on ink. */
+/* Client and professional-body logos are the organisations' own marks,
+   reproduced at their own colours on uniform white tiles — never tinted,
+   masked or recoloured. Sizing is by max-height/max-width only (never a
+   fixed height with a width cap) so wide, square and portrait artwork all
+   keep their aspect ratio. */
 
 .tf-logo-tile {
   display: inline-grid;
@@ -312,7 +309,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: var(--grain), radial-gradient(90% 70% at 20% 0%, rgba(19, 101, 121, 0.42), transparent 60%);
+  background-image: var(--grain), radial-gradient(90% 70% at 20% 0%, rgba(0, 109, 163, 0.42), transparent 60%);
   opacity: 0.5;
   pointer-events: none;
   z-index: -1;
@@ -354,55 +351,50 @@
   font-size: var(--fs-200);
 }
 
-/* ── Pool comparison ──────────────────────────────────────────────────── */
+/* ── Advertise-led vs search-led: a factual side-by-side ─────────────────── */
 
-.tf-pools {
+.tf-compare {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: clamp(18px, 3vw, 40px);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(16px, 2vw, 24px);
   margin-bottom: clamp(40px, 6vw, 64px);
 }
-.tf-pool {
+.tf-compare-card {
   margin: 0;
-  padding: clamp(20px, 2.4vw, 30px);
+  padding: clamp(22px, 2.6vw, 32px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--white);
   box-shadow: var(--shadow-soft);
 }
-.tf-pool.is-search { border-top: 2px solid var(--accent); }
-.tf-pool figcaption { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
-.tf-pool-label {
+.tf-compare-card.is-search { border-top: 2px solid var(--accent); }
+.tf-compare-card figcaption { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.tf-compare-label {
   font-size: var(--fs-100);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
 }
-.tf-pool.is-search .tf-pool-label { color: var(--accent); }
-.tf-pool-note { font-family: var(--serif); font-size: var(--fs-500); letter-spacing: -0.025em; line-height: 1.25; }
-
-.tf-grid-dots { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
-.tf-grid-dots i {
-  aspect-ratio: 1;
-  border-radius: var(--radius-pill);
-  background: var(--line);
-  transform: scale(0.7);
-  transition: background var(--med) var(--ease), transform var(--med) var(--ease);
+.tf-compare-card.is-search .tf-compare-label { color: var(--accent); }
+.tf-compare-note { font-family: var(--serif); font-size: var(--fs-500); letter-spacing: -0.025em; line-height: 1.25; }
+.tf-compare-card ul { margin: 0; padding: 0; list-style: none; }
+.tf-compare-card li {
+  position: relative;
+  padding: 11px 0 11px 20px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: var(--fs-300);
+  line-height: 1.55;
 }
-.tf-pools.is-live .tf-grid-dots i.is-on { background: var(--accent); transform: scale(1); }
-.tf-pools.is-live .tf-pool.is-search .tf-grid-dots i.is-on { background: var(--accent); }
-
-.tf-pool-vs {
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
-.tf-pool-vs span {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: var(--fs-500);
+.tf-compare-card li::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: 0;
+  width: 8px;
+  height: 1px;
+  background: var(--accent);
 }
 
 /* ── Manifesto quote ──────────────────────────────────────────────────── */
@@ -561,7 +553,7 @@
 .tf-pathway-tabs { display: flex; flex-direction: column; gap: 2px; }
 .tf-pathway-tab {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 80px minmax(0, 1fr);
   grid-template-rows: auto auto;
   column-gap: 14px;
   align-items: center;
@@ -577,9 +569,8 @@
 }
 .tf-pathway-tab:hover { color: var(--white); background: rgba(255, 255, 255, 0.04); }
 .tf-pathway-tab.is-active { color: var(--white); background: rgba(255, 255, 255, 0.06); border-left-color: var(--accent-bright); }
-.tf-pathway-mark { grid-row: 1 / 3; width: 40px; height: 34px; padding: 3px; border-radius: var(--radius); }
-.tf-pathway-mark img { max-height: 28px; max-width: 34px; }
-.tf-pathway-mark.tf-tone-dark { background: var(--white); }
+.tf-pathway-mark { grid-row: 1 / 3; width: 76px; height: 48px; padding: 6px 8px; background: var(--white); border-radius: var(--radius); }
+.tf-pathway-mark img { max-height: 32px; max-width: 60px; }
 .tf-pathway-short { font-family: var(--serif); font-size: var(--fs-600); font-weight: 500; letter-spacing: -0.02em; }
 .tf-pathway-name { font-size: var(--fs-200); color: var(--muted-on-dark); }
 .tf-pathway-tab.is-active .tf-pathway-name { color: rgba(255, 255, 255, 0.72); }
@@ -593,9 +584,11 @@
 }
 .tf-pathway-panel:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 .tf-pathway-head { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
-.tf-pathway-panel-mark { min-width: 74px; height: 56px; padding: 7px 10px; border-radius: var(--radius); }
-.tf-pathway-panel-mark img { max-height: 42px; max-width: 128px; }
-.tf-pathway-panel-mark.tf-tone-dark { background: var(--white); }
+.tf-pathway-panel-mark { min-width: 120px; height: 76px; padding: 10px 16px; background: var(--white); border-radius: var(--radius); }
+.tf-pathway-panel-mark img { max-height: 54px; max-width: 180px; }
+/* Typographic stand-in while the CIMA asset is quarantined (see logos.js). */
+.tf-pathway-mark.tf-logo-word { letter-spacing: 0.1em; font-weight: 600; }
+.tf-pathway-panel-mark.tf-logo-word { font-size: var(--fs-600); letter-spacing: 0.08em; font-weight: 600; }
 .tf-pathway-panel-short {
   margin: 0 0 4px;
   color: var(--accent-bright) !important;
@@ -657,8 +650,8 @@
   cursor: pointer;
   transition: color var(--fast) ease, background var(--fast) ease;
 }
-.tf-step:hover { color: var(--ink); background: rgba(19, 101, 121, 0.06); }
-.tf-step.is-active { color: var(--ink); background: rgba(19, 101, 121, 0.08); }
+.tf-step:hover { color: var(--ink); background: rgba(0, 109, 163, 0.06); }
+.tf-step.is-active { color: var(--ink); background: rgba(0, 109, 163, 0.08); }
 .tf-step-number { font-family: var(--serif); font-size: var(--fs-300); color: var(--accent); font-variant-numeric: tabular-nums; }
 .tf-step-title { font-family: var(--serif); font-size: var(--fs-600); font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
 
@@ -733,26 +726,34 @@
   list-style: none;
 }
 .tf-client {
-  display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
-  gap: 20px;
-  padding: clamp(22px, 2.4vw, 30px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--white);
   box-shadow: var(--shadow-soft);
   transition: box-shadow var(--med) var(--ease), transform var(--med) var(--ease), border-color var(--fast) ease;
 }
-.tf-client:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); border-color: rgba(19, 101, 121, 0.4); }
+.tf-client:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); border-color: rgba(0, 109, 163, 0.4); }
+.tf-client-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px clamp(20px, 2.2vw, 26px) clamp(20px, 2.2vw, 26px);
+}
+/* Full-width logo band: one clear-space ground for every trademark, tall
+   enough for portrait lockups and wide enough for 7:1 wordmarks. */
 .tf-client-mark {
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  width: 104px;
-  min-height: 78px;
-  padding: 12px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 112px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
   background: var(--white);
   transition: border-color var(--med) var(--ease), box-shadow var(--med) var(--ease);
 }
@@ -760,11 +761,12 @@
 .tf-client-mark img {
   display: block;
   width: auto;
-  max-width: 80px;
-  max-height: 44px;
+  height: auto;
+  max-width: 210px;
+  max-height: 52px;
   object-fit: contain;
 }
-.tf-client-mark-second { max-height: 26px !important; opacity: 0.92; }
+.tf-client-mark-second { max-width: 150px !important; max-height: 30px !important; opacity: 0.92; }
 .tf-client-mark-word {
   display: grid;
   gap: 3px;
@@ -791,7 +793,7 @@
   text-transform: uppercase;
   color: var(--muted);
 }
-.tf-client:hover .tf-client-mark { border-color: rgba(19, 101, 121, 0.45); box-shadow: var(--shadow-soft); }
+.tf-client:hover .tf-client-mark { border-color: rgba(0, 109, 163, 0.45); box-shadow: var(--shadow-soft); }
 .tf-client-sector {
   margin: 0 0 8px;
   color: var(--accent);
@@ -890,68 +892,32 @@
 }
 .tf-discipline li:hover { color: var(--white); padding-left: 8px; }
 
-/* ── Iceberg / hidden market ──────────────────────────────────────────── */
+/* ── The market an advert misses: three factual cases ───────────────────── */
 
-.tf-iceberg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 64px); align-items: center; }
-.tf-iceberg-visual {
-  padding: clamp(22px, 2.6vw, 32px);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
-  box-shadow: var(--shadow-soft);
-}
-.tf-iceberg-tag {
-  display: block;
-  margin-bottom: 12px;
-  font-size: var(--fs-100);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.tf-iceberg-above .tf-iceberg-tag { color: var(--accent); }
-.tf-iceberg-dots { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
-.tf-iceberg-dots i {
-  aspect-ratio: 1;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  animation: tf-pop 460ms var(--ease) both;
-  animation-delay: calc(var(--i) * 18ms);
-}
-.tf-iceberg-dots.is-deep i { background: var(--line-strong); opacity: 0.5; }
-.tf-iceberg-dots.is-deep i:nth-child(7n) { background: var(--accent); opacity: 1; }
-.tf-iceberg-line {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 22px 0;
-  color: var(--muted);
-  font-size: var(--fs-100);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.tf-iceberg-line::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--line-strong);
-}
-.tf-iceberg-list { margin: 0; padding: 0; list-style: none; }
-.tf-iceberg-list li {
-  padding: 20px 0;
+.tf-market-list { margin: 0 0 clamp(28px, 4vw, 44px); padding: 0; list-style: none; }
+.tf-market-list li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 18px;
+  align-items: baseline;
+  padding: 22px 0;
   border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 1.02rem;
-  line-height: 1.6;
 }
-.tf-iceberg-list li:first-child { border-top: 1px solid var(--line-strong); }
-.tf-iceberg-punch {
-  color: var(--ink) !important;
+.tf-market-list li:last-child { border-bottom: 1px solid var(--line-strong); }
+.tf-market-number {
   font-family: var(--serif);
-  font-size: var(--fs-500) !important;
-  line-height: 1.35 !important;
+  font-size: var(--fs-600);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.tf-market-list p { margin: 0; max-width: 68ch; color: var(--muted); font-size: 1.02rem; line-height: 1.6; }
+.tf-market-punch {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: var(--fs-700);
+  line-height: 1.3;
   letter-spacing: -0.02em;
 }
 
@@ -1017,7 +983,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: var(--grain), radial-gradient(80% 70% at 80% 100%, rgba(19, 101, 121, 0.45), transparent 62%);
+  background-image: var(--grain), radial-gradient(80% 70% at 80% 100%, rgba(0, 109, 163, 0.45), transparent 62%);
   opacity: 0.5;
   pointer-events: none;
   z-index: -1;
@@ -1124,10 +1090,8 @@
 
 @media (max-width: 900px) {
   .tf-heading-row,
-  .tf-matters,
-  .tf-iceberg { grid-template-columns: minmax(0, 1fr); }
-  .tf-pools { grid-template-columns: minmax(0, 1fr); }
-  .tf-pool-vs { padding: 4px 0; }
+  .tf-matters { grid-template-columns: minmax(0, 1fr); }
+  .tf-compare { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 640px) {
@@ -1136,7 +1100,6 @@
   .tf-timeline-list { grid-template-columns: minmax(0, 1fr); }
   .tf-cover-actions .tf-button,
   .tf-contact-actions .tf-button { width: 100%; }
-  .tf-client { grid-template-columns: minmax(0, 1fr); }
   .tf-clients { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -1192,13 +1155,13 @@
   .tf-section { page-break-inside: avoid; border-top: 1px solid var(--line); }
   .tf-client,
   .tf-step-panel,
-  .tf-iceberg-visual,
+  .tf-market-list,
   .tf-contact-card { page-break-inside: avoid; border: 1px solid var(--line) !important; background: var(--white) !important; }
   .tf .reveal { opacity: 1 !important; transform: none !important; }
   .tf-client-panel[hidden] { display: block !important; }
   .tf-client-mark,
-  .tf-pathway-mark.tf-tone-dark,
-  .tf-pathway-panel-mark.tf-tone-dark { background: var(--white) !important; border: 1px solid var(--line) !important; }
+  .tf-pathway-mark,
+  .tf-pathway-panel-mark { background: var(--white) !important; border: 1px solid var(--line) !important; }
   .tf-client-mark img,
   .tf-pathway-panel-mark img { filter: none !important; }
 }

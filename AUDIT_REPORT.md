@@ -772,3 +772,47 @@ In the generated spec document, `CV@talenttree.co.za` should be a working hyperl
 
 - These are TalentTree's own brand links (company site + application address), not client data — no confidentiality impact.
 - Manual check: open a downloaded DOCX in Word — the logo and every `CV@talenttree.co.za` occurrence should be clickable.
+
+---
+
+## 2026-09-09 — /profile/finance QA squad pass: brand palette, logo UI, factual density
+
+### Request
+
+Review `talenttree.co.za/profile/finance` as a QA squad: remove the decorative pictures (replace with factual info where possible), fix the poor client/logo UI, condense the copy, and re-examine brand identity and colour palette alignment — then make the fixes.
+
+### Findings (evidence-backed)
+
+1. **Palette vs logo mismatch.** The logo artwork is vivid azure (`#0074AE` → `#009BDA` gradient, sampled via ImageMagick); the site tokens were petrol-teal (`--accent #136579`, teal-biased inks). Hue family misaligned.
+2. **Logo tiles geometrically broken.** Ultra-wide marks (Super Group 7:1, Pepkor 5.6:1, Pick n Pay 5.2:1) were squeezed into a 104px side box (≈11–14px tall slivers); the marquee rule `height:30px + max-width:168px` distorted wide marks; pathway tab tiles (40×34px) crushed wide body logos.
+3. **Damaged asset.** `public/logos/bodies/cima.png` carries opaque black edge bars and stray pure-`#FF0000` pixels (pixel forensics), and its dark wordmark vanishes on ink.
+4. **Wrong tone tag.** Old Mutual's deep-green wordmark is ≈2.5:1 on ink — it was tagged `'light'` (direct on ink).
+5. **Non-factual "pictures".** The advertise-vs-search dot grid (192 dots) and the iceberg dot visual (96 dots) carried zero facts.
+
+### Changes
+
+- **`src/styles.css`** — tokens realigned to brand azure drawn from the logo: `--ink #0e2a3a`, `--ink-deep #071f2d`, `--ink-abyss #041722`, `--accent #006da3` (5.0:1 on paper), `--accent-deep #00567e`, `--accent-bright #5ab9e8` (7.7:1 on ink), `--accent-soft #d9eaf3`, `--muted #4f6b7a`, `--muted-on-dark #a9c4d2`; all washes/glows/shadows re-tinted. Type, radius, spacing and motion untouched.
+- **Mirrors** — `profile.css`, `downloads.css`, `offers/*.css`, CV-Builda fallbacks, Specs chrome accent, `index.html` theme-color, terms-generator constants, `DESIGN.md` token table. Deliberately untouched: CV/Specs *document* identities (navy/cyan per their own spec — "do not unify them") and the Milkor client subsite.
+- **`FinanceApp.jsx` / `finance.css`** — dot visuals removed and replaced with factual content: an advertise-led vs search-led side-by-side (6 rows, all condensed from existing supplied copy) and three numbered market cases (verbatim) with the punch line. Client cards rebuilt as stacked logo bands (210×52px clear space, aspect-safe max-sizing); marquee rebuilt as uniform white tiles (distortion bug fixed); pathway tiles enlarged and whitened; CIMA quarantined to a typographic tile (mapping + file kept, tests intact); Old Mutual re-tagged `'dark'`. Running copy condensed across 12 blocks; chapters, filters, steppers, a11y patterns and print support unchanged.
+- **`public/downloads/*`** — Terms PDF + DOCX regenerated from the updated generators (verified: DOCX XML carries `006DA3`, zero `136579`).
+
+### Verification
+
+- `npm test`: **188 PASS, 0 FAIL**.
+- `npm run build`: PASS. Smoke-served `dist` with SPA fallback: `/profile/finance` → 200, logo assets → 200.
+- No rendered-screenshot check was possible (sandbox blocks browser-CDN downloads; no system browser) — visual sign-off still needed in a real browser.
+
+### Notes
+
+- To restore the CIMA tile: replace `public/logos/bodies/cima.png` with clean official artwork and revert the `logo: null` quarantine in `FinanceApp.jsx` (one field).
+- If Talent Tree supplies the Karoo Bioscience wordmark (currently a documented typographic fallback), wire it through `clientLogos` the same way.
+
+## 2026-09-09 — Company profile (/profile) UI/UX redesign (PRO MAX pass)
+
+**Squad:** IA · Visual · Motion · A11y · Content · Perf · QA. **Scope:** `src/profile/*` only — `main.jsx`/`styles.css` client-book code untouched (pinned by `client-mandates.test.mjs`). **Result:** 188/188 tests, build PASS. Standalone copy: `company-profile-standalone.html` (84 KB, self-contained, vanilla JS, `node --check` clean).
+
+**Critical (fixed):** "Six reasons" heading listed 5 items → heading/lede rewritten around five (algolia: "Six reasons" now zero hits in profile code). Mandate leads trimmed to ≤ 63 words (presentation-only, facts preserved; banned-name/fee/href="#" scans clean).
+
+**High (implemented):** full-viewport art-directed cover (meta ledger, 3-line serif H1, dossier contents index, fact ledger, anonymised-descriptor trust ticker — CSS-only marquee, `aria-hidden`, pause-on-hover, reduced-motion/static fallback); sticky numbered chapter nav with scrollspy (`aria-current` on links + index); mandates split into flagship features + ruled book table with tier/sector filters (`aria-pressed`, live count); method rebuilt as dark timeline (progress rail + prev/next + roving-tabindex tabs); services → numbered index rows; testimonials unboxed to editorial quotes matching the site voice; contact gained a "good first brief" checklist.
+
+**Polish:** drop cap + pull-quote in Who-we-are, tabular numerals + hairline ledgers throughout, print stylesheet expanded for the full v2 layout, footer with giant watermark + chapter/company nav, single-spacing/no-Oxford-comma voice preserved.

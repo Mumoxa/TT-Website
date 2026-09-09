@@ -8,7 +8,10 @@
 
    Client names on this page ARE published deliberately: the supplied
    capability content names them as track record. Each is represented by
-   the organisation's real logo, served from public/logos/ (see ./logos.js).
+   the organisation's real logo, served from public/logos/ (see ./logos.js)
+   and rendered on a uniform white tile — the one ground every trademark
+   stays legible on. One professional-body asset (CIMA) is quarantined as a
+   typographic tile until a clean file is supplied; see logos.js.
 
    Design: scoped `tf-` extension of the system in src/styles.css
    (DESIGN.md) — one ink, one paper, one accent, Fraunces + Inter, 2px
@@ -88,7 +91,12 @@ const pathways = [
   },
   {
     id: 'cima',
-    logo: bodyLogos.cima,
+    /* QUARANTINED: public/logos/bodies/cima.png carries black edge bars and
+       stray pure-red pixels, and its dark wordmark vanishes on ink — so the
+       pathways render a typographic tile until Talent Tree supplies a clean
+       asset. See the QA note in ./logos.js. */
+    logo: null,
+    wordmark: 'CIMA',
     short: 'CIMA / CGMA',
     name: 'Management Accounting',
     lead:
@@ -128,17 +136,17 @@ const method = [
     title: 'Understand the requirement beyond the job title',
     lead: 'We establish what the person will actually need to deliver.',
     detail:
-      'That includes the reporting environment, operational complexity, team structure, systems, industry exposure, professional training, technical accounting requirements, stakeholder environment and the problems the appointment needs to solve.',
+      'Reporting environment, operational complexity, team structure, systems, industry exposure, training, technical requirements, stakeholders — and the problems the appointment must solve.',
   },
   {
     title: 'Map the relevant talent market',
     lead: 'We identify where comparable finance capability is likely to exist.',
     detail:
-      'Rather than restricting the search to obvious competitors, we consider adjacent industries, comparable operating environments and organisations where professionals are exposed to similar financial complexity.',
+      'Beyond obvious competitors: adjacent industries, comparable operating environments, and organisations with similar financial complexity.',
   },
   {
     title: 'Identify the individuals',
-    lead: 'We research the market to identify professionals whose profile indicates potential alignment.',
+    lead: 'We research the market for professionals whose profiles indicate potential alignment.',
     detail:
       'Qualifications, career development, company exposure, responsibilities and progression are all read together before anyone is approached.',
   },
@@ -146,13 +154,13 @@ const method = [
     title: 'Approach passive talent directly',
     lead: 'Many of the strongest professionals we encounter are not actively applying for positions.',
     detail:
-      'We approach them directly, introduce the opportunity and establish whether there is sufficient alignment to begin a conversation.',
+      'We approach them directly, introduce the opportunity and establish whether there is enough alignment to talk.',
   },
   {
     title: 'Qualify for fit',
     lead: 'Professional designation alone is never enough.',
     detail:
-      'We assess the combination of qualification, training, technical capability, industry exposure, systems, leadership, commercial understanding, career progression and motivation.',
+      'We assess the combination — qualification, training, technical capability, exposure, systems, leadership, commercial understanding, progression and motivation.',
     chips: [
       'Qualification',
       'Training',
@@ -167,8 +175,8 @@ const method = [
   },
   {
     title: 'Bring the market to the client',
-    lead: 'Instead of asking the client to choose from whoever happened to respond to an advert.',
-    detail: 'Our objective is to systematically identify and engage the relevant market.',
+    lead: 'We systematically identify and engage the relevant market.',
+    detail: 'Instead of asking the client to choose from whoever happened to respond to an advert.',
   },
 ];
 
@@ -234,14 +242,14 @@ const clients = [
     sector: 'Technology',
     lead:
       'Finance recruitment supporting OTI PetroSmart, subsequently acquired by international fintech group Nayax.',
-    roles: ['Appointments across specialist accounting and finance requirements within a technology-led environment'],
+    roles: ['Specialist accounting and finance appointments in a technology-led environment'],
   },
   {
     id: 'crownnational',
     logo: clientLogos.crownnational,
     name: 'Crown National',
     sector: 'Manufacturing',
-    lead: 'Experience recruiting into operational, manufacturing and group finance environments.',
+    lead: 'Recruiting into operational, manufacturing and group finance environments.',
     roles: ['Financial Managers', 'Group Financial Managers'],
   },
   {
@@ -277,7 +285,7 @@ const clients = [
     name: 'Nonprofit Sector',
     sector: 'Nonprofit',
     lead:
-      'Searches where financial governance, stakeholder management and organisational purpose require a different leadership profile from traditional corporate finance.',
+      'Searches where governance, stakeholder management and purpose demand a different leadership profile from corporate finance.',
     roles: ['Chief Financial Officers', 'Senior finance leadership'],
   },
 ];
@@ -500,38 +508,51 @@ function Counter({ value, suffix = '', label, plain = false }) {
   );
 }
 
-/* ── Advertise vs search visual ─────────────────────────────────────────── */
+/* ── Advertise-and-wait vs proactive search ─────────────────────────────── */
+/* A factual side-by-side drawn only from the supplied capability copy: what
+   each route reaches, who it misses and what the client ends up choosing
+   from. No invented statistics — the contrast is the content. */
 
-function PoolCompare() {
-  const [ref, inView] = useInView(0.3);
-  const cells = 96;
+const compareColumns = [
+  {
+    label: 'Advertising-led',
+    note: 'Whoever sees the vacancy and decides to apply',
+    rows: [
+      'Reaches only the people who happen to be looking',
+      'Misses settled high-performers progressing inside competitors',
+      'Leaves the client choosing from whoever happened to respond',
+    ],
+  },
+  {
+    label: 'Search-led',
+    note: 'The people the business actually needs',
+    rows: [
+      'Maps where the required capability exists before approaching anyone',
+      'Engages suitable professionals directly, whether they are looking or not',
+      'Qualifies across nine dimensions, from training to motivation',
+    ],
+  },
+];
+
+function SearchCompare() {
   return (
-    <div className={`tf-pools${inView ? ' is-live' : ''}`} ref={ref}>
-      <figure className="tf-pool">
-        <figcaption>
-          <span className="tf-pool-label">Advertising</span>
-          <span className="tf-pool-note">Only the people who happen to be looking</span>
-        </figcaption>
-        <div className="tf-grid-dots" aria-hidden="true">
-          {Array.from({ length: cells }, (_, index) => (
-            <i key={index} className={index % 11 === 0 ? 'is-on' : ''} style={{ transitionDelay: `${index * 6}ms` }} />
-          ))}
-        </div>
-      </figure>
-      <div className="tf-pool-vs" aria-hidden="true">
-        <span>vs</span>
-      </div>
-      <figure className="tf-pool is-search">
-        <figcaption>
-          <span className="tf-pool-label">Proactive search</span>
-          <span className="tf-pool-note">The people the business actually needs</span>
-        </figcaption>
-        <div className="tf-grid-dots" aria-hidden="true">
-          {Array.from({ length: cells }, (_, index) => (
-            <i key={index} className="is-on" style={{ transitionDelay: `${index * 9}ms` }} />
-          ))}
-        </div>
-      </figure>
+    <div className="tf-compare">
+      {compareColumns.map((column) => (
+        <figure
+          className={column.label === 'Search-led' ? 'tf-compare-card is-search' : 'tf-compare-card'}
+          key={column.label}
+        >
+          <figcaption>
+            <span className="tf-compare-label">{column.label}</span>
+            <span className="tf-compare-note">{column.note}</span>
+          </figcaption>
+          <ul>
+            {column.rows.map((row) => (
+              <li key={row}>{row}</li>
+            ))}
+          </ul>
+        </figure>
+      ))}
     </div>
   );
 }
@@ -705,10 +726,10 @@ export default function FinanceApp() {
                 <em>We go and find them.</em>
               </h1>
               <p className="tf-lead">
-                Talent Tree is a specialist search and recruitment business with deep roots in the
-                South African accounting and finance market. For specialist and business-critical
-                finance appointments we take a proactive search approach — researching the market,
-                mapping the talent pool and approaching suitable professionals directly.
+                Talent Tree is a specialist search business rooted in the South African
+                accounting and finance market. For specialist and business-critical appointments
+                we search proactively — researching the market, mapping the talent pool and
+                approaching suitable professionals directly.
               </p>
 
               <div className="tf-cover-actions">
@@ -740,7 +761,7 @@ export default function FinanceApp() {
               {marqueeClients.map((client, index) => (
                 <span className="tf-marquee-item" key={`${client.id}-${index}`} aria-hidden={index >= clients.length}>
                   {client.logo ? (
-                    <span className={`tf-logo-tile tf-tone-${client.logo.tone}`}>
+                    <span className="tf-logo-tile">
                       <img src={client.logo.src} alt={client.logo.alt} loading="lazy" decoding="async" />
                     </span>
                   ) : (
@@ -765,16 +786,15 @@ export default function FinanceApp() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  We do not build our searches around advertising a vacancy and waiting to see who
-                  applies. This gives our clients access to a much broader market — including
-                  experienced professionals who are performing well in their current organisations,
-                  progressing in their careers and may never have applied for the vacancy themselves.
+                  We do not build searches around advertising a vacancy and waiting. Clients get
+                  access to a broader market — including experienced professionals who are
+                  performing well, progressing in their careers, and would never have applied.
                 </p>
               </Reveal>
             </div>
 
             <Reveal delay={60}>
-              <PoolCompare />
+              <SearchCompare />
             </Reveal>
 
             <Reveal className="tf-manifesto" delay={120}>
@@ -810,10 +830,9 @@ export default function FinanceApp() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Our finance recruitment experience dates back to 2010, initially within the
-                  niche-skills divisions of some of South Africa’s largest staffing groups and
-                  subsequently through Talent Tree. That experience spans more than 15 years of change
-                  in the South African accounting profession and finance employment market.
+                  Our finance recruitment experience dates back to 2010: first in the niche-skills
+                  divisions of some of South Africa’s largest staffing groups, then through Talent
+                  Tree — more than 15 years of change in the profession and its employment market.
                 </p>
               </Reveal>
             </div>
@@ -835,9 +854,8 @@ export default function FinanceApp() {
                 <h3>That history matters.</h3>
                 <p>
                   A Financial Manager is not simply a Financial Manager. The right person may come
-                  from a CA(SA), AGA(SA), SAIPA, CIMA or ACCA pathway. They may have developed through
-                  audit, commercial finance, management accounting, cost accounting, financial control
-                  or operational finance.
+                  from a CA(SA), AGA(SA), SAIPA, CIMA or ACCA pathway, developed through any of
+                  these disciplines:
                 </p>
                 <p className="tf-matters-punch">
                   Our job is to understand the difference — and determine which background is relevant
@@ -890,9 +908,15 @@ export default function FinanceApp() {
                       className={`tf-pathway-tab${selected ? ' is-active' : ''}`}
                       onClick={() => setActivePathway(item.id)}
                     >
-                      <span className={`tf-pathway-mark tf-logo-tile tf-tone-${item.logo.tone}`}>
-                        <img src={item.logo.src} alt="" loading="lazy" decoding="async" />
-                      </span>
+                      {item.logo ? (
+                        <span className="tf-pathway-mark tf-logo-tile">
+                          <img src={item.logo.src} alt="" loading="lazy" decoding="async" />
+                        </span>
+                      ) : (
+                        <span className="tf-pathway-mark tf-logo-tile tf-logo-word" aria-hidden="true">
+                          {item.wordmark}
+                        </span>
+                      )}
                       <span className="tf-pathway-short">{item.short}</span>
                       <span className="tf-pathway-name">{item.name}</span>
                     </button>
@@ -909,9 +933,15 @@ export default function FinanceApp() {
                 tabIndex={-1}
               >
                 <div className="tf-pathway-head">
-                  <span className={`tf-pathway-panel-mark tf-logo-tile tf-tone-${pathway.logo.tone}`}>
-                    <img src={pathway.logo.src} alt={`${pathway.logo.alt} logo`} loading="lazy" decoding="async" />
-                  </span>
+                  {pathway.logo ? (
+                    <span className="tf-pathway-panel-mark tf-logo-tile">
+                      <img src={pathway.logo.src} alt={`${pathway.logo.alt} logo`} loading="lazy" decoding="async" />
+                    </span>
+                  ) : (
+                    <span className="tf-pathway-panel-mark tf-logo-tile tf-logo-word" aria-hidden="true">
+                      {pathway.wordmark}
+                    </span>
+                  )}
                   <div>
                     <p className="tf-pathway-panel-short">{pathway.short}</p>
                     <h3>{pathway.name}</h3>
@@ -941,8 +971,8 @@ export default function FinanceApp() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  The same sequence runs on every specialist and business-critical finance mandate.
-                  Select a step to read what happens inside it.
+                  The same sequence runs on every mandate — select a step to read what happens
+                  inside it.
                 </p>
               </Reveal>
             </div>
@@ -1104,8 +1134,8 @@ export default function FinanceApp() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Our accounting and finance capability extends across the finance career spectrum,
-                  with particular strength in specialist, professionally trained and leadership talent.
+                  Our capability extends across the finance career spectrum — strongest in
+                  specialist, professionally trained and leadership talent.
                 </p>
               </Reveal>
             </div>
@@ -1139,42 +1169,26 @@ export default function FinanceApp() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  There is a fundamental difference between recruiting available candidates and
-                  searching the market for the right candidate. Advertising primarily surfaces people
-                  who see the vacancy and decide to apply. A proactive search asks a different
-                  question — and that changes the size and quality of the potential talent pool.
+                  Recruiting available candidates and searching the market for the right candidate
+                  are fundamentally different. Advertising surfaces people who see the vacancy and
+                  apply; a proactive search asks a different question — and that changes the size
+                  and quality of the talent pool.
                 </p>
               </Reveal>
             </div>
 
-            <Reveal className="tf-iceberg" delay={60}>
-              <div className="tf-iceberg-visual" aria-hidden="true">
-                <div className="tf-iceberg-above">
-                  <span className="tf-iceberg-tag">Applicants</span>
-                  <div className="tf-iceberg-dots">
-                    {Array.from({ length: 12 }, (_, index) => (
-                      <i key={index} style={{ '--i': index }} />
-                    ))}
-                  </div>
-                </div>
-                <div className="tf-iceberg-line"><span>Advertisement waterline</span></div>
-                <div className="tf-iceberg-below">
-                  <span className="tf-iceberg-tag">The rest of the market</span>
-                  <div className="tf-iceberg-dots is-deep">
-                    {Array.from({ length: 84 }, (_, index) => (
-                      <i key={index} style={{ '--i': index }} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <ul className="tf-iceberg-list">
+            <Reveal className="tf-market" delay={60}>
+              <ol className="tf-market-list">
                 {hiddenMarket.map((item, index) => (
-                  <li key={item} style={{ '--i': index }}>{item}</li>
+                  <li key={item}>
+                    <span className="tf-market-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                    <p>{item}</p>
+                  </li>
                 ))}
-                <li className="tf-iceberg-punch">
-                  Those are precisely the people a search methodology is designed to uncover.
-                </li>
-              </ul>
+              </ol>
+              <p className="tf-market-punch">
+                Those are precisely the people a search methodology is designed to uncover.
+              </p>
             </Reveal>
           </div>
         </section>

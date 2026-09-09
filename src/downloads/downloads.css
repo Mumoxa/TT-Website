@@ -52,12 +52,12 @@
   position: sticky;
   top: 0;
   z-index: 110;
-  background: rgba(8, 26, 35, 0.94);
+  background: rgba(7, 31, 45, 0.94);
   box-shadow: 0 1px 0 var(--line-invert), var(--shadow-header);
 }
 @supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
   .td-header {
-    background: rgba(8, 26, 35, 0.84);
+    background: rgba(7, 31, 45, 0.84);
     -webkit-backdrop-filter: blur(14px) saturate(1.35);
     backdrop-filter: blur(14px) saturate(1.35);
   }
@@ -159,7 +159,7 @@
 
 .td-button-quiet {
   background: transparent;
-  border-color: rgba(18, 48, 61, 0.45);
+  border-color: rgba(14, 42, 58, 0.45);
   color: var(--ink);
 }
 .td-button-quiet:hover { background: var(--ink-deep); border-color: var(--ink-deep); color: var(--white); }
@@ -209,8 +209,8 @@
   padding: clamp(64px, 10vw, 128px) 0 clamp(52px, 7vw, 92px);
   background-color: var(--ink-deep);
   background-image:
-    radial-gradient(1200px 560px at 80% -14%, rgba(26, 118, 142, 0.42), transparent 62%),
-    radial-gradient(900px 620px at -12% 112%, rgba(20, 90, 112, 0.22), transparent 58%);
+    radial-gradient(1200px 560px at 80% -14%, rgba(0, 125, 190, 0.42), transparent 62%),
+    radial-gradient(900px 620px at -12% 112%, rgba(0, 96, 148, 0.22), transparent 58%);
   color: var(--white);
 }
 .td-cover::before {
@@ -251,7 +251,7 @@
   padding: 11px 16px;
   border: 1px solid var(--line-invert);
   border-radius: var(--radius);
-  background: rgba(7, 25, 35, 0.5);
+  background: rgba(4, 23, 34, 0.5);
   font-size: var(--fs-200);
 }
 .td-pathline svg { width: 15px; height: 15px; color: var(--accent-bright); }
@@ -277,7 +277,7 @@
 }
 .td-cover-facts > div {
   padding: 20px clamp(14px, 2vw, 24px);
-  background: rgba(7, 25, 35, 0.55);
+  background: rgba(4, 23, 34, 0.55);
   border-right: 1px solid var(--line-invert);
   border-bottom: 1px solid var(--line-invert);
 }
@@ -364,7 +364,7 @@
   gap: 18px;
   padding: 12px 16px;
   background-color: var(--ink-deep);
-  background-image: linear-gradient(rgba(19, 101, 121, 0.16), rgba(19, 101, 121, 0.16)),
+  background-image: linear-gradient(rgba(0, 109, 163, 0.16), rgba(0, 109, 163, 0.16)),
     var(--grain);
   border-bottom: 1px solid var(--line-invert);
 }
@@ -391,7 +391,7 @@
   margin: 0;
   padding: 6px 12px;
   border-radius: var(--radius);
-  background: rgba(7, 25, 35, 0.45);
+  background: rgba(4, 23, 34, 0.45);
   font-size: var(--fs-200);
   color: var(--muted-on-dark);
   overflow: hidden;
@@ -603,7 +603,7 @@
   margin-top: clamp(34px, 4vw, 50px);
   padding: clamp(22px, 3vw, 30px);
   border-left: 2px solid var(--accent);
-  background: rgba(19, 101, 121, 0.05);
+  background: rgba(0, 109, 163, 0.05);
 }
 .td-notice-mark {
   display: grid;
@@ -631,7 +631,7 @@
   overflow: hidden;
   padding: var(--section-y) 0;
   background-color: var(--ink-deep);
-  background-image: radial-gradient(1000px 520px at 12% -20%, rgba(26, 118, 142, 0.32), transparent 60%);
+  background-image: radial-gradient(1000px 520px at 12% -20%, rgba(0, 125, 190, 0.32), transparent 60%);
   color: var(--white);
 }
 .td-contact::before {
@@ -655,7 +655,7 @@
   padding: clamp(24px, 3vw, 34px);
   border: 1px solid var(--line-invert);
   border-radius: var(--radius);
-  background: rgba(7, 25, 35, 0.5);
+  background: rgba(4, 23, 34, 0.5);
 }
 .td-contact-card h3 { font-size: var(--fs-700); color: var(--white); margin: 0; }
 .td-contact-card p { margin: 0; color: var(--muted-on-dark); font-size: var(--fs-300); max-width: 44ch; }

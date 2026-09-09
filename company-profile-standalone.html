@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Company Profile — Talent Tree | Niche Skills Recruitment &amp; Executive Search</title>
+<meta name="description" content="The Talent Tree company profile: a South African niche-skills recruitment and executive search firm established in 2013. Headhunting-only model, sole and preferred mandates with JSE- and Nasdaq-listed clients." />
+<!--
+  Talent Tree — Company Profile (standalone edition).
+  A self-contained rendering of the redesigned /profile page: no build step,
+  no framework. Open directly in a browser. Content matches the production
+  profile; client identities stay anonymised by descriptor.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink: #0e2a3a;
+  --ink-deep: #071f2d;
+  --ink-abyss: #041722;
+  --paper: #f4f1ea;
+  --paper-soft: #fbf9f4;
+  --white: #ffffff;
+  --accent: #006da3;
+  --accent-deep: #00567e;
+  --accent-bright: #5ab9e8;
+  --accent-soft: #d9eaf3;
+  --muted: #4f6b7a;
+  --muted-on-dark: #a9c4d2;
+  --line: rgba(14, 42, 58, 0.16);
+  --line-strong: rgba(14, 42, 58, 0.42);
+  --line-invert: rgba(255, 255, 255, 0.14);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 180ms;
+  --med: 320ms;
+  --slow: 640ms;
+  --serif: "Fraunces", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --fs-800: clamp(2.25rem, 4.2vw, 3.8rem);
+  --fs-700: clamp(1.45rem, 2vw, 1.9rem);
+  --fs-600: clamp(1.28rem, 1.7vw, 1.55rem);
+  --fs-500: clamp(1.24rem, 1.8vw, 1.55rem);
+  --fs-300: 0.875rem;
+  --fs-200: 0.8125rem;
+  --fs-100: 0.72rem;
+  --section-y: clamp(88px, 10vw, 148px);
+  --gutter: clamp(20px, 4vw, 48px);
+  --shell: 1200px;
+  --radius: 2px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 1px 2px rgba(4, 23, 34, 0.05);
+  --shadow-header: 0 18px 40px -28px rgba(3, 15, 22, 0.65);
+  --tp-header-h: 68px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--ink-deep); }
+body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 1rem; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p { margin-top: 0; }
+h1, h2 { text-wrap: balance; }
+p { line-height: 1.65; }
+a { color: inherit; }
+::selection { background: var(--accent); color: var(--white); }
+:focus-visible { outline: 2px solid var(--focus-ring, var(--accent)); outline-offset: 3px; }
+.skip-link { position: fixed; left: 16px; top: 12px; z-index: 200; padding: 12px 18px; background: var(--white); color: var(--ink); border: 1px solid var(--ink); border-radius: var(--radius); font-size: var(--fs-200); font-weight: 600; text-decoration: none; transform: translateY(-220%); transition: transform var(--fast) ease; }
+.skip-link:focus { transform: translateY(0); }
+.tp-shell { width: min(var(--shell), 100% - var(--gutter) * 2); margin-inline: auto; }
+.section-numeral { position: absolute; top: 14px; right: clamp(8px, 3vw, 44px); font-family: var(--serif); font-size: clamp(6.5rem, 16vw, 14rem); line-height: 1; letter-spacing: -0.05em; color: rgba(14, 42, 58, 0.05); pointer-events: none; user-select: none; font-variant-numeric: tabular-nums; }
+.section-kicker { display: flex; align-items: baseline; gap: 12px; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.section-kicker::after { content: ""; flex: 1; height: 1px; margin-left: 14px; background: var(--line); align-self: center; }
+.section-kicker span { color: var(--accent); font-variant-numeric: tabular-nums; }
+.eyebrow { display: flex; align-items: center; gap: 14px; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+.eyebrow::before { content: ""; width: 30px; height: 1px; background: currentColor; opacity: 0.7; }
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity var(--slow) var(--ease), transform var(--slow) var(--ease); }
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* Brand lockup: the approved logo asset, embedded so the file stays self-contained. */
+.logo { display: inline-flex; align-items: center; gap: 14px; padding: 6px 0; text-decoration: none; }
+.logo img { height: 34px; width: auto; aspect-ratio: 132 / 108; object-fit: contain; }
+.tp-footer .logo img { height: 46px; }
+.brand-lockup { display: flex; flex-direction: column; gap: 6px; }
+a.logo .brand-lockup { padding-left: 16px; border-left: 1px solid rgba(255, 255, 255, 0.22); }
+.brand-name { font-family: var(--serif); font-size: 1.32rem; font-weight: 500; letter-spacing: -0.012em; line-height: 1; color: var(--white); white-space: nowrap; }
+.brand-line { font-size: 0.6rem; font-weight: 600; line-height: 1.2; letter-spacing: 0.17em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); white-space: nowrap; }
+
+/* Progress + header */
+.tp-progress { position: fixed; top: 0; left: 0; right: 0; z-index: 120; height: 2px; pointer-events: none; }
+.tp-progress span { display: block; height: 100%; background: var(--accent-bright); transform-origin: 0 50%; transform: scaleX(0); }
+.tp-header { --focus-ring: var(--accent-bright); position: sticky; top: 0; z-index: 110; background: rgba(7, 31, 45, 0.94); box-shadow: 0 1px 0 var(--line-invert), var(--shadow-header); }
+@supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .tp-header { background: rgba(7, 31, 45, 0.84); -webkit-backdrop-filter: blur(14px) saturate(1.35); backdrop-filter: blur(14px) saturate(1.35); }
+}
+.tp-header-inner { width: min(1280px, 100% - clamp(20px, 4.5vw, 80px)); min-height: var(--tp-header-h); margin-inline: auto; display: flex; align-items: center; gap: clamp(16px, 3vw, 32px); }
+.tp-chapters { display: flex; align-items: center; gap: clamp(14px, 1.8vw, 26px); margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.tp-chapters::-webkit-scrollbar { display: none; }
+.tp-chapters a { flex: none; display: inline-flex; align-items: baseline; gap: 7px; padding: 10px 2px; font-size: var(--fs-200); font-weight: 500; color: rgba(255, 255, 255, 0.78); text-decoration: none; white-space: nowrap; background-image: linear-gradient(var(--accent-bright), var(--accent-bright)); background-size: 0% 1px; background-position: 0 calc(100% - 7px); background-repeat: no-repeat; transition: color var(--fast) ease, background-size var(--med) var(--ease); }
+.tp-chapters a:hover, .tp-chapters a[aria-current] { color: var(--white); background-size: 100% 1px; }
+.tp-chapter-num { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; color: var(--accent-bright); font-variant-numeric: tabular-nums; opacity: 0.85; }
+.tp-header-cta { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 9px 18px; border: 1px solid rgba(255, 255, 255, 0.38); border-radius: var(--radius); color: var(--white); font-size: var(--fs-200); font-weight: 600; text-decoration: none; transition: background var(--fast) ease, border-color var(--fast) ease, color var(--fast) ease; }
+.tp-header-cta:hover { background: var(--white); border-color: var(--white); color: var(--ink-deep); }
+
+/* Buttons + links */
+.tp-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 50px; padding: 14px 24px; border: 1px solid var(--ink-deep); border-radius: var(--radius); background: var(--ink-deep); color: var(--white); font-family: var(--sans); font-size: var(--fs-200); font-weight: 600; letter-spacing: 0.015em; text-decoration: none; cursor: pointer; transition: background var(--fast) ease, border-color var(--fast) ease, color var(--fast) ease; }
+.tp-button svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform 300ms var(--ease); }
+.tp-button:hover svg { transform: translateX(4px); }
+.tp-button-light { background: var(--white); border-color: var(--white); color: var(--ink-deep); }
+.tp-button-light:hover { background: var(--accent-bright); border-color: var(--accent-bright); color: var(--ink-deep); }
+.tp-button-ghost { background: transparent; border-color: rgba(255, 255, 255, 0.4); color: var(--white); }
+.tp-button-ghost:hover { background: var(--white); border-color: var(--white); color: var(--ink-deep); }
+.tp-inline-link { display: inline-block; color: var(--accent); font-weight: 600; font-size: var(--fs-300); text-decoration: none; background-image: linear-gradient(currentColor, currentColor); background-size: 100% 1px; background-position: 0 100%; background-repeat: no-repeat; padding-bottom: 2px; transition: color var(--fast) ease, background-size var(--med) var(--ease); }
+.tp-inline-link:hover { background-size: 0% 1px; }
+.tp-dark .tp-inline-link, .tp-contact .tp-inline-link, .tp-cover .tp-inline-link { color: var(--accent-bright); }
+.email-link { display: inline-block; font-family: var(--serif); font-size: clamp(1.15rem, 1.8vw, 1.4rem); font-weight: 500; letter-spacing: -0.015em; text-decoration: none; color: inherit; background-image: linear-gradient(currentColor, currentColor); background-size: 100% 1px; background-position: 0 100%; background-repeat: no-repeat; padding-bottom: 4px; transition: color var(--fast) ease, background-size var(--med) var(--ease); }
+.email-link:hover { background-size: 0% 1px; }
+.tp-contact .email-link:hover, .tp-footer .email-link:hover { color: var(--accent-bright); }
+
+/* Cover */
+.tp-cover { --focus-ring: var(--accent-bright); position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: clamp(620px, 94svh, 980px); padding: clamp(40px, 5vw, 64px) 0 0; background-color: var(--ink-deep); background-image: radial-gradient(1200px 560px at 80% -14%, rgba(0, 125, 190, 0.42), transparent 62%), radial-gradient(900px 620px at -12% 112%, rgba(0, 96, 148, 0.22), transparent 58%); color: var(--white); }
+.tp-cover::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.05; pointer-events: none; }
+.tp-cover .tp-shell { position: relative; flex: 1; display: flex; flex-direction: column; }
+.tp-cover-meta { display: flex; flex-wrap: wrap; gap: 10px 0; margin-bottom: clamp(28px, 4vh, 44px); border-top: 1px solid var(--line-invert); border-bottom: 1px solid var(--line-invert); }
+.tp-cover-meta span { flex: 1 1 auto; padding: 12px 18px 12px 0; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-on-dark); white-space: nowrap; }
+.tp-cover-meta span + span { padding-left: 18px; border-left: 1px solid var(--line-invert); }
+.tp-cover-meta span:first-child { color: var(--accent-bright); }
+.tp-cover-grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.55fr); gap: clamp(36px, 5vw, 88px); align-items: start; }
+.tp-cover .eyebrow { color: #9cc9da; margin-bottom: clamp(20px, 3vh, 30px); }
+.tp-cover h1 { margin: 0 0 clamp(24px, 3vw, 34px); font-family: var(--serif); font-weight: 500; font-size: clamp(2.9rem, 6.4vw, 5.9rem); line-height: 1; letter-spacing: -0.038em; }
+.tp-h1-line { display: block; }
+.tp-cover h1 em { font-style: italic; font-weight: 400; color: var(--accent-bright); }
+.tp-lead { max-width: 58ch; font-size: clamp(1.02rem, 1.3vw, 1.16rem); line-height: 1.7; color: var(--muted-on-dark); }
+.tp-cover-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: clamp(28px, 4vw, 40px) 0 18px; }
+.tp-cover-alt { margin: 0; }
+.tp-cover-alt a { display: inline-flex; align-items: center; gap: 8px; color: var(--muted-on-dark); font-size: var(--fs-300); font-weight: 600; text-decoration: none; transition: color var(--fast) ease; }
+.tp-cover-alt a:hover { color: var(--white); }
+.tp-cover-alt svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--med) var(--ease); }
+.tp-cover-alt a:hover svg { transform: translateY(3px); }
+.tp-index { border-top: 1px solid var(--line-invert); padding-top: 6px; }
+.tp-index-title { margin: 14px 0 6px; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-on-dark); }
+.tp-index ol { margin: 0; padding: 0; list-style: none; }
+.tp-index li { border-bottom: 1px solid var(--line-invert); }
+.tp-index a { display: flex; align-items: baseline; gap: 14px; padding: 11px 2px; color: rgba(255, 255, 255, 0.72); font-size: var(--fs-300); font-weight: 500; text-decoration: none; transition: color var(--fast) ease, padding-left var(--med) var(--ease); }
+.tp-index a span { font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.1em; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+.tp-index a:hover { color: var(--white); padding-left: 10px; }
+.tp-index a[aria-current] { color: var(--white); }
+.tp-cover-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: clamp(36px, 5vh, 56px) 0 0; border-top: 1px solid var(--line-invert); }
+.tp-cover-facts > div { padding: 20px 22px 26px 0; }
+.tp-cover-facts > div + div { padding-left: 22px; border-left: 1px solid var(--line-invert); }
+.tp-cover-facts dt { font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-on-dark); margin-bottom: 10px; }
+.tp-cover-facts dd { margin: 0; font-family: var(--serif); font-size: clamp(1.2rem, 1.8vw, 1.6rem); font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tp-ticker { position: relative; margin-top: clamp(28px, 4vh, 44px); padding: 16px 0; overflow: hidden; border-top: 1px solid var(--line-invert); color: rgba(255, 255, 255, 0.55); -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); }
+.tp-ticker-track { display: flex; width: max-content; animation: tp-ticker 52s linear infinite; }
+.tp-ticker:hover .tp-ticker-track { animation-play-state: paused; }
+.tp-ticker-group { display: flex; align-items: center; }
+.tp-ticker-item { display: inline-flex; align-items: center; gap: 26px; padding-right: 26px; white-space: nowrap; font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; }
+.tp-ticker-dot { color: var(--accent-bright); }
+@keyframes tp-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Sections */
+.tp-section { position: relative; overflow: hidden; padding: var(--section-y) 0; border-top: 1px solid var(--line); }
+.tp [id] { scroll-margin-top: calc(var(--tp-header-h) + 18px); }
+.tp-paper { background: var(--paper); }
+.tp-paper-soft { background: var(--paper-soft); }
+.tp-dark { --focus-ring: var(--accent-bright); background-color: var(--ink-deep); background-image: radial-gradient(1100px 520px at 88% -10%, rgba(0, 125, 190, 0.34), transparent 60%); color: var(--white); border-top-color: var(--line-invert); }
+.tp-dark::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.05; pointer-events: none; }
+.tp-dark .tp-shell { position: relative; }
+.tp-dark .section-kicker { color: var(--muted-on-dark); }
+.tp-dark .section-kicker span { color: var(--accent-bright); }
+.tp-dark .section-kicker::after { background: var(--line-invert); }
+.tp-dark h2 em { color: var(--accent-bright); }
+.tp-dark p { color: var(--muted-on-dark); }
+.tp-section-head { display: grid; grid-template-columns: minmax(200px, 0.42fr) minmax(0, 1.28fr); gap: clamp(32px, 5vw, 84px); align-items: start; margin-bottom: clamp(40px, 5vw, 68px); }
+.tp-section-lede { max-width: 62ch; color: var(--muted); font-size: 1.05rem; margin: 0; }
+.tp-dark .tp-section-lede { color: var(--muted-on-dark); }
+.tp h2 { font-family: var(--serif); font-weight: 500; font-size: var(--fs-800); line-height: 1.04; letter-spacing: -0.032em; margin: 0 0 20px; }
+.tp h2 em { font-style: italic; font-weight: 400; color: var(--accent); }
+.tp h3 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; margin: 0 0 10px; }
+
+/* Who we are */
+.tp-split { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+.tp-split-sticky { position: sticky; top: calc(var(--tp-header-h) + 32px); }
+.tp-split-sticky h2 { margin: 18px 0 26px; }
+.tp-split-copy p { color: var(--muted); max-width: 60ch; }
+.tp-dropcap::first-letter { float: left; margin: 6px 12px 0 0; font-family: var(--serif); font-size: 3.4em; font-weight: 500; line-height: 0.82; letter-spacing: -0.02em; color: var(--ink); }
+.tp-quote { margin: 30px 0 0; padding: 26px 28px; border-left: 2px solid var(--accent); background: rgba(0, 109, 163, 0.05); }
+.tp-quote p { margin: 0; font-family: var(--serif); font-size: var(--fs-500); font-style: italic; line-height: 1.4; color: var(--ink); }
+
+/* Stats */
+.tp-stats { --focus-ring: var(--accent-bright); position: relative; overflow: hidden; padding: clamp(56px, 7vw, 92px) 0; background: var(--ink-abyss); color: var(--white); }
+.tp-stats::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.04; pointer-events: none; }
+.tp-stats .tp-shell { position: relative; }
+.tp-stats-head { margin-bottom: clamp(28px, 4vw, 44px); }
+.tp-stats-kicker { display: flex; align-items: baseline; gap: 12px; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-on-dark); }
+.tp-stats-kicker span { color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+.tp-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(24px, 3.5vw, 48px); }
+.tp-stat { border-top: 1px solid var(--line-invert); padding-top: 22px; }
+.tp-stat strong { display: block; font-family: var(--serif); font-size: clamp(2.6rem, 4.6vw, 3.9rem); font-weight: 500; line-height: 1; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; margin-bottom: 14px; }
+.tp-stat span { display: block; max-width: 26ch; font-size: var(--fs-300); line-height: 1.5; color: var(--muted-on-dark); }
+
+/* Services index */
+.tp-services { border-top: 1px solid var(--line-strong); }
+.tp-service { border-bottom: 1px solid var(--line); transition: background var(--fast) ease; }
+.tp-service:hover { background: var(--white); }
+.tp-service-toggle { display: grid; grid-template-columns: 64px minmax(180px, 0.7fr) minmax(0, 1.4fr) 30px; align-items: center; gap: 18px; width: 100%; padding: 28px 8px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font-family: var(--sans); }
+.tp-service-number { font-family: var(--serif); font-size: var(--fs-600); color: var(--accent); font-variant-numeric: tabular-nums; opacity: 0.55; transition: opacity var(--fast) ease, transform var(--med) var(--ease); }
+.tp-service-toggle:hover .tp-service-number, .tp-service.is-open .tp-service-number { opacity: 1; }
+.tp-service-title { font-family: var(--serif); font-size: var(--fs-700); font-weight: 500; letter-spacing: -0.02em; transition: transform var(--med) var(--ease), color var(--fast) ease; }
+.tp-service-toggle:hover .tp-service-title { color: var(--accent); transform: translateX(6px); }
+.tp-service.is-open .tp-service-title { color: var(--accent); }
+.tp-service-summary { font-size: var(--fs-300); color: var(--muted); line-height: 1.55; }
+.tp-mark { position: relative; width: 26px; height: 26px; justify-self: end; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); transition: background var(--med) ease, border-color var(--med) ease, color var(--med) ease; }
+.tp-mark::before, .tp-mark::after { content: ""; position: absolute; top: 50%; left: 50%; width: 10px; height: 1.5px; background: currentColor; transform: translate(-50%, -50%); transition: transform var(--med) var(--ease), opacity var(--fast) ease; }
+.tp-mark::after { transform: translate(-50%, -50%) rotate(90deg); }
+.is-open .tp-mark, [aria-expanded="true"] .tp-mark { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.is-open .tp-mark::after, [aria-expanded="true"] .tp-mark::after { transform: translate(-50%, -50%) rotate(0deg); opacity: 0; }
+.tp-service-panel { padding: 0 8px 32px 90px; }
+.tp-service-panel p { max-width: 62ch; color: var(--muted); margin-bottom: 16px; }
+@keyframes tp-settle { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Method timeline */
+.tp-stepper { display: grid; gap: clamp(24px, 3vw, 36px); }
+.tp-steps { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding-top: 22px; }
+.tp-steps-rail { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--line-invert); }
+.tp-steps-rail span { display: block; height: 100%; background: var(--accent-bright); transform-origin: 0 50%; transition: transform var(--med) var(--ease); }
+.tp-steps button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; padding: 18px 18px 20px 0; border: 0; background: transparent; color: var(--muted-on-dark); text-align: left; cursor: pointer; font-family: var(--sans); transition: color var(--fast) ease; }
+.tp-steps button::before { content: ""; position: absolute; top: -27px; left: 0; width: 11px; height: 11px; border: 1px solid var(--accent-bright); border-radius: var(--radius-pill); background: var(--ink-deep); transition: background var(--fast) ease; }
+.tp-steps button:hover { color: var(--white); }
+.tp-steps button.is-active { color: var(--white); }
+.tp-steps button.is-active::before { background: var(--accent-bright); }
+.tp-step-number { font-family: var(--serif); font-size: var(--fs-300); color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+.tp-step-title { font-family: var(--serif); font-size: var(--fs-600); font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
+.tp-step-panel { max-width: 760px; padding: clamp(26px, 3vw, 40px); border: 1px solid var(--line-invert); border-left: 2px solid var(--accent-bright); border-radius: var(--radius); background: rgba(4, 23, 34, 0.5); }
+.tp-step-phase { display: inline-block; margin-bottom: 16px; padding: 5px 12px; border: 1px solid var(--line-invert); border-radius: var(--radius); font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-bright); }
+.tp-step-panel h3 { font-size: var(--fs-700); color: var(--white); }
+.tp-step-panel p { max-width: 58ch; margin: 0; color: var(--muted-on-dark); }
+.tp-step-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line-invert); }
+.tp-step-nav > span { font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.14em; color: var(--muted-on-dark); font-variant-numeric: tabular-nums; }
+.tp-step-nav button { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 18px; border: 1px solid var(--line-invert); border-radius: var(--radius); background: transparent; color: var(--white); font-size: var(--fs-200); font-weight: 600; cursor: pointer; font-family: var(--sans); transition: background var(--fast) ease, border-color var(--fast) ease; }
+.tp-step-nav button:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.3); }
+.tp-step-nav button span { color: var(--accent-bright); }
+
+/* Mandates */
+.tp-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.tp-chip { min-height: 44px; padding: 9px 16px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: transparent; color: var(--ink); font-size: var(--fs-200); font-weight: 600; cursor: pointer; font-family: var(--sans); transition: background var(--fast) ease, color var(--fast) ease, border-color var(--fast) ease; }
+.tp-chip:hover { border-color: var(--accent); color: var(--accent); }
+.tp-chip.is-active { background: var(--ink-deep); border-color: var(--ink-deep); color: var(--white); }
+.tp-filter-count { margin: 0 0 30px; font-size: var(--fs-200); letter-spacing: 0.04em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tp-flagships { border-top: 1px solid var(--line-strong); margin-bottom: clamp(40px, 5vw, 60px); }
+.tp-flagship { display: grid; grid-template-columns: 110px minmax(0, 1fr) minmax(180px, 240px); gap: clamp(20px, 3vw, 48px); align-items: start; padding: clamp(26px, 3vw, 38px) 0; border-bottom: 1px solid var(--line); }
+.tp-flagship-number { font-family: var(--serif); font-size: clamp(2.6rem, 4vw, 3.6rem); line-height: 1; letter-spacing: -0.04em; color: var(--accent); opacity: 0.5; font-variant-numeric: tabular-nums; }
+.tp-flagship-tag { display: inline-block; margin-bottom: 14px; padding: 6px 12px; border: 1px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; white-space: nowrap; }
+.tp-flagship-main h3 { font-size: var(--fs-700); margin-bottom: 12px; }
+.tp-flagship-lead { margin: 0; max-width: 60ch; color: var(--muted); font-size: 1rem; }
+.tp-flagship-meta { margin: 0; padding-top: 6px; border-top: 1px solid var(--line-strong); font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); line-height: 1.7; }
+.tp-book { border-top: 1px solid var(--line-strong); }
+.tp-book-head { display: grid; grid-template-columns: 56px minmax(0, 1fr) 210px 230px; gap: 20px; padding: 14px 0; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.tp-book-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 210px 230px; gap: 20px; align-items: start; padding: 24px 0; border-top: 1px solid var(--line); transition: background var(--fast) ease; }
+.tp-book-row:hover { background: rgba(0, 109, 163, 0.045); }
+.tp-book-number { font-family: var(--serif); font-size: 1.15rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tp-book-client h3 { font-size: var(--fs-600); margin-bottom: 6px; }
+.tp-book-meta { margin: 0 0 10px; font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); }
+.tp-book-lead { margin: 0; max-width: 62ch; font-size: var(--fs-300); color: var(--muted); }
+.tp-book-tag { justify-self: start; padding: 5px 10px; border: 1px solid var(--line-strong); border-radius: var(--radius); font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.tp-book-focus { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tp-book-focus li { padding: 5px 10px; border-radius: var(--radius); background: var(--accent-soft); color: var(--accent-deep); font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.06em; }
+.tp-tail { margin: 34px 0 0; max-width: 72ch; color: var(--muted); font-size: 1.02rem; }
+
+/* Why + testimonials */
+.tp-why-list { border-top: 1px solid var(--line-strong); margin-bottom: clamp(44px, 5vw, 64px); }
+.tp-why { display: grid; grid-template-columns: 64px minmax(220px, 0.6fr) minmax(0, 1fr); gap: 20px; align-items: baseline; padding: 26px 0; border-bottom: 1px solid var(--line); }
+.tp-why-number { font-family: var(--serif); font-size: var(--fs-600); color: var(--accent); font-variant-numeric: tabular-nums; }
+.tp-why h3 { font-size: var(--fs-600); margin: 0; }
+.tp-why p { margin: 0; font-size: var(--fs-300); color: var(--muted); max-width: 56ch; }
+.tp-testimonials { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.tp-testimonial { margin: 0; display: flex; flex-direction: column; height: 100%; }
+.tp-testimonial p { margin: 0; font-family: var(--serif); font-style: italic; font-size: clamp(1.12rem, 1.5vw, 1.32rem); line-height: 1.52; letter-spacing: -0.01em; color: var(--ink); }
+.tp-testimonial footer { margin-top: auto; padding-top: 26px; }
+.tp-testimonial footer::before { content: ""; display: block; width: 34px; height: 1px; background: var(--accent); margin-bottom: 16px; }
+.tp-testimonial footer strong { display: block; font-size: 0.92rem; }
+.tp-testimonial footer span { color: var(--muted); font-size: var(--fs-100); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* FAQ */
+.tp-faq-grid { display: grid; grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr); gap: clamp(30px, 5vw, 76px); align-items: start; }
+.tp-faq-sticky { position: sticky; top: calc(var(--tp-header-h) + 32px); }
+.tp-faq-sticky h2 { margin: 18px 0 0; }
+.tp-faq-aside { margin-top: 16px; font-size: var(--fs-300); color: var(--muted); }
+.tp-faq-list { border-top: 1px solid var(--line-strong); }
+.tp-faq-item { border-bottom: 1px solid var(--line); transition: background var(--fast) ease; }
+.tp-faq-item:hover { background: rgba(0, 109, 163, 0.04); }
+.tp-faq-item h3 { margin: 0; font-family: var(--sans); }
+.tp-faq-item button { display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; padding: 24px 8px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font-family: var(--serif); font-size: var(--fs-600); font-weight: 500; letter-spacing: -0.02em; line-height: 1.25; }
+.tp-faq-item button:hover { color: var(--accent); }
+.tp-faq-panel { padding: 0 8px 26px; }
+.tp-faq-panel p { margin: 0; max-width: 66ch; color: var(--muted); }
+
+/* Contact */
+.tp-contact { --focus-ring: var(--accent-bright); position: relative; overflow: hidden; padding: var(--section-y) 0; background-color: var(--ink-deep); background-image: radial-gradient(1000px 520px at 12% -20%, rgba(0, 125, 190, 0.32), transparent 60%); color: var(--white); }
+.tp-contact::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.05; pointer-events: none; }
+.tp-contact .tp-shell { position: relative; }
+.tp-contact .eyebrow { color: #9cc9da; margin-bottom: 22px; }
+.tp-contact h2 { max-width: 20ch; }
+.tp-contact .tp-lead { margin-top: 22px; }
+.tp-contact-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 20px; margin-top: clamp(34px, 4vw, 52px); }
+.tp-contact-card { display: flex; flex-direction: column; gap: 14px; padding: clamp(24px, 3vw, 34px); border: 1px solid var(--line-invert); border-radius: var(--radius); background: rgba(4, 23, 34, 0.5); }
+.tp-contact-card h3 { font-size: var(--fs-700); color: var(--white); margin: 0; }
+.tp-contact-card p { margin: 0; color: var(--muted-on-dark); font-size: var(--fs-300); max-width: 44ch; }
+.tp-contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 8px; }
+.tp-brief { padding: clamp(24px, 3vw, 34px); border: 1px solid var(--line-invert); border-radius: var(--radius); background: transparent; }
+.tp-brief h3 { font-size: var(--fs-600); color: var(--white); margin-bottom: 20px; }
+.tp-brief ol { margin: 0; padding: 0; list-style: none; }
+.tp-brief li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-top: 1px solid var(--line-invert); }
+.tp-brief li span { font-family: var(--serif); font-size: var(--fs-300); color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+.tp-brief li strong { display: block; font-size: var(--fs-300); margin-bottom: 4px; }
+.tp-brief li p { margin: 0; font-size: var(--fs-200); color: var(--muted-on-dark); }
+.tp-status { min-height: 24px; margin: 16px 0 0; font-size: var(--fs-200); color: var(--accent-bright); }
+.tp-contact-tail { margin-top: 8px; }
+.tp-contact-tail p { max-width: 70ch; color: var(--muted-on-dark); }
+
+/* Footer */
+.tp-footer { --focus-ring: var(--accent-bright); position: relative; background: var(--ink-abyss); color: var(--white); padding-top: clamp(48px, 6vw, 72px); overflow: hidden; }
+.tp-footer::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.04; pointer-events: none; }
+.tp-footer .tp-shell { position: relative; }
+.tp-footer-top { display: grid; grid-template-columns: minmax(0, 1.3fr) auto auto; gap: 40px clamp(32px, 5vw, 88px); align-items: start; padding-bottom: 40px; }
+.tp-footer-line { max-width: 46ch; margin: 18px 0 0; font-size: var(--fs-200); color: var(--muted-on-dark); }
+.tp-footer-word { margin: 26px 0 0; font-family: var(--serif); font-size: clamp(3rem, 8vw, 6.5rem); font-weight: 500; line-height: 1; letter-spacing: -0.04em; color: rgba(255, 255, 255, 0.07); user-select: none; }
+.tp-footer-nav { display: grid; gap: 4px; align-content: start; }
+.tp-footer-nav p { margin: 0 0 12px; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-on-dark); }
+.tp-footer-nav a { padding: 5px 0; font-size: var(--fs-200); font-weight: 500; color: rgba(255, 255, 255, 0.72); text-decoration: none; transition: color var(--fast) ease, padding-left var(--med) var(--ease); }
+.tp-footer-nav a:hover { color: var(--white); padding-left: 6px; }
+.tp-footer-legal { display: flex; flex-wrap: wrap; gap: 10px 32px; justify-content: space-between; align-items: center; border-top: 1px solid var(--line-invert); padding: 22px 0 28px; }
+.tp-footer-legal p { margin: 0; font-size: var(--fs-200); color: var(--muted-on-dark); }
+.tp-footer-legal .email-link { font-size: 1.05rem; color: var(--white); }
+.tp-to-top { color: var(--muted-on-dark); font-size: var(--fs-200); font-weight: 600; text-decoration: none; transition: color var(--fast) ease; }
+.tp-to-top:hover { color: var(--white); }
+
+@media (max-width: 1100px) {
+  .tp-cover-grid { grid-template-columns: minmax(0, 1fr); }
+  .tp-index { display: none; }
+  .tp-cover-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tp-cover-facts > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .tp-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tp-flagship { grid-template-columns: 80px minmax(0, 1fr); }
+  .tp-flagship-meta { grid-column: 2; border-top: 0; padding-top: 0; }
+  .tp-book-head { display: none; }
+  .tp-book-row { grid-template-columns: 48px minmax(0, 1fr); }
+  .tp-book-tag { grid-column: 2; }
+  .tp-book-focus { grid-column: 2; }
+  .tp-why { grid-template-columns: 52px minmax(0, 1fr); }
+  .tp-why div { grid-column: 2; }
+  .tp-why h3 { margin-bottom: 8px; }
+}
+@media (max-width: 1000px) {
+  .tp-header-inner { flex-wrap: wrap; padding: 10px 0; gap: 12px; }
+  .tp-chapters { order: 3; width: 100%; margin-left: 0; padding-bottom: 2px; -webkit-mask-image: linear-gradient(to right, black 92%, transparent); mask-image: linear-gradient(to right, black 92%, transparent); }
+  .tp-header-cta { margin-left: auto; }
+  .tp-testimonials { grid-template-columns: minmax(0, 1fr); gap: 36px; max-width: 640px; }
+  .tp-contact-grid { grid-template-columns: minmax(0, 1fr); }
+  .tp-footer-top { grid-template-columns: minmax(0, 1fr) auto; }
+  .tp-footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .tp-section-head, .tp-split, .tp-faq-grid { grid-template-columns: minmax(0, 1fr); }
+  .tp-split-sticky, .tp-faq-sticky { position: static; }
+  .tp-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; }
+  .tp-service-toggle { grid-template-columns: 44px minmax(0, 1fr) 26px; row-gap: 8px; }
+  .tp-service-number { grid-area: 1 / 1 / 2 / 2; font-size: var(--fs-300); }
+  .tp-service-title { grid-area: 1 / 2 / 2 / 3; }
+  .tp-service-toggle .tp-mark { grid-area: 1 / 3 / 2 / 4; }
+  .tp-service-summary { grid-area: 2 / 2 / 3 / 4; }
+  .tp-service-panel { padding-left: 70px; }
+}
+@media (max-width: 640px) {
+  .tp-cover { min-height: auto; }
+  .tp-cover-meta span { flex: 1 1 40%; }
+  .tp-cover-meta span + span { padding-left: 0; border-left: 0; }
+  .tp-cover-facts { grid-template-columns: minmax(0, 1fr); }
+  .tp-cover-facts > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line-invert); }
+  .tp-stats-grid { grid-template-columns: minmax(0, 1fr); }
+  .tp-cover-actions .tp-button { width: 100%; }
+  .tp-flagship { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .tp-flagship-number { font-size: 2.2rem; }
+  .tp-flagship-meta { grid-column: 1; }
+  .tp-book-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .tp-book-number { font-size: 1rem; }
+  .tp-book-tag, .tp-book-focus { grid-column: 1; }
+  .tp-why { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .tp-why div { grid-column: 1; }
+  .tp-steps { grid-template-columns: minmax(0, 1fr); }
+  .tp-steps button::before { display: none; }
+  .tp-steps button { border-left: 2px solid var(--line-invert); padding: 12px 0 12px 16px; }
+  .tp-steps button.is-active { border-left-color: var(--accent-bright); }
+  .tp-step-nav { flex-wrap: wrap; }
+  .tp-service-panel { padding-left: 8px; }
+  .tp-contact-actions .tp-button { width: 100%; }
+  .tp-footer-top { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .tp-ticker-track { animation: none; }
+}
+@media print {
+  .tp-header, .tp-progress, .tp-filters, .tp-filter-count, .tp-cover-actions, .tp-cover-alt, .tp-index, .tp-ticker, .tp-contact-actions, .tp-step-nav, .tp-footer-nav, .tp-to-top { display: none !important; }
+  body, .tp-cover, .tp-dark, .tp-stats, .tp-contact, .tp-footer { background: var(--white) !important; color: var(--ink) !important; }
+  .tp-cover::before, .tp-dark::before, .tp-stats::before, .tp-contact::before, .tp-footer::before { display: none; }
+  .tp-cover { min-height: auto; }
+  .tp-cover h1 em, .tp-dark h2 em { color: var(--accent) !important; }
+  .tp-lead, .tp-dark p, .tp-cover-meta span, .tp-stat span, .tp-contact-card p, .tp-brief li p, .tp-footer-line, .tp-footer-legal p { color: var(--muted) !important; }
+  .tp-section { page-break-inside: avoid; border-top: 1px solid var(--line); }
+  .tp-service-panel[hidden], .tp-faq-panel[hidden], .tp-step-panel[hidden] { display: block !important; }
+  .tp-flagship, .tp-book-row, .tp-why, .tp-testimonial, .tp-step-panel, .tp-contact-card, .tp-brief { page-break-inside: avoid; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .tp-footer-word { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="tp" id="profile-top">
+  <a class="skip-link" href="#profile-main">Skip to profile content</a>
+  <div class="tp-progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <header class="tp-header">
+    <div class="tp-header-inner">
+      <a class="logo" href="https://talenttree.co.za" aria-label="Talent Tree home">
+        <img src="data:image/png;base64,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" alt="Talent Tree" width="132" height="108" />
+        <span class="brand-lockup" aria-hidden="true">
+          <span class="brand-name">Talent Tree</span>
+          <span class="brand-line">Company profile · 2026</span>
+        </span>
+      </a>
+      <nav class="tp-chapters" aria-label="Profile chapters" id="chapterNav">
+        <a href="#who-we-are"><span class="tp-chapter-num" aria-hidden="true">01</span>Who we are</a>
+        <a href="#numbers"><span class="tp-chapter-num" aria-hidden="true">02</span>In numbers</a>
+        <a href="#services"><span class="tp-chapter-num" aria-hidden="true">03</span>What we do</a>
+        <a href="#method"><span class="tp-chapter-num" aria-hidden="true">04</span>How we work</a>
+        <a href="#mandates"><span class="tp-chapter-num" aria-hidden="true">05</span>Mandates</a>
+        <a href="#why"><span class="tp-chapter-num" aria-hidden="true">06</span>Why us</a>
+        <a href="#faq"><span class="tp-chapter-num" aria-hidden="true">07</span>FAQ</a>
+        <a href="#contact"><span class="tp-chapter-num" aria-hidden="true">08</span>Contact</a>
+      </nav>
+      <a class="tp-header-cta" href="mailto:hello@talenttree.co.za?subject=Mandate%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">Contact us</a>
+    </div>
+  </header>
+
+  <main id="profile-main">
+    <!-- Cover -->
+    <section class="tp-cover" aria-labelledby="profile-heading">
+      <div class="tp-shell">
+        <div class="tp-cover-meta"><span>Company profile</span><span>Est. 2013</span><span>South Africa</span></div>
+        <div class="tp-cover-grid">
+          <div class="tp-cover-main">
+            <p class="eyebrow">Niche skills · Executive search · South Africa</p>
+            <h1 id="profile-heading">
+              <span class="tp-h1-line">Niche skills.</span>
+              <span class="tp-h1-line">Executive search.</span>
+              <span class="tp-h1-line"><em>Headhunted, never advertised.</em></span>
+            </h1>
+            <p class="tp-lead">Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring. We headhunt the in-demand professionals who never answer job ads — and position your opportunity so the right person takes the call.</p>
+            <div class="tp-cover-actions">
+              <a class="tp-button tp-button-light" href="mailto:hello@talenttree.co.za?subject=Mandate%20enquiry%20%E2%80%94%20Talent%20Tree%20profile"><span>Discuss a brief</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg></a>
+              <button class="tp-button tp-button-ghost" type="button" onclick="window.print()"><span>Print / save as PDF</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg></button>
+            </div>
+            <p class="tp-cover-alt"><a href="#mandates">Read the mandate book <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 13l6 6 6-6" /></svg></a></p>
+          </div>
+          <nav class="tp-index" aria-label="Profile contents">
+            <p class="tp-index-title">Contents</p>
+            <ol>
+              <li><a href="#who-we-are"><span aria-hidden="true">01</span>Who we are</a></li>
+              <li><a href="#numbers"><span aria-hidden="true">02</span>In numbers</a></li>
+              <li><a href="#services"><span aria-hidden="true">03</span>What we do</a></li>
+              <li><a href="#method"><span aria-hidden="true">04</span>How we work</a></li>
+              <li><a href="#mandates"><span aria-hidden="true">05</span>Mandates</a></li>
+              <li><a href="#why"><span aria-hidden="true">06</span>Why us</a></li>
+              <li><a href="#faq"><span aria-hidden="true">07</span>FAQ</a></li>
+              <li><a href="#contact"><span aria-hidden="true">08</span>Contact</a></li>
+            </ol>
+          </nav>
+        </div>
+        <dl class="tp-cover-facts">
+          <div><dt>Established</dt><dd>2013</dd></div>
+          <div><dt>Home</dt><dd>South Africa</dd></div>
+          <div><dt>Model</dt><dd>Headhunting only</dd></div>
+          <div><dt>Focus</dt><dd>Niche skills · Executive search</dd></div>
+        </dl>
+      </div>
+      <div class="tp-ticker" aria-hidden="true">
+        <div class="tp-ticker-track">
+          <span class="tp-ticker-group"><span class="tp-ticker-item">JSE-listed retail group<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Nasdaq-listed payments technology<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">International automotive manufacturer<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Historic financial conglomerate · est. 1845<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Dual-listed fintech &amp; IoT group<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Open medical scheme · since 1968<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Food technology · 110 years of heritage<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Heavy industry investment<span class="tp-ticker-dot">·</span></span></span>
+          <span class="tp-ticker-group"><span class="tp-ticker-item">JSE-listed retail group<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Nasdaq-listed payments technology<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">International automotive manufacturer<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Historic financial conglomerate · est. 1845<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Dual-listed fintech &amp; IoT group<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Open medical scheme · since 1968<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Food technology · 110 years of heritage<span class="tp-ticker-dot">·</span></span><span class="tp-ticker-item">Heavy industry investment<span class="tp-ticker-dot">·</span></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who we are -->
+    <section class="tp-section tp-paper-soft" id="who-we-are" aria-labelledby="who-heading">
+      <span class="section-numeral" aria-hidden="true">01</span>
+      <div class="tp-shell tp-split">
+        <div class="tp-split-sticky reveal">
+          <div class="section-kicker"><span>01</span> Who we are</div>
+          <h2 id="who-heading">Specialists in the markets you are hiring from.</h2>
+          <a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Introduction%20%E2%80%94%20Talent%20Tree%20profile">Start a conversation with us</a>
+        </div>
+        <div class="tp-split-copy reveal">
+          <p class="tp-dropcap">Talent Tree was built on a simple conviction: the best people are rarely available, and never advertised. So we spent years building our own talent databases and networking them personally, so that when a brief lands we already know who to call.</p>
+          <p>Clients treat us as an extension of their HR team. Candidates treat us as the people who make the next move possible. Both relationships are built the same way — with discretion, market knowledge and a phone that never stops.</p>
+          <blockquote class="tp-quote"><p>Specialist talent is not found on a job board. It is found in relationships built long before the role exists.</p></blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- Numbers -->
+    <section class="tp-stats" id="numbers" aria-label="Talent Tree in numbers">
+      <div class="tp-shell">
+        <div class="tp-stats-head reveal"><span class="tp-stats-kicker"><span aria-hidden="true">02</span> In numbers</span></div>
+        <div class="tp-stats-grid">
+          <div class="tp-stat"><strong>2013</strong><span>Established</span></div>
+          <div class="tp-stat" data-count="10" data-suffix="+"><strong>0+</strong><span>Years in niche-skills recruitment and executive search</span></div>
+          <div class="tp-stat" data-count="0" data-suffix=""><strong>0</strong><span>Job ads placed — every hire is headhunted</span></div>
+          <div class="tp-stat" data-count="100" data-suffix="%"><strong>0%</strong><span>Driven by our own network and proprietary databases</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services -->
+    <section class="tp-section tp-paper" id="services" aria-labelledby="services-heading">
+      <span class="section-numeral" aria-hidden="true">03</span>
+      <div class="tp-shell">
+        <div class="tp-section-head">
+          <div class="section-kicker reveal"><span>03</span> What we do</div>
+          <div class="reveal"><h2 id="services-heading">Four ways we put scarce skills in your business.</h2><p class="tp-section-lede">Select a service to see how the mandate runs.</p></div>
+        </div>
+        <div class="tp-services" id="servicesList">
+          <div class="reveal"><article class="tp-service is-open">
+            <button type="button" class="tp-service-toggle" aria-expanded="true" aria-controls="tp-service-0"><span class="tp-service-number">01</span><span class="tp-service-title">Specialist search</span><span class="tp-service-summary">Direct headhunting for the scarce, in-demand skills your market fights over.</span><span class="tp-mark" aria-hidden="true"></span></button>
+            <div class="tp-service-panel" id="tp-service-0"><p>We work the brief through our own talent pools and networks — not a job ad. You get a shortlist of people who were not looking, with the context behind why each of them took the call.</p><a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Specialist%20search%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">Discuss specialist search</a></div>
+          </article></div>
+          <div class="reveal"><article class="tp-service">
+            <button type="button" class="tp-service-toggle" aria-expanded="false" aria-controls="tp-service-1"><span class="tp-service-number">02</span><span class="tp-service-title">Executive search</span><span class="tp-service-summary">Discreet, relationship-led search for leadership and business-critical appointments.</span><span class="tp-mark" aria-hidden="true"></span></button>
+            <div class="tp-service-panel" id="tp-service-1" hidden><p>Senior mandates are handled personally by specialists with more than ten years in executive search, with the confidentiality that leadership hiring demands on both sides of the table.</p><a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Executive%20search%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">Discuss executive search</a></div>
+          </article></div>
+          <div class="reveal"><article class="tp-service">
+            <button type="button" class="tp-service-toggle" aria-expanded="false" aria-controls="tp-service-2"><span class="tp-service-number">03</span><span class="tp-service-title">Market mapping</span><span class="tp-service-summary">A structured picture of where the talent actually sits before you commit.</span><span class="tp-mark" aria-hidden="true"></span></button>
+            <div class="tp-service-panel" id="tp-service-2" hidden><p>Availability, competing employers, compensation reality and realistic timelines — mapped up front so the hiring decision is made on evidence rather than assumption.</p><a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Market%20mapping%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">Discuss market mapping</a></div>
+          </article></div>
+          <div class="reveal"><article class="tp-service">
+            <button type="button" class="tp-service-toggle" aria-expanded="false" aria-controls="tp-service-3"><span class="tp-service-number">04</span><span class="tp-service-title">Selective team builds</span><span class="tp-service-summary">Coordinated hiring when several connected roles have to land together.</span><span class="tp-mark" aria-hidden="true"></span></button>
+            <div class="tp-service-panel" id="tp-service-3" hidden><p>Roles, sequencing and sourcing are scoped around the business outcome, so a team arrives in the right order instead of as a queue of unrelated vacancies.</p><a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Selective%20team%20builds%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">Discuss selective team builds</a></div>
+          </article></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Method -->
+    <section class="tp-section tp-dark" id="method" aria-labelledby="method-heading">
+      <div class="tp-shell">
+        <div class="tp-section-head">
+          <div class="section-kicker reveal"><span>04</span> How a mandate runs</div>
+          <div class="reveal"><h2 id="method-heading">Brief to signed offer.</h2><p class="tp-section-lede">Four stages, one accountable thread. Select a stage — or step through the mandate in order.</p></div>
+        </div>
+        <div class="tp-stepper">
+          <div class="tp-steps" role="tablist" aria-label="Mandate stages" id="methodTabs">
+            <span class="tp-steps-rail" aria-hidden="true"><span id="methodRail" style="transform: scaleX(0.25)"></span></span>
+            <button type="button" role="tab" id="tp-step-tab-0" aria-selected="true" aria-controls="tp-step-panel-0" tabindex="0" class="is-active"><span class="tp-step-number">01</span><span class="tp-step-title">Define the brief</span></button>
+            <button type="button" role="tab" id="tp-step-tab-1" aria-selected="false" aria-controls="tp-step-panel-1" tabindex="-1"><span class="tp-step-number">02</span><span class="tp-step-title">Map the market</span></button>
+            <button type="button" role="tab" id="tp-step-tab-2" aria-selected="false" aria-controls="tp-step-panel-2" tabindex="-1"><span class="tp-step-number">03</span><span class="tp-step-title">Headhunt and position</span></button>
+            <button type="button" role="tab" id="tp-step-tab-3" aria-selected="false" aria-controls="tp-step-panel-3" tabindex="-1"><span class="tp-step-number">04</span><span class="tp-step-title">Close with confidence</span></button>
+          </div>
+          <div role="tabpanel" id="tp-step-panel-0" aria-labelledby="tp-step-tab-0" class="tp-step-panel"><span class="tp-step-phase">Week 0</span><h3>Define the brief</h3><p>We start with the role, the business need and the decisions the hire has to unlock — not a job spec pasted into a portal.</p><div class="tp-step-nav"><button type="button" data-step="-1"><span aria-hidden="true">←</span> Previous stage</button><span aria-hidden="true">01 / 04</span><button type="button" data-step="1">Next stage <span aria-hidden="true">→</span></button></div></div>
+          <div role="tabpanel" id="tp-step-panel-1" aria-labelledby="tp-step-tab-1" class="tp-step-panel" hidden><span class="tp-step-phase">Early</span><h3>Map the market</h3><p>We identify exactly where the relevant talent sits, who holds it and what it will take to move them.</p><div class="tp-step-nav"><button type="button" data-step="-1"><span aria-hidden="true">←</span> Previous stage</button><span aria-hidden="true">02 / 04</span><button type="button" data-step="1">Next stage <span aria-hidden="true">→</span></button></div></div>
+          <div role="tabpanel" id="tp-step-panel-2" aria-labelledby="tp-step-tab-2" class="tp-step-panel" hidden><span class="tp-step-phase">Core</span><h3>Headhunt and position</h3><p>We approach the right people directly, tell your story properly and build genuine interest before a CV ever changes hands.</p><div class="tp-step-nav"><button type="button" data-step="-1"><span aria-hidden="true">←</span> Previous stage</button><span aria-hidden="true">03 / 04</span><button type="button" data-step="1">Next stage <span aria-hidden="true">→</span></button></div></div>
+          <div role="tabpanel" id="tp-step-panel-3" aria-labelledby="tp-step-tab-3" class="tp-step-panel" hidden><span class="tp-step-phase">Offer</span><h3>Close with confidence</h3><p>We stay in the detail through offer, resignation and counter-offer, so the person who said yes is the person who starts.</p><div class="tp-step-nav"><button type="button" data-step="-1"><span aria-hidden="true">←</span> Previous stage</button><span aria-hidden="true">04 / 04</span><button type="button" data-step="1">Next stage <span aria-hidden="true">→</span></button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mandates -->
+    <section class="tp-section tp-paper-soft" id="mandates" aria-labelledby="mandates-heading">
+      <span class="section-numeral" aria-hidden="true">05</span>
+      <div class="tp-shell">
+        <div class="tp-section-head">
+          <div class="section-kicker reveal"><span>05</span> Who we partner with</div>
+          <div class="reveal"><h2 id="mandates-heading">Sole. Preferred. Dedicated. <em>Earned.</em></h2><p class="tp-section-lede">These are not vendor listings. They are the mandates companies hand to one partner. Client names stay confidential; the weight of the work does not. Filter the book by tier or sector.</p></div>
+        </div>
+        <div class="tp-filters" role="group" aria-label="Filter mandates" id="mandateFilters">
+          <button type="button" class="tp-chip is-active" aria-pressed="true" data-filter="All">All</button>
+          <button type="button" class="tp-chip" aria-pressed="false" data-filter="Flagship">Flagship</button>
+          <button type="button" class="tp-chip" aria-pressed="false" data-filter="Financial services">Financial services</button>
+          <button type="button" class="tp-chip" aria-pressed="false" data-filter="Technology">Technology</button>
+          <button type="button" class="tp-chip" aria-pressed="false" data-filter="Retail">Retail</button>
+          <button type="button" class="tp-chip" aria-pressed="false" data-filter="Industrial">Industrial</button>
+          <button type="button" class="tp-chip" aria-pressed="false" data-filter="Healthcare">Healthcare</button>
+        </div>
+        <p class="tp-filter-count" role="status" id="filterCount">Showing 13 of 13 mandates</p>
+        <div class="tp-flagships" id="flagshipWrap">
+          <article class="tp-flagship" data-tier="Flagship" data-sector="Retail"><span class="tp-flagship-number" aria-hidden="true">01</span><div class="tp-flagship-main"><span class="tp-flagship-tag">Sole mandate</span><h3>JSE-listed retail group</h3><p class="tp-flagship-lead">Sole recruitment partner to the Data &amp; Analytics division. Every analytics, engineering and data-leadership hire in that division runs through us.</p></div><p class="tp-flagship-meta">Data &amp; Analytics division</p></article>
+          <article class="tp-flagship" data-tier="Flagship" data-sector="Industrial"><span class="tp-flagship-number" aria-hidden="true">02</span><div class="tp-flagship-main"><span class="tp-flagship-tag">Preferred partner</span><h3>International automotive manufacturer</h3><p class="tp-flagship-lead">Called first when the skill is scarce and the deadline is real.</p></div><p class="tp-flagship-meta">Preferred niche-skills talent partner</p></article>
+          <article class="tp-flagship" data-tier="Flagship" data-sector="Technology"><span class="tp-flagship-number" aria-hidden="true">03</span><div class="tp-flagship-main"><span class="tp-flagship-tag">Dedicated partner</span><h3>Nasdaq-listed payments technology giant</h3><p class="tp-flagship-lead">Global engineering standards, hired out of the local market.</p></div><p class="tp-flagship-meta">Dedicated talent partner, South Africa</p></article>
+        </div>
+        <div class="tp-book" id="bookWrap">
+          <div class="tp-book-head" aria-hidden="true"><span>No.</span><span>Client</span><span>Standing</span><span>Focus</span></div>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Financial services"><span class="tp-book-number" aria-hidden="true">04</span><div class="tp-book-client"><h3>Historic JSE-listed financial conglomerate</h3><p class="tp-book-meta">Cape Town · Established 1845</p><p class="tp-book-lead">Specialised talent acquisition partner to a historic JSE-listed financial conglomerate established in Cape Town in 1845 — placing niche technical talent into the functions at the centre of the business.</p></div><span class="tp-book-tag">Specialist talent partner</span><ul class="tp-book-focus"><li>Actuarial</li><li>Pricing</li><li>Underwriting</li><li>Data Analytics</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Healthcare"><span class="tp-book-number" aria-hidden="true">05</span><div class="tp-book-client"><h3>Non-profit open medical scheme</h3><p class="tp-book-meta">Self-administered · Operating since 1968</p><p class="tp-book-lead">Specialised talent acquisition consultant to one of South Africa’s oldest and most established self-administered, non-profit open medical schemes — elite technical talent across the core risk functions.</p></div><span class="tp-book-tag">Specialist talent partner</span><ul class="tp-book-focus"><li>Actuarial</li><li>Pricing</li><li>Underwriting</li><li>Data Analytics</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Technology"><span class="tp-book-number" aria-hidden="true">06</span><div class="tp-book-client"><h3>Dual-listed global fintech and IoT group</h3><p class="tp-book-meta">Dual-listed · Global footprint</p><p class="tp-book-lead">Specialised talent acquisition partner to a dual-listed global fintech and IoT powerhouse — scaling the specialist human capital behind its secure telemetry systems, cloud management suites and global transaction platforms.</p></div><span class="tp-book-tag">Specialist talent partner</span><ul class="tp-book-focus"><li>Secure telemetry</li><li>Cloud management</li><li>Transaction platforms</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Technology"><span class="tp-book-number" aria-hidden="true">07</span><div class="tp-book-client"><h3>Big data, valuation and spatial analytics enterprise</h3><p class="tp-book-meta">Established 2005 · South Africa</p><p class="tp-book-lead">Trusted talent acquisition partner to South Africa’s premier big data, valuation and spatial analytics enterprise — elite professionals for the teams behind the country’s most advanced predictive models.</p></div><span class="tp-book-tag">Trusted talent partner</span><ul class="tp-book-focus"><li>Data</li><li>Cloud AI</li><li>Analytics</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Retail"><span class="tp-book-number" aria-hidden="true">08</span><div class="tp-book-client"><h3>Retail and value-based fintech platform</h3><p class="tp-book-meta">Over 6,000 stores · Southern Africa</p><p class="tp-book-lead">The recruitment mandate behind Southern Africa’s largest retail and value-focused fintech platform — elite specialists across the teams that keep the transaction infrastructure moving.</p></div><span class="tp-book-tag">Trusted talent partner</span><ul class="tp-book-focus"><li>Data</li><li>Cloud AI</li><li>Analytics</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Financial services"><span class="tp-book-number" aria-hidden="true">09</span><div class="tp-book-client"><h3>Group fintech and credit support division</h3><p class="tp-book-meta">Division of a JSE-listed retail conglomerate</p><p class="tp-book-lead">Top-tier technical hires for the specialist fintech and credit support division of Southern Africa’s largest retail conglomerate — plus high-profile executive search for the overarching JSE-listed group holding structure.</p></div><span class="tp-book-tag">Trusted partner · Executive search</span><ul class="tp-book-focus"><li>Data</li><li>Cloud AI</li><li>Analytics</li><li>Executive search</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Technology"><span class="tp-book-number" aria-hidden="true">10</span><div class="tp-book-client"><h3>Human performance and loyalty technology group</h3><p class="tp-book-meta">Founded 1981 · Globally accredited</p><p class="tp-book-lead">Trusted talent acquisition partner to a globally accredited pioneer in human performance technology and corporate loyalty solutions — elite professionals across its IT and Finance teams.</p></div><span class="tp-book-tag">Trusted talent partner</span><ul class="tp-book-focus"><li>IT</li><li>Finance</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Retail"><span class="tp-book-number" aria-hidden="true">11</span><div class="tp-book-client"><h3>Group logistics and supply chain division</h3><p class="tp-book-meta">Division of a JSE-listed retail conglomerate</p><p class="tp-book-lead">Top-tier specialists for the centralised logistics and supply chain division of Southern Africa’s largest retail conglomerate — pushing its advanced digital supply chain journey forward.</p></div><span class="tp-book-tag">Trusted talent partner</span><ul class="tp-book-focus"><li>Transformation</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Industrial"><span class="tp-book-number" aria-hidden="true">12</span><div class="tp-book-client"><h3>African food ingredient and processing technology group</h3><p class="tp-book-meta">Over 110 years of heritage · Multi-brand</p><p class="tp-book-lead">Critical recruitment mandates for a prominent multi-brand African food ingredient and processing technology powerhouse with over 110 years of heritage — elite professionals where technology and the production line meet.</p></div><span class="tp-book-tag">Trusted talent partner</span><ul class="tp-book-focus"><li>Data</li><li>Cloud AI</li><li>Analytics</li></ul></article>
+          <article class="tp-book-row" data-tier="Mandate book" data-sector="Industrial"><span class="tp-book-number" aria-hidden="true">13</span><div class="tp-book-client"><h3>Heavy industry investment vehicle</h3><p class="tp-book-meta">Newly incorporated · International backing</p><p class="tp-book-lead">The hiring agenda at a prominent, newly incorporated corporate investment vehicle backed by international technical partners — critical mandates for its finance and management teams as the business is built around the acquisition.</p></div><span class="tp-book-tag">Trusted talent partner</span><ul class="tp-book-focus"><li>Finance</li><li>Management</li></ul></article>
+        </div>
+        <p class="tp-tail">Alongside these mandates: an extensive client book across the SMME market, valued blue-chip companies, and scaling startups we grow with from first hire to first hundred. <a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Reference%20request%20%E2%80%94%20Talent%20Tree%20profile">Ask us for references</a></p>
+      </div>
+    </section>
+
+    <!-- Why -->
+    <section class="tp-section tp-paper" id="why" aria-labelledby="why-heading">
+      <span class="section-numeral" aria-hidden="true">06</span>
+      <div class="tp-shell">
+        <div class="tp-section-head">
+          <div class="section-kicker reveal"><span>06</span> Why Talent Tree</div>
+          <div class="reveal"><h2 id="why-heading">A headhunting model, not a job-board model.</h2><p class="tp-section-lede">Five reasons our clients stop advertising roles and start briefing us instead.</p></div>
+        </div>
+        <div class="tp-why-list">
+          <div class="reveal"><article class="tp-why"><span class="tp-why-number" aria-hidden="true">01</span><div><h3>Proprietary databases, built over years</h3></div><p>We do not rent lists or wait for applications. We have spent years building our own talent databases — and we actively network with them, personally, long before a brief exists.</p></article></div>
+          <div class="reveal"><article class="tp-why"><span class="tp-why-number" aria-hidden="true">02</span><div><h3>Headhunting, not advertising</h3></div><p>Our approach reaches highly recommended, in-demand professionals who typically are not applying to roles — but who are open to the right conversation, from the right person.</p></article></div>
+          <div class="reveal"><article class="tp-why"><span class="tp-why-number" aria-hidden="true">03</span><div><h3>Storytellers, not CV-forwarders</h3></div><p>We build interest, spark curiosity and position your opportunity so it creates real pull. The best candidates do not respond to vacancies; they respond to a story that fits where their career is going.</p></article></div>
+          <div class="reveal"><article class="tp-why"><span class="tp-why-number" aria-hidden="true">04</span><div><h3>An extension of your HR team</h3></div><p>We represent your brand in the market with the same professionalism and discretion you would. Every approach, every conversation, every decline is handled as though it came from you.</p></article></div>
+          <div class="reveal"><article class="tp-why"><span class="tp-why-number" aria-hidden="true">05</span><div><h3>Ultra-proactive by design</h3></div><p>We out-phone the competition. Proactive outreach, relentless follow-through and a bias to pick up the phone is why our mandates close when others stall.</p></article></div>
+        </div>
+        <div class="tp-testimonials">
+          <div class="reveal"><blockquote class="tp-testimonial"><p>“They put people in front of us that we could never have reached ourselves — and every one of them was ready to have the conversation.”</p><footer><strong>Head of Data &amp; Analytics</strong><span>JSE-listed retail group</span></footer></blockquote></div>
+          <div class="reveal"><blockquote class="tp-testimonial"><p>“Talent Tree represents us in the market the way we would represent ourselves. Discreet, professional and relentlessly proactive.”</p><footer><strong>Talent Acquisition Lead</strong><span>Nasdaq-listed payments technology company</span></footer></blockquote></div>
+          <div class="reveal"><blockquote class="tp-testimonial"><p>“They understood the skill, the market and the money before we did. The people they placed are still the backbone of the team.”</p><footer><strong>Founder</strong><span>Scaling technology startup</span></footer></blockquote></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="tp-section tp-paper-soft" id="faq" aria-labelledby="faq-heading">
+      <span class="section-numeral" aria-hidden="true">07</span>
+      <div class="tp-shell tp-faq-grid">
+        <div class="tp-faq-sticky reveal">
+          <div class="section-kicker"><span>07</span> FAQ</div>
+          <h2 id="faq-heading">Straight answers before you brief us.</h2>
+          <p class="tp-faq-aside">Something not answered here? <a class="tp-inline-link" href="mailto:hello@talenttree.co.za?subject=Question%20%E2%80%94%20Talent%20Tree%20profile">Ask us directly</a>.</p>
+        </div>
+        <div class="tp-faq-list" id="faqList">
+          <div class="reveal"><article class="tp-faq-item"><h3><button type="button" aria-expanded="true" aria-controls="tp-faq-0"><span>Why do you not use job ads or bought-in databases?</span><span class="tp-mark" aria-hidden="true"></span></button></h3><div class="tp-faq-panel" id="tp-faq-0"><p>Because the people worth hiring are not answering them. Our model runs on proprietary databases we have built over years and networks we work every day, which is how we reach professionals before they ever start looking.</p></div></article></div>
+          <div class="reveal"><article class="tp-faq-item"><h3><button type="button" aria-expanded="false" aria-controls="tp-faq-1"><span>What kind of hiring does Talent Tree focus on?</span><span class="tp-mark" aria-hidden="true"></span></button></h3><div class="tp-faq-panel" id="tp-faq-1" hidden><p>Niche-skills recruitment and executive search — the roles where the skill is scarce, the market is small and getting it wrong is expensive.</p></div></article></div>
+          <div class="reveal"><article class="tp-faq-item"><h3><button type="button" aria-expanded="false" aria-controls="tp-faq-2"><span>How do you protect our brand while you are in the market?</span><span class="tp-mark" aria-hidden="true"></span></button></h3><div class="tp-faq-panel" id="tp-faq-2" hidden><p>We work as an extension of your HR team. Approaches are made with the professionalism and discretion you would use yourself, and your opportunity is positioned rather than broadcast.</p></div></article></div>
+          <div class="reveal"><article class="tp-faq-item"><h3><button type="button" aria-expanded="false" aria-controls="tp-faq-3"><span>Can we discuss a role before the brief is final?</span><span class="tp-mark" aria-hidden="true"></span></button></h3><div class="tp-faq-panel" id="tp-faq-3" hidden><p>Yes — and it is usually the better starting point. An early conversation clarifies the role, the market reality and what information is still missing.</p></div></article></div>
+          <div class="reveal"><article class="tp-faq-item"><h3><button type="button" aria-expanded="false" aria-controls="tp-faq-4"><span>Does Talent Tree work from South Africa?</span><span class="tp-mark" aria-hidden="true"></span></button></h3><div class="tp-faq-panel" id="tp-faq-4" hidden><p>Yes. Established in 2013 and operating from South Africa, working with local and international clients.</p></div></article></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="tp-contact" id="contact" aria-labelledby="contact-heading">
+      <div class="tp-shell">
+        <div class="reveal">
+          <p class="eyebrow">Contact us</p>
+          <h2 id="contact-heading">Tell us the role nobody can fill.</h2>
+          <p class="tp-lead">Share the skill, the market and the deadline. We will tell you honestly whether we can reach the people you need — and exactly what it will cost.</p>
+        </div>
+        <div class="tp-contact-grid">
+          <div class="tp-contact-card reveal">
+            <h3>Hiring a specialist or an executive</h3>
+            <p>Briefs, mandates and market mapping requests.</p>
+            <a class="email-link" href="mailto:hello@talenttree.co.za?subject=Mandate%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">hello@talenttree.co.za</a>
+            <div class="tp-contact-actions">
+              <a class="tp-button tp-button-light" href="mailto:hello@talenttree.co.za?subject=Mandate%20enquiry%20%E2%80%94%20Talent%20Tree%20profile"><span>Email us about a brief</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg></a>
+              <button class="tp-button tp-button-ghost" type="button" id="copyEmail"><span>Copy address</span></button>
+            </div>
+          </div>
+          <div class="tp-brief reveal">
+            <h3>What makes a good first brief</h3>
+            <ol>
+              <li><span aria-hidden="true">01</span><div><strong>The skill</strong><p>The scarce capability you need, in plain terms.</p></div></li>
+              <li><span aria-hidden="true">02</span><div><strong>The market</strong><p>Where that capability sits — or where you suspect it does.</p></div></li>
+              <li><span aria-hidden="true">03</span><div><strong>The deadline</strong><p>When the hire has to be contributing, not just signed.</p></div></li>
+            </ol>
+          </div>
+        </div>
+        <p class="tp-status" role="status" aria-live="polite" id="copyStatus"></p>
+        <div class="tp-contact-tail reveal"><p>Prefer a form? Use the enquiry form on the <a class="tp-inline-link" href="https://talenttree.co.za/#contact">main site contact section</a>, or read more about <a class="tp-inline-link" href="https://talenttree.co.za/#clients">who we partner with</a> and <a class="tp-inline-link" href="https://talenttree.co.za/#services">what we do</a>.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="tp-footer">
+    <div class="tp-shell">
+      <div class="tp-footer-top">
+        <div class="tp-footer-brand">
+          <a class="logo" href="https://talenttree.co.za" aria-label="Talent Tree home">
+            <img src="data:image/png;base64,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" alt="Talent Tree" width="132" height="108" />
+            <span class="brand-lockup" aria-hidden="true"><span class="brand-name">Talent Tree</span><span class="brand-line">Niche skills · Executive search</span></span>
+          </a>
+          <p class="tp-footer-line">Talent Tree Consulting · Established 2013 · South Africa · Niche-skills recruitment and executive search</p>
+          <p class="tp-footer-word" aria-hidden="true">Talent Tree</p>
+        </div>
+        <nav class="tp-footer-nav" aria-label="Profile chapters">
+          <p>Profile</p>
+          <a href="#who-we-are">Who we are</a><a href="#numbers">In numbers</a><a href="#services">What we do</a><a href="#method">How we work</a><a href="#mandates">Mandates</a><a href="#why">Why us</a><a href="#faq">FAQ</a><a href="#contact">Contact</a>
+        </nav>
+        <nav class="tp-footer-nav" aria-label="Company">
+          <p>Company</p>
+          <a href="https://talenttree.co.za">Home</a><a href="https://talenttree.co.za/#clients">Clients</a><a href="https://talenttree.co.za/#services">Services</a><a href="https://talenttree.co.za/downloads">Downloads</a><a href="mailto:hello@talenttree.co.za?subject=Mandate%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">Contact us</a>
+        </nav>
+      </div>
+      <div class="tp-footer-legal">
+        <p>© 2026 Talent Tree Consulting</p>
+        <p><a class="email-link" href="mailto:hello@talenttree.co.za?subject=Mandate%20enquiry%20%E2%80%94%20Talent%20Tree%20profile">hello@talenttree.co.za</a></p>
+        <p><a class="tp-to-top" href="#profile-top">Back to top ↑</a></p>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Reveals */
+  var revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && !reduced) {
+    var ro = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); ro.unobserve(entry.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    revealEls.forEach(function (el) { ro.observe(el); });
+  } else {
+    revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+  }
+
+  /* Progress + scrollspy */
+  var bar = document.getElementById('progressBar');
+  var chapterIds = ['who-we-are', 'numbers', 'services', 'method', 'mandates', 'why', 'faq', 'contact'];
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('#chapterNav a, .tp-index a'));
+  function onScroll() {
+    var doc = document.documentElement;
+    var scrollable = doc.scrollHeight - window.innerHeight;
+    var p = scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0;
+    bar.style.transform = 'scaleX(' + p + ')';
+    var marker = window.innerHeight * 0.34;
+    var current = chapterIds[0];
+    chapterIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top <= marker) current = id;
+    });
+    navLinks.forEach(function (a) {
+      if (a.getAttribute('href') === '#' + current) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    });
+  }
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+
+  /* Counters */
+  function animateCount(el) {
+    var target = parseInt(el.getAttribute('data-count'), 10);
+    var suffix = el.getAttribute('data-suffix') || '';
+    var strong = el.querySelector('strong');
+    if (reduced || !('requestAnimationFrame' in window)) { strong.textContent = target + suffix; return; }
+    var duration = 1400, start = null;
+    function frame(now) {
+      if (!start) start = now;
+      var t = Math.min((now - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - t, 3);
+      strong.textContent = Math.round(target * eased) + suffix;
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  var counters = document.querySelectorAll('[data-count]');
+  if ('IntersectionObserver' in window) {
+    var co = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { animateCount(entry.target); co.unobserve(entry.target); }
+      });
+    }, { threshold: 0.4 });
+    counters.forEach(function (el) { co.observe(el); });
+  } else {
+    counters.forEach(animateCount);
+  }
+
+  /* Accordions (services + FAQ): single-open within each list */
+  function wireAccordion(listId, buttonSelector) {
+    var list = document.getElementById(listId);
+    if (!list) return;
+    var toggles = list.querySelectorAll(buttonSelector);
+    toggles.forEach(function (toggle) {
+      toggle.addEventListener('click', function () {
+        var expanded = toggle.getAttribute('aria-expanded') === 'true';
+        var panel = document.getElementById(toggle.getAttribute('aria-controls'));
+        var article = toggle.closest('article');
+        if (expanded) {
+          toggle.setAttribute('aria-expanded', 'false');
+          if (panel) panel.hidden = true;
+          if (article) article.classList.remove('is-open');
+        } else {
+          toggles.forEach(function (other) {
+            other.setAttribute('aria-expanded', 'false');
+            var op = document.getElementById(other.getAttribute('aria-controls'));
+            if (op) op.hidden = true;
+            var oa = other.closest('article');
+            if (oa) oa.classList.remove('is-open');
+          });
+          toggle.setAttribute('aria-expanded', 'true');
+          if (panel) panel.hidden = false;
+          if (article) article.classList.add('is-open');
+        }
+      });
+    });
+  }
+  wireAccordion('servicesList', '.tp-service-toggle');
+  wireAccordion('faqList', '.tp-faq-item > h3 > button');
+
+
+  /* Method tabs */
+  var tabsWrap = document.getElementById('methodTabs');
+  var tabs = Array.prototype.slice.call(tabsWrap.querySelectorAll('[role="tab"]'));
+  var rail = document.getElementById('methodRail');
+  var active = 0;
+  function selectStep(i, focus) {
+    active = (i + tabs.length) % tabs.length;
+    tabs.forEach(function (tab, j) {
+      var selected = j === active;
+      tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+      tab.tabIndex = selected ? 0 : -1;
+      tab.classList.toggle('is-active', selected);
+      var panel = document.getElementById(tab.getAttribute('aria-controls'));
+      if (panel) panel.hidden = !selected;
+      if (selected && focus) tab.focus();
+    });
+    rail.style.transform = 'scaleX(' + ((active + 1) / tabs.length) + ')';
+  }
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () { selectStep(i, false); });
+  });
+  tabsWrap.addEventListener('keydown', function (e) {
+    var last = tabs.length - 1, next = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = active === last ? 0 : active + 1;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = active === 0 ? last : active - 1;
+    if (e.key === 'Home') next = 0;
+    if (e.key === 'End') next = last;
+    if (next !== null) { e.preventDefault(); selectStep(next, true); }
+  });
+  document.querySelectorAll('.tp-step-nav button').forEach(function (btn) {
+    btn.addEventListener('click', function () { selectStep(active + parseInt(btn.getAttribute('data-step'), 10), false); });
+  });
+
+  /* Mandate filter */
+  var filterWrap = document.getElementById('mandateFilters');
+  var filterBtns = Array.prototype.slice.call(filterWrap.querySelectorAll('.tp-chip'));
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#flagshipWrap article, #bookWrap article'));
+  var count = document.getElementById('filterCount');
+  var flagshipWrap = document.getElementById('flagshipWrap');
+  var bookWrap = document.getElementById('bookWrap');
+  filterBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var f = btn.getAttribute('data-filter');
+      filterBtns.forEach(function (b) {
+        var on = b === btn;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var shown = 0, showFlag = false, showBook = false;
+      rows.forEach(function (row) {
+        var tier = row.getAttribute('data-tier');
+        var sector = row.getAttribute('data-sector');
+        var match = f === 'All' || (f === 'Flagship' ? tier === 'Flagship' : sector === f);
+        row.hidden = !match;
+        if (match) {
+          shown++;
+          if (row.parentElement === flagshipWrap) showFlag = true; else showBook = true;
+        }
+      });
+      flagshipWrap.hidden = !showFlag;
+      var head = bookWrap.querySelector('.tp-book-head');
+      if (head) head.hidden = !showBook;
+      count.textContent = 'Showing ' + shown + ' of 13 mandates' + (f !== 'All' ? ' · ' + f : '');
+    });
+  });
+
+  /* Copy email */
+  var copyBtn = document.getElementById('copyEmail');
+  var copyStatus = document.getElementById('copyStatus');
+  var label = copyBtn.querySelector('span');
+  copyBtn.addEventListener('click', function () {
+    var address = 'hello@talenttree.co.za';
+    function done(ok) {
+      if (ok) {
+        label.textContent = 'Address copied';
+        copyStatus.textContent = address + ' copied to your clipboard.';
+        setTimeout(function () { label.textContent = 'Copy address'; copyStatus.textContent = ''; }, 2400);
+      } else {
+        copyStatus.textContent = 'Copying is blocked in this browser — the address is on screen and the email links still work.';
+      }
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(address).then(function () { done(true); }, function () { done(false); });
+    else done(false);
+  });
+})();
+</script>
+</body>
+</html>

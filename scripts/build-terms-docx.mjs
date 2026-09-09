@@ -35,10 +35,10 @@ const OUT_PATH = join(
   'Talent-Tree-Terms-of-Business.docx'
 );
 
-const INK = '12303D';
-const INK_DEEP = '0A222D';
-const ACCENT = '136579';
-const MUTED = '566B76';
+const INK = '0E2A3A';
+const INK_DEEP = '071F2D';
+const ACCENT = '006DA3';
+const MUTED = '4F6B7A';
 
 const track = { size: 11, font: 'Georgia' };
 
