@@ -82,7 +82,7 @@
 .tf-chapters a {
   position: relative;
   flex: none;
-  padding: 10px 2px;
+  padding: 12px 2px;
   font-size: var(--fs-200);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.78);
@@ -228,48 +228,6 @@
 }
 .tf-cover-facts p { margin: 0; color: var(--muted-on-dark); font-size: var(--fs-200); line-height: 1.5; }
 
-/* Market radar — decorative hero visual */
-
-.tf-radar {
-  position: absolute;
-  top: clamp(-40px, -3vw, 0px);
-  right: clamp(-140px, -6vw, -40px);
-  width: clamp(420px, 46vw, 720px);
-  aspect-ratio: 1;
-  color: var(--accent-bright);
-  opacity: 0.5;
-  pointer-events: none;
-  z-index: -1;
-}
-.tf-radar svg { width: 100%; height: 100%; overflow: visible; }
-.tf-radar-rings circle,
-.tf-radar-rings path { fill: none; stroke: currentColor; stroke-width: 0.6; opacity: 0.22; }
-.tf-radar-sweep { transform-origin: 180px 180px; animation: tf-sweep 9s linear infinite; }
-.tf-radar-points circle { fill: currentColor; opacity: 0.28; }
-.tf-radar-points circle.is-found {
-  opacity: 1;
-  animation: tf-ping 4.2s var(--ease) infinite;
-}
-.tf-radar-lock rect {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
-  opacity: 0.55;
-  animation: tf-lock 6s var(--ease) infinite;
-}
-.tf-radar-lock rect:nth-child(2) { animation-delay: 1.4s; }
-.tf-radar-lock rect:nth-child(3) { animation-delay: 2.9s; }
-
-@keyframes tf-sweep { to { transform: rotate(360deg); } }
-@keyframes tf-ping {
-  0%, 70%, 100% { opacity: 0.35; r: 2; }
-  80% { opacity: 1; r: 3.4; }
-}
-@keyframes tf-lock {
-  0%, 100% { opacity: 0; transform: scale(1.25); }
-  15%, 55% { opacity: 0.6; transform: scale(1); }
-}
-
 /* Client marquee closing the cover */
 
 .tf-marquee {
@@ -337,6 +295,10 @@
   overflow: hidden;
 }
 .tf [id] { scroll-margin-top: calc(var(--tf-header-h) + 18px); }
+
+/* The skip link targets <main>: it must receive focus without drawing a ring
+   around the whole page. */
+#finance-main:focus { outline: none; }
 
 .tf-paper { background: var(--paper); }
 .tf-paper-soft { background: var(--paper-soft); }
@@ -739,7 +701,7 @@
 
 .tf-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .tf-chip {
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 16px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
@@ -1134,7 +1096,6 @@
   }
   .tf .reveal { opacity: 1; transform: none; }
   .tf-marquee-track { animation: none; }
-  .tf-radar-sweep { animation: none; }
 }
 
 /* ── Breakpoints (same ladder as the site: 1100 · 1000 · 900 · 640) ───── */
@@ -1144,7 +1105,6 @@
   .tf-timeline-list { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 34px; }
   .tf-timeline-list::before { display: none; }
   .tf-timeline-node { position: static; display: block; margin-bottom: 12px; }
-  .tf-radar { opacity: 0.28; }
 }
 
 @media (max-width: 1000px) {
@@ -1168,7 +1128,6 @@
   .tf-iceberg { grid-template-columns: minmax(0, 1fr); }
   .tf-pools { grid-template-columns: minmax(0, 1fr); }
   .tf-pool-vs { padding: 4px 0; }
-  .tf-radar { display: none; }
 }
 
 @media (max-width: 640px) {
@@ -1190,7 +1149,7 @@
   .tf-filter-count,
   .tf-cover-actions,
   .tf-contact-actions,
-  .tf-radar,
+  .tf-client-toggle,
   .tf-marquee,
   .tf-footer-nav { display: none !important; }
 

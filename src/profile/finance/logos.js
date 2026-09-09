@@ -18,7 +18,6 @@ export const clientLogos = {
   picknpay: { src: `${CLIENT_BASE}/picknpay.png`, alt: 'Pick n Pay', tone: 'dark' },
   novus: { src: `${CLIENT_BASE}/novus.png`, alt: 'Novus Holdings', tone: 'dark' },
   supergroup: { src: `${CLIENT_BASE}/supergroup.png`, alt: 'Super Group', tone: 'dark' },
-  lufthansa: { src: `${CLIENT_BASE}/lufthansa.png`, alt: 'Lufthansa', tone: 'dark' },
   fnb: { src: `${CLIENT_BASE}/fnb.png`, alt: 'FNB', tone: 'light' },
   nayax: { src: `${CLIENT_BASE}/nayax.png`, alt: 'Nayax', tone: 'dark' },
   otipetrosmart: { src: `${CLIENT_BASE}/otipetrosmart.png`, alt: 'OTI PetroSmart', tone: 'dark' },

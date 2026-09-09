@@ -219,14 +219,6 @@ const clients = [
     roles: ['Financial Managers', 'Financial Analysts', 'Commercial and operational finance professionals'],
   },
   {
-    id: 'lufthansa',
-    logo: clientLogos.lufthansa,
-    name: 'Lufthansa',
-    sector: 'Aviation',
-    lead: 'Experience recruiting finance professionals into an international corporate environment.',
-    roles: ['Accountants', 'Financial Analysts'],
-  },
-  {
     id: 'fnb',
     logo: clientLogos.fnb,
     name: 'FNB',
@@ -295,7 +287,6 @@ const sectors = [
   'Retail',
   'Manufacturing',
   'Logistics',
-  'Aviation',
   'Financial services',
   'Technology',
   'Agriculture & hospitality',
@@ -402,6 +393,45 @@ function prefersReducedMotion() {
   );
 }
 
+/* Shared one-shot observers, keyed by options signature: the page carries dozens
+   of reveals and in-view hooks, so one observer per instance would mean dozens
+   of observers. A small cache keeps it to one per unique threshold instead. */
+const observerCache = new Map();
+
+function observeOnce(node, callback, { threshold = 0.12, rootMargin = '0px 0px -6% 0px' } = {}) {
+  if (typeof IntersectionObserver === 'undefined') {
+    callback();
+    return () => {};
+  }
+  const key = `${threshold}|${rootMargin}`;
+  let entry = observerCache.get(key);
+  if (!entry) {
+    const callbacks = new Map();
+    const observer = new IntersectionObserver(
+      (items) => {
+        items.forEach((item) => {
+          if (!item.isIntersecting) return;
+          const fire = callbacks.get(item.target);
+          if (fire) {
+            callbacks.delete(item.target);
+            observer.unobserve(item.target);
+            fire();
+          }
+        });
+      },
+      { threshold, rootMargin }
+    );
+    entry = { observer, callbacks };
+    observerCache.set(key, entry);
+  }
+  entry.callbacks.set(node, callback);
+  entry.observer.observe(node);
+  return () => {
+    entry.callbacks.delete(node);
+    entry.observer.unobserve(node);
+  };
+}
+
 function Reveal({ as: Tag = 'div', children, delay = 0, className = '', ...rest }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -409,23 +439,7 @@ function Reveal({ as: Tag = 'div', children, delay = 0, className = '', ...rest 
   useEffect(() => {
     const node = ref.current;
     if (!node) return undefined;
-    if (typeof IntersectionObserver === 'undefined') {
-      setVisible(true);
-      return undefined;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisible(true);
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
+    return observeOnce(node, () => setVisible(true));
   }, []);
 
   return (
@@ -447,23 +461,7 @@ function useInView(threshold = 0.35) {
   useEffect(() => {
     const node = ref.current;
     if (!node) return undefined;
-    if (typeof IntersectionObserver === 'undefined') {
-      setInView(true);
-      return undefined;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setInView(true);
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
+    return observeOnce(node, () => setInView(true), { threshold, rootMargin: '0px' });
   }, [threshold]);
   return [ref, inView];
 }
@@ -498,73 +496,6 @@ function Counter({ value, suffix = '', label, plain = false }) {
         {suffix}
       </strong>
       <span>{label}</span>
-    </div>
-  );
-}
-
-/* ── Hero visual: the market radar ──────────────────────────────────────── */
-/* A deterministic scatter of the market, with the identified professionals
-   picked out in accent. Purely decorative — aria-hidden. */
-
-const radarPoints = (() => {
-  const points = [];
-  let seed = 20100;
-  const random = () => {
-    seed = (seed * 1103515245 + 12345) % 2147483648;
-    return seed / 2147483648;
-  };
-  for (let i = 0; i < 68; i += 1) {
-    const angle = random() * Math.PI * 2;
-    const radius = 34 + Math.sqrt(random()) * 150;
-    points.push({
-      x: 180 + Math.cos(angle) * radius,
-      y: 180 + Math.sin(angle) * radius,
-      r: 1.4 + random() * 1.8,
-      found: random() > 0.82,
-      delay: Math.round(random() * 4000),
-    });
-  }
-  return points;
-})();
-
-function MarketRadar() {
-  return (
-    <div className="tf-radar" aria-hidden="true">
-      <svg viewBox="0 0 360 360" role="presentation">
-        <defs>
-          <radialGradient id="tf-sweep" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0.34" />
-            <stop offset="70%" stopColor="currentColor" stopOpacity="0.04" />
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <g className="tf-radar-rings">
-          {[58, 96, 134, 172].map((r) => (
-            <circle key={r} cx="180" cy="180" r={r} />
-          ))}
-          <path d="M180 8v344M8 180h344" />
-        </g>
-        <g className="tf-radar-sweep">
-          <path d="M180 180 L180 8 A172 172 0 0 1 302 58 Z" fill="url(#tf-sweep)" />
-        </g>
-        <g className="tf-radar-points">
-          {radarPoints.map((point, index) => (
-            <circle
-              key={index}
-              cx={point.x}
-              cy={point.y}
-              r={point.r}
-              className={point.found ? 'is-found' : ''}
-              style={{ animationDelay: `${point.delay}ms` }}
-            />
-          ))}
-        </g>
-        <g className="tf-radar-lock">
-          <rect x="150" y="86" width="34" height="34" rx="1" />
-          <rect x="214" y="196" width="34" height="34" rx="1" />
-          <rect x="104" y="214" width="34" height="34" rx="1" />
-        </g>
-      </svg>
     </div>
   );
 }
@@ -635,9 +566,12 @@ export default function FinanceApp() {
     };
   }, []);
 
-  /* Reading progress + chapter scrollspy in one passive listener. */
+  /* Reading progress + chapter scrollspy in one passive listener, coalesced to a
+     single update per animation frame so scrolling never re-renders mid-frame. */
   useEffect(() => {
-    const onScroll = () => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
       const doc = document.documentElement;
       const scrollable = doc.scrollHeight - window.innerHeight;
       setProgress(scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0);
@@ -650,10 +584,15 @@ export default function FinanceApp() {
       });
       setActiveChapter(current);
     };
-    onScroll();
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(update);
+    };
+    update();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     return () => {
+      if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
@@ -755,10 +694,9 @@ export default function FinanceApp() {
         </div>
       </header>
 
-      <main id="finance-main">
+      <main id="finance-main" tabIndex={-1}>
         {/* ── Cover ─────────────────────────────────────────────────────── */}
         <section className="tf-cover" aria-labelledby="finance-heading">
-          <MarketRadar />
           <div className="tf-shell tf-cover-grid">
             <div className="tf-cover-copy">
               <p className="eyebrow">Accounting &amp; Finance Search · South Africa</p>
@@ -857,7 +795,7 @@ export default function FinanceApp() {
             <Counter value={2010} label="Specialist finance recruitment experience since" plain />
             <Counter value={15} suffix="+" label="Years of change in the SA accounting profession recruited through" />
             <Counter value={5} label="Professional accounting pathways searched across" />
-            <Counter value={13} label="Named organisations with finance appointments delivered" />
+            <Counter value={12} label="Named organisations with finance appointments delivered" />
           </div>
         </section>
 
@@ -1071,7 +1009,7 @@ export default function FinanceApp() {
               <Reveal delay={110}>
                 <p>
                   Our finance recruitment track record spans listed groups, multinational
-                  organisations, financial services, retail, manufacturing, technology, aviation,
+                  organisations, financial services, retail, manufacturing, technology,
                   logistics and nonprofit organisations.
                 </p>
               </Reveal>
