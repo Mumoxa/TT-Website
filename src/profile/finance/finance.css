@@ -285,21 +285,49 @@
 .tf-marquee-item {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 clamp(24px, 3vw, 44px);
-  color: var(--muted-on-dark);
-  font-size: var(--fs-200);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  padding: 0 clamp(20px, 2.6vw, 38px);
   white-space: nowrap;
-  transition: color var(--fast) ease;
 }
-.tf-marquee-mark { width: 26px; height: 26px; color: var(--accent-bright); opacity: 0.85; flex: none; }
+/* One optical height for every logo, whatever its aspect ratio. */
+.tf-marquee-item .tf-logo-tile { height: 46px; padding: 0 14px; border-radius: var(--radius); }
+.tf-marquee-item .tf-logo-tile img {
+  height: 30px;
+  max-width: 168px;
+  opacity: 0.9;
+  transition: opacity var(--fast) ease;
+}
+.tf-marquee-item .tf-tone-dark { background: var(--white); }
+.tf-marquee-item .tf-tone-dark img { opacity: 1; }
+.tf-marquee-item .tf-logo-word { color: var(--muted-on-dark); font-size: var(--fs-300); }
+.tf-marquee-item:hover .tf-logo-tile img { opacity: 1; }
 .tf-marquee:hover .tf-marquee-track { animation-play-state: paused; }
-.tf-marquee-item:hover { color: var(--white); }
 
 @keyframes tf-marquee { to { transform: translateX(-50%); } }
+
+
+/* ── Real brand logos ─────────────────────────────────────────────────── */
+/* Client and professional-body logos are the organisations' own marks.
+   `tf-tone-dark` marks are dark/navy artwork, so on the ink bands they get a
+   white tile to stay legible; `tf-tone-light` artwork sits directly on ink. */
+
+.tf-logo-tile {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.tf-logo-tile img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.tf-logo-word {
+  font-family: var(--serif);
+  font-size: var(--fs-300);
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ink);
+}
 
 /* ── Section frame ────────────────────────────────────────────────────── */
 
@@ -587,7 +615,9 @@
 }
 .tf-pathway-tab:hover { color: var(--white); background: rgba(255, 255, 255, 0.04); }
 .tf-pathway-tab.is-active { color: var(--white); background: rgba(255, 255, 255, 0.06); border-left-color: var(--accent-bright); }
-.tf-pathway-mark { grid-row: 1 / 3; width: 30px; height: 30px; color: var(--accent-bright); }
+.tf-pathway-mark { grid-row: 1 / 3; width: 40px; height: 34px; padding: 3px; border-radius: var(--radius); }
+.tf-pathway-mark img { max-height: 28px; max-width: 34px; }
+.tf-pathway-mark.tf-tone-dark { background: var(--white); }
 .tf-pathway-short { font-family: var(--serif); font-size: var(--fs-600); font-weight: 500; letter-spacing: -0.02em; }
 .tf-pathway-name { font-size: var(--fs-200); color: var(--muted-on-dark); }
 .tf-pathway-tab.is-active .tf-pathway-name { color: rgba(255, 255, 255, 0.72); }
@@ -601,7 +631,9 @@
 }
 .tf-pathway-panel:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 .tf-pathway-head { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
-.tf-pathway-panel-mark { width: 46px; height: 46px; flex: none; color: var(--accent-bright); }
+.tf-pathway-panel-mark { min-width: 74px; height: 56px; padding: 7px 10px; border-radius: var(--radius); }
+.tf-pathway-panel-mark img { max-height: 42px; max-width: 128px; }
+.tf-pathway-panel-mark.tf-tone-dark { background: var(--white); }
 .tf-pathway-panel-short {
   margin: 0 0 4px;
   color: var(--accent-bright) !important;
@@ -740,8 +772,8 @@
 }
 .tf-client {
   display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 20px;
   padding: clamp(22px, 2.4vw, 30px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -753,16 +785,32 @@
 .tf-client-mark {
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  gap: 8px;
+  width: 104px;
+  min-height: 78px;
+  padding: 12px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--paper-soft);
-  color: var(--accent);
-  transition: background var(--med) var(--ease), color var(--med) var(--ease), border-color var(--med) var(--ease);
+  background: var(--white);
+  transition: border-color var(--med) var(--ease), box-shadow var(--med) var(--ease);
 }
-.tf-client-mark svg { width: 34px; height: 34px; }
-.tf-client:hover .tf-client-mark { background: var(--accent); border-color: var(--accent); color: var(--white); }
+/* Logos are reproduced at their own colours — never tinted or masked. */
+.tf-client-mark img {
+  display: block;
+  width: auto;
+  max-width: 80px;
+  max-height: 44px;
+  object-fit: contain;
+}
+.tf-client-mark-second { max-height: 26px !important; opacity: 0.92; }
+.tf-client-mark-word {
+  font-family: var(--serif);
+  font-size: var(--fs-300);
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink);
+}
+.tf-client:hover .tf-client-mark { border-color: rgba(19, 101, 121, 0.45); box-shadow: var(--shadow-soft); }
 .tf-client-sector {
   margin: 0 0 8px;
   color: var(--accent);
@@ -1170,4 +1218,9 @@
   .tf-contact-card { page-break-inside: avoid; border: 1px solid var(--line) !important; background: var(--white) !important; }
   .tf .reveal { opacity: 1 !important; transform: none !important; }
   .tf-client-panel[hidden] { display: block !important; }
+  .tf-client-mark,
+  .tf-pathway-mark.tf-tone-dark,
+  .tf-pathway-panel-mark.tf-tone-dark { background: var(--white) !important; border: 1px solid var(--line) !important; }
+  .tf-client-mark img,
+  .tf-pathway-panel-mark img { filter: none !important; }
 }

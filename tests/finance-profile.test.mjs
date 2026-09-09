@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const app = fs.readFileSync(new URL('../src/profile/finance/FinanceApp.jsx', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../src/profile/finance/finance.css', import.meta.url), 'utf8');
-const marks = fs.readFileSync(new URL('../src/profile/finance/marks.jsx', import.meta.url), 'utf8');
+const logos = fs.readFileSync(new URL('../src/profile/finance/logos.js', import.meta.url), 'utf8');
 const main = fs.readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
 const sitemap = fs.readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
 
@@ -60,10 +60,38 @@ test('the finance page keeps the brand palette: tokens only', () => {
   );
 });
 
-test('client marks are original Talent Tree illustrations, disclosed as such', () => {
-  assert.match(marks, /NOT the clients' registered/);
-  assert.ok(app.includes('Marks shown are Talent Tree illustrations, not the organisations’ own trademarks.'));
-  assert.match(marks, /currentColor/);
+test('every named client is represented by its real logo asset on disk', () => {
+  const expected = [
+    'pepkor', 'shoprite', 'picknpay', 'novus', 'supergroup',
+    'lufthansa', 'fnb', 'nayax', 'otipetrosmart', 'crown',
+  ];
+  expected.forEach((key) => {
+    assert.match(logos, new RegExp(`${key}: \\{ src:`), `logos.js should map ${key}`);
+    const file = new URL(`../public/logos/clients/${key}.png`, import.meta.url);
+    assert.ok(fs.existsSync(file), `missing logo file for ${key}`);
+    assert.ok(fs.statSync(file).size > 1000, `logo for ${key} looks empty`);
+  });
+});
+
+test('the professional body logos are present for the pathway tiles', () => {
+  ['saica', 'saipa', 'cima', 'acca'].forEach((key) => {
+    assert.match(logos, new RegExp(`${key}: \\{ src:`), `logos.js should map ${key}`);
+    const file = new URL(`../public/logos/bodies/${key}.png`, import.meta.url);
+    assert.ok(fs.existsSync(file), `missing body logo for ${key}`);
+  });
+});
+
+test('logos are rendered as real images and never recoloured', () => {
+  assert.match(app, /<img src=\{client\.logo\.src\}/);
+  assert.match(app, /<img src=\{pathway\.logo\.src\}/);
+  // The drawn-monogram disclaimer is gone now that real trademarks are used.
+  assert.doesNotMatch(app, /Talent Tree illustrations/);
+  // Brand artwork must never be tinted, greyscaled or masked to our palette.
+  const logoImgRules = css.match(/\.tf-(client-mark|pathway-mark|pathway-panel-mark|logo-tile) img\s*\{[^}]*\}/g) || [];
+  assert.ok(logoImgRules.length > 0, 'expected logo image rules');
+  logoImgRules.forEach((rule) => {
+    assert.doesNotMatch(rule, /-webkit-mask|mask-image|grayscale|sepia|hue-rotate|invert\(/, `logo artwork recoloured: ${rule}`);
+  });
 });
 
 test('the finance page honours the accessibility and motion contract', () => {

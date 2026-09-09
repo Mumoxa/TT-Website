@@ -7,9 +7,8 @@
    designation or role has been invented here.
 
    Client names on this page ARE published deliberately: the supplied
-   capability content names them as track record. The visual marks in
-   ./marks.jsx are Talent Tree-drawn monograms, not the clients' own
-   trademarks.
+   capability content names them as track record. Each is represented by
+   the organisation's real logo, served from public/logos/ (see ./logos.js).
 
    Design: scoped `tf-` extension of the system in src/styles.css
    (DESIGN.md) — one ink, one paper, one accent, Fraunces + Inter, 2px
@@ -18,23 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import talentTreeLogo from '../../../Talent Tree Logo 2026 (1).png';
-import {
-  MarkAcca,
-  MarkAga,
-  MarkCa,
-  MarkCima,
-  MarkCrown,
-  MarkFnb,
-  MarkLufthansa,
-  MarkNayax,
-  MarkNonprofit,
-  MarkNovus,
-  MarkPepkor,
-  MarkPicknPay,
-  MarkSaipa,
-  MarkShoprite,
-  MarkSuperGroup,
-} from './marks.jsx';
+import { bodyLogos, clientLogos } from './logos.js';
 import './finance.css';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
@@ -63,7 +46,7 @@ const coverFacts = [
 const pathways = [
   {
     id: 'ca',
-    Mark: MarkCa,
+    logo: bodyLogos.saica,
     short: 'CA(SA)',
     name: 'Chartered Accountant South Africa',
     lead:
@@ -82,7 +65,7 @@ const pathways = [
   },
   {
     id: 'aga',
-    Mark: MarkAga,
+    logo: bodyLogos.saica,
     short: 'AGA(SA)',
     name: 'Associate General Accountant South Africa',
     lead:
@@ -94,7 +77,7 @@ const pathways = [
   },
   {
     id: 'saipa',
-    Mark: MarkSaipa,
+    logo: bodyLogos.saipa,
     short: 'SAIPA',
     name: 'Professional Accountant (SA)',
     lead:
@@ -105,7 +88,7 @@ const pathways = [
   },
   {
     id: 'cima',
-    Mark: MarkCima,
+    logo: bodyLogos.cima,
     short: 'CIMA / CGMA',
     name: 'Management Accounting',
     lead:
@@ -125,7 +108,7 @@ const pathways = [
   },
   {
     id: 'acca',
-    Mark: MarkAcca,
+    logo: bodyLogos.acca,
     short: 'ACCA',
     name: 'Internationally recognised pathway',
     lead:
@@ -193,7 +176,7 @@ const method = [
 const clients = [
   {
     id: 'pepkor',
-    Mark: MarkPepkor,
+    logo: clientLogos.pepkor,
     name: 'Pepkor Group',
     sector: 'Retail',
     lead: 'Multiple accounting and finance appointments across the broader group.',
@@ -201,7 +184,7 @@ const clients = [
   },
   {
     id: 'shoprite',
-    Mark: MarkShoprite,
+    logo: clientLogos.shoprite,
     name: 'Shoprite Group',
     sector: 'Retail',
     lead: 'Finance recruitment across the group and its African operations.',
@@ -213,7 +196,7 @@ const clients = [
   },
   {
     id: 'picknpay',
-    Mark: MarkPicknPay,
+    logo: clientLogos.picknpay,
     name: 'Pick n Pay Group',
     sector: 'Retail',
     lead: 'Appointments across group and divisional finance.',
@@ -221,7 +204,7 @@ const clients = [
   },
   {
     id: 'novus',
-    Mark: MarkNovus,
+    logo: clientLogos.novus,
     name: 'Novus Holdings',
     sector: 'Manufacturing',
     lead: 'Appointments across accounting and group finance.',
@@ -229,7 +212,7 @@ const clients = [
   },
   {
     id: 'supergroup',
-    Mark: MarkSuperGroup,
+    logo: clientLogos.supergroup,
     name: 'Super Group / Super Group Rent',
     sector: 'Logistics',
     lead: 'Appointments across commercial and operational finance.',
@@ -237,7 +220,7 @@ const clients = [
   },
   {
     id: 'lufthansa',
-    Mark: MarkLufthansa,
+    logo: clientLogos.lufthansa,
     name: 'Lufthansa',
     sector: 'Aviation',
     lead: 'Experience recruiting finance professionals into an international corporate environment.',
@@ -245,7 +228,7 @@ const clients = [
   },
   {
     id: 'fnb',
-    Mark: MarkFnb,
+    logo: clientLogos.fnb,
     name: 'FNB',
     sector: 'Financial services',
     lead: 'Specialist accounting appointments inside a major banking group.',
@@ -253,7 +236,8 @@ const clients = [
   },
   {
     id: 'nayax',
-    Mark: MarkNayax,
+    logo: clientLogos.nayax,
+    logoSecondary: clientLogos.otipetrosmart,
     name: 'Nayax / OTI PetroSmart',
     sector: 'Technology',
     lead:
@@ -262,7 +246,7 @@ const clients = [
   },
   {
     id: 'crown',
-    Mark: MarkCrown,
+    logo: clientLogos.crown,
     name: 'Crown Holdings',
     sector: 'Manufacturing',
     lead: 'Experience recruiting into operational, manufacturing and group finance environments.',
@@ -270,7 +254,7 @@ const clients = [
   },
   {
     id: 'nonprofit',
-    Mark: MarkNonprofit,
+    logo: null,
     name: 'Nonprofit Sector',
     sector: 'Nonprofit',
     lead:
@@ -779,8 +763,13 @@ export default function FinanceApp() {
             <div className="tf-marquee-track">
               {marqueeClients.map((client, index) => (
                 <span className="tf-marquee-item" key={`${client.id}-${index}`} aria-hidden={index >= clients.length}>
-                  <client.Mark className="tf-marquee-mark" />
-                  <span>{client.name}</span>
+                  {client.logo ? (
+                    <span className={`tf-logo-tile tf-tone-${client.logo.tone}`}>
+                      <img src={client.logo.src} alt={client.logo.alt} loading="lazy" decoding="async" />
+                    </span>
+                  ) : (
+                    <span className="tf-logo-tile tf-logo-word">{client.name}</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -925,7 +914,9 @@ export default function FinanceApp() {
                       className={`tf-pathway-tab${selected ? ' is-active' : ''}`}
                       onClick={() => setActivePathway(item.id)}
                     >
-                      <item.Mark className="tf-pathway-mark" />
+                      <span className={`tf-pathway-mark tf-logo-tile tf-tone-${item.logo.tone}`}>
+                        <img src={item.logo.src} alt="" loading="lazy" decoding="async" />
+                      </span>
                       <span className="tf-pathway-short">{item.short}</span>
                       <span className="tf-pathway-name">{item.name}</span>
                     </button>
@@ -942,7 +933,9 @@ export default function FinanceApp() {
                 tabIndex={-1}
               >
                 <div className="tf-pathway-head">
-                  <pathway.Mark className="tf-pathway-panel-mark" />
+                  <span className={`tf-pathway-panel-mark tf-logo-tile tf-tone-${pathway.logo.tone}`}>
+                    <img src={pathway.logo.src} alt={`${pathway.logo.alt} logo`} loading="lazy" decoding="async" />
+                  </span>
                   <div>
                     <p className="tf-pathway-panel-short">{pathway.short}</p>
                     <h3>{pathway.name}</h3>
@@ -1068,8 +1061,23 @@ export default function FinanceApp() {
                 const expanded = openClient === client.id;
                 return (
                   <Reveal as="li" className="tf-client" key={client.id} delay={index * 60}>
-                    <div className="tf-client-mark" aria-hidden="true">
-                      <client.Mark />
+                    <div className="tf-client-mark">
+                      {client.logo ? (
+                        <>
+                          <img src={client.logo.src} alt={`${client.logo.alt} logo`} loading="lazy" decoding="async" />
+                          {client.logoSecondary && (
+                            <img
+                              className="tf-client-mark-second"
+                              src={client.logoSecondary.src}
+                              alt={`${client.logoSecondary.alt} logo`}
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <span className="tf-client-mark-word">{client.name}</span>
+                      )}
                     </div>
                     <div className="tf-client-body">
                       <p className="tf-client-sector">{client.sector}</p>
@@ -1097,9 +1105,6 @@ export default function FinanceApp() {
                 );
               })}
             </ul>
-            <p className="tf-note">
-              Marks shown are Talent Tree illustrations, not the organisations’ own trademarks.
-            </p>
           </div>
         </section>
 
