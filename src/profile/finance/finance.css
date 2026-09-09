@@ -804,11 +804,30 @@
 }
 .tf-client-mark-second { max-height: 26px !important; opacity: 0.92; }
 .tf-client-mark-word {
+  display: grid;
+  gap: 3px;
   font-family: var(--serif);
   font-size: var(--fs-300);
   line-height: 1.2;
   text-align: center;
   color: var(--ink);
+}
+/* Typographic stand-in for a brand whose artwork we do not hold: it echoes the
+   structure of the real lockup (letterspaced name over a smaller descriptor)
+   without imitating the trademark itself. */
+.tf-client-mark-word-main {
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tf-client-mark-word-sub {
+  font-family: var(--sans);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .tf-client:hover .tf-client-mark { border-color: rgba(19, 101, 121, 0.45); box-shadow: var(--shadow-soft); }
 .tf-client-sector {

@@ -271,6 +271,9 @@ const clients = [
   {
     id: 'karoobioscience',
     logo: clientLogos.karoobioscience,
+    /* Set from the brand's own lockup: letterspaced serif "KAROO" over a
+       smaller "BIOSCIENCE". Used until the official asset is supplied. */
+    wordmark: ['Karoo', 'Bioscience'],
     name: 'Karoo Bioscience',
     sector: 'Life sciences',
     lead: 'Finance appointments into a licensed, science-led production environment.',
@@ -1111,7 +1114,16 @@ export default function FinanceApp() {
                           )}
                         </>
                       ) : (
-                        <span className="tf-client-mark-word">{client.name}</span>
+                        <span className="tf-client-mark-word">
+                          {client.wordmark ? (
+                            <>
+                              <span className="tf-client-mark-word-main">{client.wordmark[0]}</span>
+                              <span className="tf-client-mark-word-sub">{client.wordmark[1]}</span>
+                            </>
+                          ) : (
+                            client.name
+                          )}
+                        </span>
                       )}
                     </div>
                     <div className="tf-client-body">
