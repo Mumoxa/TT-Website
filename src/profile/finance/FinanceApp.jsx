@@ -183,9 +183,9 @@ const clients = [
     roles: ['Accountants', 'Financial Managers', 'Financial Directors', 'Specialist finance appointments'],
   },
   {
-    id: 'shoprite',
-    logo: clientLogos.shoprite,
-    name: 'Shoprite Group',
+    id: 'checkers',
+    logo: clientLogos.checkers,
+    name: 'Checkers Group',
     sector: 'Retail',
     lead: 'Finance recruitment across the group and its African operations.',
     roles: [
@@ -245,12 +245,36 @@ const clients = [
     roles: ['Appointments across specialist accounting and finance requirements within a technology-led environment'],
   },
   {
-    id: 'crown',
-    logo: clientLogos.crown,
-    name: 'Crown Holdings',
+    id: 'crownnational',
+    logo: clientLogos.crownnational,
+    name: 'Crown National',
     sector: 'Manufacturing',
     lead: 'Experience recruiting into operational, manufacturing and group finance environments.',
     roles: ['Financial Managers', 'Group Financial Managers'],
+  },
+  {
+    id: 'oldmutual',
+    logo: clientLogos.oldmutual,
+    name: 'Old Mutual',
+    sector: 'Financial services',
+    lead: 'Finance appointments within a major South African financial services group.',
+    roles: ['Financial Managers'],
+  },
+  {
+    id: 'boschendal',
+    logo: clientLogos.boschendal,
+    name: 'Boschendal',
+    sector: 'Agriculture & hospitality',
+    lead: 'Finance appointments into a heritage farm, wine and hospitality environment.',
+    roles: ['Financial Managers'],
+  },
+  {
+    id: 'karoobioscience',
+    logo: clientLogos.karoobioscience,
+    name: 'Karoo Bioscience',
+    sector: 'Life sciences',
+    lead: 'Finance appointments into a licensed, science-led production environment.',
+    roles: ['Financial Managers'],
   },
   {
     id: 'nonprofit',
@@ -263,7 +287,18 @@ const clients = [
   },
 ];
 
-const sectors = ['All', 'Retail', 'Manufacturing', 'Logistics', 'Aviation', 'Financial services', 'Technology', 'Nonprofit'];
+const sectors = [
+  'All',
+  'Retail',
+  'Manufacturing',
+  'Logistics',
+  'Aviation',
+  'Financial services',
+  'Technology',
+  'Agriculture & hospitality',
+  'Life sciences',
+  'Nonprofit',
+];
 
 /* What we recruit. */
 const disciplines = [
@@ -819,7 +854,7 @@ export default function FinanceApp() {
             <Counter value={2010} label="Specialist finance recruitment experience since" plain />
             <Counter value={15} suffix="+" label="Years of change in the SA accounting profession recruited through" />
             <Counter value={5} label="Professional accounting pathways searched across" />
-            <Counter value={10} suffix="+" label="Named groups with finance appointments delivered" />
+            <Counter value={13} label="Named organisations with finance appointments delivered" />
           </div>
         </section>
 

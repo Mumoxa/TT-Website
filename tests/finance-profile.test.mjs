@@ -21,13 +21,16 @@ test('the page carries the supplied finance facts without invention', () => {
     'We don’t wait for the right finance professionals to apply',
     'Specialist finance recruitment experience since 2010',
     'Pepkor Group',
-    'Shoprite Group',
+    'Checkers Group',
     'Pick n Pay Group',
     'Novus Holdings',
     'Super Group / Super Group Rent',
     'Lufthansa',
     'Nayax / OTI PetroSmart',
-    'Crown Holdings',
+    'Crown National',
+    'Old Mutual',
+    'Boschendal',
+    'Karoo Bioscience',
     'Nonprofit Sector',
   ].forEach((fact) => assert.ok(app.includes(fact), `missing supplied fact: ${fact}`));
   assert.doesNotMatch(app, /href="#"|href=""|TODO|Lorem/i);
@@ -62,8 +65,8 @@ test('the finance page keeps the brand palette: tokens only', () => {
 
 test('every named client is represented by its real logo asset on disk', () => {
   const expected = [
-    'pepkor', 'shoprite', 'picknpay', 'novus', 'supergroup',
-    'lufthansa', 'fnb', 'nayax', 'otipetrosmart', 'crown',
+    'pepkor', 'checkers', 'picknpay', 'novus', 'supergroup', 'lufthansa',
+    'fnb', 'nayax', 'otipetrosmart', 'crownnational', 'oldmutual', 'boschendal',
   ];
   expected.forEach((key) => {
     assert.match(logos, new RegExp(`${key}: \\{ src:`), `logos.js should map ${key}`);
@@ -71,6 +74,13 @@ test('every named client is represented by its real logo asset on disk', () => {
     assert.ok(fs.existsSync(file), `missing logo file for ${key}`);
     assert.ok(fs.statSync(file).size > 1000, `logo for ${key} looks empty`);
   });
+});
+
+test('replaced clients are fully gone: no Shoprite, no Crown Holdings packaging', () => {
+  assert.doesNotMatch(app, /Shoprite/);
+  assert.doesNotMatch(app, /Crown Holdings/);
+  assert.ok(!fs.existsSync(new URL('../public/logos/clients/shoprite.png', import.meta.url)));
+  assert.ok(!fs.existsSync(new URL('../public/logos/clients/crown.png', import.meta.url)));
 });
 
 test('the professional body logos are present for the pathway tiles', () => {
