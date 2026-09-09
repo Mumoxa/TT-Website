@@ -1279,6 +1279,7 @@ export default function FinanceApp() {
             <nav className="tf-footer-nav" aria-label="Footer">
               <a href="/">Home</a>
               <a href="/profile">Company profile</a>
+              <a href="/downloads">Downloads</a>
               <a href="#track-record">Track record</a>
               <a href={mailto('Finance search enquiry — Talent Tree')}>Contact us</a>
             </nav>

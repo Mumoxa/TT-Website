@@ -23,6 +23,10 @@
 /clients/Milkor/*
   Cache-Control: no-store, no-cache, must-revalidate
 
+# Client document library — cache the files, keep them indexable.
+/downloads/*
+  Cache-Control: public, max-age=86400
+
 # Confidential employment offer delivery — never cache candidate or internal pages,
 # and keep offers + the admin tool out of search indexes.
 /offer*

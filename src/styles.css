@@ -1106,6 +1106,12 @@ input:focus, select:focus, textarea:focus { border-bottom-color: var(--accent-br
   padding: 24px 0 30px;
 }
 .footer-legal p { margin: 0; font-size: var(--fs-100); letter-spacing: 0.09em; color: rgba(255, 255, 255, 0.52); }
+.footer-legal a {
+  color: var(--accent-bright);
+  text-decoration: none;
+  letter-spacing: 0.09em;
+}
+.footer-legal a:hover { color: var(--white); }
 
 /* ============================================================================
    17. RESPONSIVE
