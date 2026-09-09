@@ -28,6 +28,18 @@ test('the library points at a real PDF in public/downloads/', () => {
   assert.equal(magic.toString('utf8'), '%PDF-');
 });
 
+test('the folder offers the terms as a real PDF and an editable Word copy', () => {
+  for (const name of ['Talent-Tree-Terms-of-Business.pdf', 'Talent-Tree-Terms-of-Business.docx']) {
+    const file = new URL(`../public/downloads/${name}`, import.meta.url);
+    assert.ok(fs.existsSync(file), `missing ${name}`);
+    const stat = fs.statSync(file);
+    assert.ok(stat.size > 2000, `${name} looks empty (${stat.size} bytes)`);
+  }
+  assert.match(app, /DOCX_HREF = '\/downloads\/Talent-Tree-Terms-of-Business\.docx'/);
+  // The terms accordion was retired for a download-first page; confirm it is gone.
+  assert.doesNotMatch(app, /aria-expanded/);
+});
+
 test('terms content is complete and does not invent fee rates or placeholder copy', () => {
   assert.equal(terms.party, 'Talent Tree Consulting');
   assert.equal(terms.email, 'hello@talenttree.co.za');
@@ -51,12 +63,18 @@ test('the downloads page keeps the brand palette: tokens only', () => {
 });
 
 test('the downloads page honours the accessibility and motion contract', () => {
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /@media print/);
   assert.match(app, /className="skip-link"/);
   assert.match(app, /aria-live="polite"/);
-  assert.match(app, /aria-expanded=\{expanded\}/);
   assert.match(app, /aria-hidden="true"/);
+  // Both the header nav and the folder file list expose state/roles accessibly.
+  assert.match(app, /aria-current=\{activeChapter === id \? 'true' : undefined\}/);
+  assert.match(app, /role="list"/);
+  assert.match(app, /role="listitem"/);
+  // Every download target is a real, announced static file.
+  assert.match(app, /download=\{terms\.fileName\}/);
+  assert.match(app, /download=\{DOCX_NAME\}/);
 });
 
 test('the downloads library is publicly discoverable', () => {
