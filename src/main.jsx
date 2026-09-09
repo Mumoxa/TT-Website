@@ -19,6 +19,7 @@ const OfferApp = lazy(() => import('./offers/OfferApp.jsx'));
 const AdminApp = lazy(() => import('./offers/AdminApp.jsx'));
 const ProfileApp = lazy(() => import('./profile/ProfileApp.jsx'));
 const FinanceApp = lazy(() => import('./profile/finance/FinanceApp.jsx'));
+const DownloadsApp = lazy(() => import('./downloads/DownloadsApp.jsx'));
 
 function RouteFallback() {
   return (
@@ -815,10 +816,12 @@ function App() {
             <div className="footer-email">
               <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
               <p className="footer-line"><a href="/profile">Read the full company profile</a></p>
+              <p className="footer-line"><a href="/downloads">Download terms of business</a></p>
             </div>
           </div>
           <div className="footer-legal">
             <p>© 2026 Talent Tree Consulting</p>
+            <p><a href="/downloads">Terms of business</a></p>
           </div>
         </div>
       </footer>
@@ -830,6 +833,7 @@ function App() {
    Trailing slashes are stripped so /cv-builda and /cv-builda/ are the same page.
    /profile is the public, interactive company profile.
    /profile/finance is the public Accounting & Finance search capability profile.
+   /downloads is the public client document library (terms of business PDF).
    /specs is the internal job brief sanitizer.
    /offer/<secure-token> is the confidential employment offer delivery flow.
    /admin/offers is the internal offer-creation tool (server-side key gate). */
@@ -842,6 +846,7 @@ function Root() {
   if (path === '/profiles') return withFallback(<ProfileApp />);
   if (path === '/profile/finance') return withFallback(<FinanceApp />);
   if (path === '/profile') return withFallback(<ProfileApp />);
+  if (path === '/downloads') return withFallback(<DownloadsApp />);
   if (path === '/cv-builda') return withFallback(<CvBuilda />);
   if (path === '/specs') return withFallback(<SpecsApp />);
   if (path === '/offer' || path.startsWith('/offer/')) {

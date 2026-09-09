@@ -884,6 +884,7 @@ export default function ProfileApp() {
               <a href="/#clients">Clients</a>
               <a href="/#services">Services</a>
               <a href="/profile">Company profile</a>
+              <a href="/downloads">Downloads</a>
               <a href={mailto('Mandate enquiry — Talent Tree profile')}>Contact us</a>
             </nav>
           </div>

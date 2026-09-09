@@ -102,6 +102,16 @@ changes, the vocabulary does not). Mandate cards add a `--muted` uppercase
 meta line (heritage, scale) and `--accent-soft` skill chips; no other colour
 is introduced. Client identities stay anonymised by descriptor.
 
+## Client downloads (`/downloads`)
+
+`src/downloads/downloads.css` is a scoped `td-` extension of the same tokens.
+The page is a public document library: a dark cover, one document card, an
+accordion of the terms, and a dark contact band. The PDF itself is a static
+file in `public/downloads/` so clients can link it directly
+(`/downloads/Talent-Tree-Terms-of-Business.pdf`) without opening the SPA.
+Clause copy lives in `src/downloads/terms.json` so the page and the PDF stay
+aligned. Regenerating the PDF: `scripts/build-terms-pdf.py`.
+
 ## Company profile (`/profile`)
 
 `src/profile/profile.css` is a scoped extension of this system, not a second
