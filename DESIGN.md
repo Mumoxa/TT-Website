@@ -105,12 +105,17 @@ is introduced. Client identities stay anonymised by descriptor.
 ## Client downloads (`/downloads`)
 
 `src/downloads/downloads.css` is a scoped `td-` extension of the same tokens.
-The page is a public document library: a dark cover, one document card, an
-accordion of the terms, and a dark contact band. The PDF itself is a static
-file in `public/downloads/` so clients can link it directly
-(`/downloads/Talent-Tree-Terms-of-Business.pdf`) without opening the SPA.
-Clause copy lives in `src/downloads/terms.json` so the page and the PDF stay
-aligned. Regenerating the PDF: `scripts/build-terms-pdf.py`.
+The page is a download-first client folder styled as a file browser: a dark
+cover with a folder path line, then a light band holding an open "folder
+window" (window chrome, location bar, file rows) listing the Terms of Business
+in two real formats, a short scope band, and a dark contact band. The page is
+deliberately download-forward — the full clause text lives in the documents,
+not as an on-page accordion. The documents are static files in
+`public/downloads/` so clients can link them directly (`...Terms-of-
+Business.pdf` / `.docx`) without opening the SPA. Clause copy lives in
+`src/downloads/terms.json`, the single source of truth for both generated
+formats: the PDF via `scripts/build-terms-pdf.py` and the editable Word copy
+via `scripts/build-terms-docx.mjs`.
 
 ## Company profile (`/profile`)
 
