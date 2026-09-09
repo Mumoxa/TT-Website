@@ -1,0 +1,79 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const app = fs.readFileSync(new URL('../src/profile/finance/FinanceApp.jsx', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../src/profile/finance/finance.css', import.meta.url), 'utf8');
+const marks = fs.readFileSync(new URL('../src/profile/finance/marks.jsx', import.meta.url), 'utf8');
+const main = fs.readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
+const sitemap = fs.readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
+
+test('/profile/finance is routed, lazy-loaded and matched before /profile', () => {
+  assert.match(main, /const FinanceApp = lazy\(\(\) => import\('\.\/profile\/finance\/FinanceApp\.jsx'\)\)/);
+  assert.match(main, /if \(path === '\/profile\/finance'\) return withFallback\(<FinanceApp \/>\)/);
+  const financeIndex = main.indexOf("path === '/profile/finance'");
+  const profileIndex = main.indexOf("path === '/profile'");
+  assert.ok(financeIndex > -1 && financeIndex < profileIndex, '/profile/finance must be tested first');
+});
+
+test('the page carries the supplied finance facts without invention', () => {
+  [
+    'We don’t wait for the right finance professionals to apply',
+    'Specialist finance recruitment experience since 2010',
+    'Pepkor Group',
+    'Shoprite Group',
+    'Pick n Pay Group',
+    'Novus Holdings',
+    'Super Group / Super Group Rent',
+    'Lufthansa',
+    'Nayax / OTI PetroSmart',
+    'Crown Holdings',
+    'Nonprofit Sector',
+  ].forEach((fact) => assert.ok(app.includes(fact), `missing supplied fact: ${fact}`));
+  assert.doesNotMatch(app, /href="#"|href=""|TODO|Lorem/i);
+});
+
+test('all five professional accounting pathways are represented', () => {
+  ['CA(SA)', 'AGA(SA)', 'SAIPA', 'CIMA / CGMA', 'ACCA'].forEach((pathway) => {
+    assert.ok(app.includes(pathway), `missing pathway: ${pathway}`);
+  });
+});
+
+test('the six-step search approach is present and keyboard operable', () => {
+  assert.match(app, /role="tablist"/);
+  assert.match(app, /role="tabpanel"/);
+  assert.match(app, /aria-controls=\{`tf-step-panel-\$\{index\}`\}/);
+  assert.match(app, /onKeyDown=\{onStepKeyDown\}/);
+  assert.match(app, /onKeyDown=\{onPathwayKeyDown\}/);
+  assert.match(app, /aria-expanded=\{expanded\}/);
+  assert.match(app, /aria-pressed=\{sector === item\}/);
+});
+
+test('the finance page keeps the brand palette: tokens only', () => {
+  const allowedLiterals = new Set(['#9cc9da', '#000']); // hero eyebrow tint + mask stop
+  const hexes = css.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+  hexes.forEach((hex) => {
+    assert.ok(allowedLiterals.has(hex.toLowerCase()), `unexpected raw colour ${hex} in finance.css`);
+  });
+  ['--ink', '--paper', '--accent', '--accent-bright', '--muted-on-dark', '--serif', '--sans', '--ease'].forEach(
+    (token) => assert.ok(css.includes(`var(${token})`), `finance.css should consume ${token}`)
+  );
+});
+
+test('client marks are original Talent Tree illustrations, disclosed as such', () => {
+  assert.match(marks, /NOT the clients' registered/);
+  assert.ok(app.includes('Marks shown are Talent Tree illustrations, not the organisations’ own trademarks.'));
+  assert.match(marks, /currentColor/);
+});
+
+test('the finance page honours the accessibility and motion contract', () => {
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /@media print/);
+  assert.match(app, /className="skip-link"/);
+  assert.match(app, /aria-live="polite"/);
+  assert.match(app, /aria-hidden="true"/);
+});
+
+test('the finance capability page is publicly discoverable', () => {
+  assert.match(sitemap, /https:\/\/talenttree\.co\.za\/profile\/finance/);
+});

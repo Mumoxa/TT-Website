@@ -18,6 +18,7 @@ const SpecsApp = lazy(() => import('./specs/SpecsApp.jsx'));
 const OfferApp = lazy(() => import('./offers/OfferApp.jsx'));
 const AdminApp = lazy(() => import('./offers/AdminApp.jsx'));
 const ProfileApp = lazy(() => import('./profile/ProfileApp.jsx'));
+const FinanceApp = lazy(() => import('./profile/finance/FinanceApp.jsx'));
 
 function RouteFallback() {
   return (
@@ -828,11 +829,13 @@ function App() {
 /* Path-based routing without a router library.
    Trailing slashes are stripped so /cv-builda and /cv-builda/ are the same page.
    /profile is the public, interactive company profile.
+   /profile/finance is the public Accounting & Finance search capability profile.
    /specs is the internal job brief sanitizer.
    /offer/<secure-token> is the confidential employment offer delivery flow.
    /admin/offers is the internal offer-creation tool (server-side key gate). */
 function Root() {
   const path = window.location.pathname.replace(/\/+$/, '');
+  if (path === '/profile/finance') return withFallback(<FinanceApp />);
   if (path === '/profile') return withFallback(<ProfileApp />);
   if (path === '/cv-builda') return withFallback(<CvBuilda />);
   if (path === '/specs') return withFallback(<SpecsApp />);
