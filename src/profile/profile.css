@@ -45,12 +45,12 @@
   position: sticky;
   top: 0;
   z-index: 110;
-  background: rgba(8, 26, 35, 0.94);
+  background: rgba(7, 31, 45, 0.94);
   box-shadow: 0 1px 0 var(--line-invert), var(--shadow-header);
 }
 @supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
   .tp-header {
-    background: rgba(8, 26, 35, 0.84);
+    background: rgba(7, 31, 45, 0.84);
     -webkit-backdrop-filter: blur(14px) saturate(1.35);
     backdrop-filter: blur(14px) saturate(1.35);
   }
@@ -195,8 +195,8 @@
   padding: clamp(64px, 10vw, 128px) 0 clamp(56px, 8vw, 104px);
   background-color: var(--ink-deep);
   background-image:
-    radial-gradient(1200px 560px at 80% -14%, rgba(26, 118, 142, 0.42), transparent 62%),
-    radial-gradient(900px 620px at -12% 112%, rgba(20, 90, 112, 0.22), transparent 58%);
+    radial-gradient(1200px 560px at 80% -14%, rgba(0, 125, 190, 0.42), transparent 62%),
+    radial-gradient(900px 620px at -12% 112%, rgba(0, 96, 148, 0.22), transparent 58%);
   color: var(--white);
 }
 .tp-cover::before {
@@ -245,7 +245,7 @@
 }
 .tp-cover-facts > div {
   padding: 20px clamp(14px, 2vw, 24px);
-  background: rgba(7, 25, 35, 0.55);
+  background: rgba(4, 23, 34, 0.55);
   border-right: 1px solid var(--line-invert);
   border-bottom: 1px solid var(--line-invert);
 }
@@ -284,7 +284,7 @@
 .tp-dark {
   --focus-ring: var(--accent-bright);
   background-color: var(--ink-deep);
-  background-image: radial-gradient(1100px 520px at 88% -10%, rgba(26, 118, 142, 0.34), transparent 60%);
+  background-image: radial-gradient(1100px 520px at 88% -10%, rgba(0, 125, 190, 0.34), transparent 60%);
   color: var(--white);
   border-top-color: var(--line-invert);
 }
@@ -344,7 +344,7 @@
   margin: 28px 0;
   padding: 22px 26px;
   border-left: 2px solid var(--accent);
-  background: rgba(19, 101, 121, 0.05);
+  background: rgba(0, 109, 163, 0.05);
 }
 .tp-quote p {
   margin: 0;
@@ -478,7 +478,7 @@
   padding: clamp(26px, 3vw, 40px);
   border: 1px solid var(--line-invert);
   border-radius: var(--radius);
-  background: rgba(7, 25, 35, 0.5);
+  background: rgba(4, 23, 34, 0.5);
   animation: tp-settle 300ms var(--ease);
 }
 .tp-step-phase {
@@ -538,7 +538,7 @@
   animation: tp-settle 320ms var(--ease) both;
   transition: box-shadow var(--med) var(--ease), transform var(--med) var(--ease), border-color var(--fast) ease;
 }
-.tp-mandate:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); border-color: rgba(19, 101, 121, 0.4); }
+.tp-mandate:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); border-color: rgba(0, 109, 163, 0.4); }
 .tp-mandate.is-flagship { border-top: 2px solid var(--accent); }
 .tp-mandate-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
 .tp-mandate-number { font-family: var(--serif); font-size: 1.15rem; color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -635,7 +635,7 @@
   overflow: hidden;
   padding: var(--section-y) 0;
   background-color: var(--ink-deep);
-  background-image: radial-gradient(1000px 520px at 12% -20%, rgba(26, 118, 142, 0.32), transparent 60%);
+  background-image: radial-gradient(1000px 520px at 12% -20%, rgba(0, 125, 190, 0.32), transparent 60%);
   color: var(--white);
 }
 .tp-contact::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.05; pointer-events: none; }
@@ -651,7 +651,7 @@
   padding: clamp(24px, 3vw, 34px);
   border: 1px solid var(--line-invert);
   border-radius: var(--radius);
-  background: rgba(7, 25, 35, 0.5);
+  background: rgba(4, 23, 34, 0.5);
 }
 .tp-contact-card h3 { font-size: var(--fs-700); color: var(--white); margin: 0; }
 .tp-contact-card p { margin: 0; color: var(--muted-on-dark); font-size: var(--fs-300); max-width: 44ch; }

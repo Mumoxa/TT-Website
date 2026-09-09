@@ -12,15 +12,15 @@
    ========================================================================== */
 
 .cvb {
-  --cvb-ink: var(--ink, #102d3a);
-  --cvb-deep: var(--ink-deep, #081f2a);
+  --cvb-ink: var(--ink, #0e2a3a);
+  --cvb-deep: var(--ink-deep, #071f2d);
   --cvb-paper: var(--paper, #f5f2eb);
   --cvb-soft: var(--paper-soft, #fbfaf7);
   --cvb-white: var(--white, #ffffff);
-  --cvb-accent: var(--accent, #136579);
-  --cvb-accent-soft: var(--accent-soft, #d9e8ea);
-  --cvb-muted: var(--muted, #5f7077);
-  --cvb-line: var(--line, rgba(16, 45, 58, 0.18));
+  --cvb-accent: var(--accent, #006da3);
+  --cvb-accent-soft: var(--accent-soft, #d9eaf3);
+  --cvb-muted: var(--muted, #4f6b7a);
+  --cvb-line: var(--line, rgba(14, 42, 58, 0.18));
   --cvb-ease: var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
   --cvb-serif: var(--serif, Georgia, serif);
   --cvb-sans: var(--sans, ui-sans-serif, system-ui, sans-serif);

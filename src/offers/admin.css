@@ -95,7 +95,7 @@
   margin: 0 0 14px;
 }
 code {
-  background: rgba(18, 48, 61, 0.08);
+  background: rgba(14, 42, 58, 0.08);
   border-radius: 3px;
   padding: 1px 6px;
   font-size: 0.92em;
@@ -139,7 +139,7 @@ code {
   transition: border-color var(--fast) ease, box-shadow var(--fast) ease;
 }
 .adm-field input:hover:not(:focus) {
-  border-color: rgba(18, 48, 61, 0.6);
+  border-color: rgba(14, 42, 58, 0.6);
 }
 .adm-field input:focus {
   outline: none;
@@ -237,7 +237,7 @@ code {
 }
 .adm-table td {
   padding: 13px 14px;
-  border-bottom: 1px solid rgba(18, 48, 61, 0.07);
+  border-bottom: 1px solid rgba(14, 42, 58, 0.07);
   vertical-align: top;
 }
 .adm-table tbody tr {
@@ -274,11 +274,11 @@ code {
   margin-bottom: 4px;
 }
 .adm-state--accepted {
-  background: rgba(19, 101, 121, 0.16);
-  color: #0b4b5c;
+  background: rgba(0, 109, 163, 0.16);
+  color: var(--accent-deep);
 }
 .adm-state--closed {
-  background: rgba(86, 107, 118, 0.18);
+  background: rgba(79, 107, 122, 0.18);
   color: var(--muted);
 }
 .adm-actions {

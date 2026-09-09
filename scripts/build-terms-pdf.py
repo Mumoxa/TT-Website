@@ -23,12 +23,12 @@ TERMS_PATH = ROOT / "src" / "downloads" / "terms.json"
 LOGO_PATH = ROOT / "Talent Tree Logo 2026 (1).png"
 OUT_PATH = ROOT / "public" / "downloads" / "Talent-Tree-Terms-of-Business.pdf"
 
-INK = HexColor("#12303d")
-INK_DEEP = HexColor("#0a222d")
-ACCENT = HexColor("#136579")
-MUTED = HexColor("#566b76")
+INK = HexColor("#0e2a3a")
+INK_DEEP = HexColor("#071f2d")
+ACCENT = HexColor("#006da3")
+MUTED = HexColor("#4f6b7a")
 PAPER = HexColor("#f4f1ea")
-LINE = Color(18 / 255, 48 / 255, 61 / 255, alpha=0.16)
+LINE = Color(14 / 255, 42 / 255, 58 / 255, alpha=0.16)
 
 PAGE_W, PAGE_H = A4
 MARGIN_X = 22 * mm

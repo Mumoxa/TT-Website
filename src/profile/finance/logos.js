@@ -4,10 +4,22 @@
    (not bundled) so Vite emits no extra work for them and the browser can
    cache each independently.
 
-   `tone` drives presentation on the dark ink bands:
+   Every third-party mark renders on a uniform white tile with generous
+   clear space — the one ground every trademark stays legible on — so the
+   marquee, the track-record band and the pathway tiles share one rhythm.
+
+   `tone` records how the artwork behaves on the dark ink bands, kept for
+   documentation and for any future direct-on-ink use:
      'light' — the mark is light enough to sit directly on ink.
      'dark'  — the mark is dark/navy and needs a white tile behind it.
-   On the paper bands every mark renders on white regardless. */
+
+   QA notes (2026-09):
+   - Old Mutual's deep-green wordmark is too dark for ink (≈2.5:1), hence
+     tone 'dark'.
+   - cima.png is quarantined (see FinanceApp.jsx): the file on disk carries
+     black edge bars and stray pure-red pixels, so the pathways render a
+     typographic tile until Talent Tree supplies a clean asset. The mapping
+     below is kept so the file stays referenced and tested. */
 
 const CLIENT_BASE = '/logos/clients';
 const BODY_BASE = '/logos/bodies';
@@ -22,7 +34,7 @@ export const clientLogos = {
   nayax: { src: `${CLIENT_BASE}/nayax.png`, alt: 'Nayax', tone: 'dark' },
   otipetrosmart: { src: `${CLIENT_BASE}/otipetrosmart.png`, alt: 'OTI PetroSmart', tone: 'dark' },
   crownnational: { src: `${CLIENT_BASE}/crownnational.png`, alt: 'Crown National', tone: 'light' },
-  oldmutual: { src: `${CLIENT_BASE}/oldmutual.png`, alt: 'Old Mutual', tone: 'light' },
+  oldmutual: { src: `${CLIENT_BASE}/oldmutual.png`, alt: 'Old Mutual', tone: 'dark' },
   boschendal: { src: `${CLIENT_BASE}/boschendal.png`, alt: 'Boschendal', tone: 'dark' },
   /* Karoo Bioscience publishes its wordmark only as a Webflow-hosted SVG that
      cannot be redistributed from here, so the card falls back to a typographic

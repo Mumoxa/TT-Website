@@ -9,8 +9,8 @@
   --specs-ink-deep: #081f2a;
   --specs-paper: #fbfaf7;
   --specs-white: #ffffff;
-  --specs-accent: #136579;
-  --specs-accent-soft: #d9e8ea;
+  --specs-accent: #006da3;
+  --specs-accent-soft: #d9eaf3;
   --specs-cyan: #12b5e5;
   --specs-muted: #5f7077;
   --specs-line: rgba(16, 45, 58, 0.14);
@@ -404,7 +404,7 @@
 .specs-field textarea:focus,
 .specs-field input:focus {
   border-color: var(--specs-accent);
-  box-shadow: 0 0 0 3px rgba(19, 101, 121, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 109, 163, 0.12);
 }
 
 .specs-field textarea {
@@ -439,7 +439,7 @@
   gap: 12px;
   padding: 12px 14px;
   background: var(--specs-accent-soft);
-  border: 1px solid rgba(19, 101, 121, 0.18);
+  border: 1px solid rgba(0, 109, 163, 0.18);
   border-radius: var(--specs-radius-sm);
 }
 
@@ -1115,7 +1115,7 @@
 
 .specs-field select:focus {
   border-color: var(--specs-accent);
-  box-shadow: 0 0 0 3px rgba(19, 101, 121, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 109, 163, 0.12);
 }
 
 .specs-template-pills {

@@ -8,7 +8,7 @@ of decisions already encoded in the CSS.
 ## Principles
 
 1. **One ink, one paper, one accent.** Monochrome discipline with a single
-   deep-petrol accent. The accent is a signal, not decoration.
+   brand-azure accent drawn from the logo. The accent is a signal, not decoration.
 2. **Type carries the design.** Fraunces (editorial serif) speaks; Inter
    (grotesque) works. No imagery competes with the headline.
 3. **Dark bands anchor the story.** Hero → numbers → approach → contact form
@@ -20,19 +20,19 @@ of decisions already encoded in the CSS.
 
 | Token | Value | Role |
 | --- | --- | --- |
-| `--ink` | `#12303d` | primary text on light surfaces |
-| `--ink-deep` | `#0a222d` | dark bands; primary button fill on light |
-| `--ink-abyss` | `#071923` | footer — the deepest surface |
+| `--ink` | `#0e2a3a` | primary text on light surfaces |
+| `--ink-deep` | `#071f2d` | dark bands; primary button fill on light |
+| `--ink-abyss` | `#041722` | footer — the deepest surface |
 | `--paper` | `#f4f1ea` | warm paper band |
 | `--paper-soft` | `#fbf9f4` | elevated paper band |
 | `--white` | `#ffffff` | cards, primary button on dark |
-| `--accent` | `#136579` | the one accent (links, chips, hover, rules) |
-| `--accent-bright` | `#8fd0e2` | accent for dark surfaces (9.6:1 on ink) |
-| `--accent-soft` | `#ddebee` | quiet accent wash (CV-Builda consumes it) |
-| `--muted` | `#566b76` | secondary text on light (≈5:1 on paper) |
-| `--muted-on-dark` | `#a7bfca` | secondary text on ink (≈8.6:1) |
-| `--line` | `rgba(18,48,61,.16)` | hairline on light |
-| `--line-strong` | `rgba(18,48,61,.42)` | list rules that must lead |
+| `--accent` | `#006da3` | the one accent — brand azure from the logo (links, chips, hover, rules) |
+| `--accent-bright` | `#5ab9e8` | accent for dark surfaces (7.7:1 on ink) |
+| `--accent-soft` | `#d9eaf3` | quiet accent wash (CV-Builda consumes it) |
+| `--muted` | `#4f6b7a` | secondary text on light (≈5:1 on paper) |
+| `--muted-on-dark` | `#a9c4d2` | secondary text on ink (≈8.6:1) |
+| `--line` | `rgba(14,42,58,.16)` | hairline on light |
+| `--line-strong` | `rgba(14,42,58,.42)` | list rules that must lead |
 | `--line-invert` | `rgba(255,255,255,.14)` | hairline on dark |
 
 All body-text pairs meet WCAG AA (≥4.5:1); large display pairs meet AAA.
