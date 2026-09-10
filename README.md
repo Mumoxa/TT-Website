@@ -19,6 +19,7 @@ React/Vite website for Talent Tree Consulting.
 - `/cv-builda` — Internal CV formatter/anonymizer (client-side by default, with an optional zero-cost self-hosted AI review; see `docs/cv-builda-ai.md`)
 - `/specs` — Internal job brief sanitizer (talenttree.co.za/specs) — converts client briefs (PDF, DOCX, XLSX, Google Docs, TXT) into sanitized, branded specs with client names replaced by generic descriptors, contacts removed, links replaced with CV@talenttree.co.za, and TalentTree branding. See `docs/specs.md`.
 - `/offer/<secure-token>` — Confidential employment offer delivery for candidates (secure link; PDF released only after the confidentiality undertaking is accepted). See `docs/confidential-offers.md`.
+- `/offer/1` — Public preview of the confidential offer landing page; it contains no candidate record or downloadable document.
 - `/admin/offers` — Internal offer creation + acceptance verification tool (ADMIN_KEY gate). See `docs/confidential-offers.md`.
 
 ## Local development

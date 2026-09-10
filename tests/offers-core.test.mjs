@@ -17,9 +17,19 @@ import {
   offerState,
   unavailable,
 } from '../functions/lib/core.js';
+import { readFile } from 'node:fs/promises';
+
+const appSource = await readFile(new URL('../src/main.jsx', import.meta.url), 'utf8');
+const offerSource = await readFile(new URL('../src/offers/OfferApp.jsx', import.meta.url), 'utf8');
 
 test('terms version is the agreed 2026-09-08-v1 constant', () => {
   assert.equal(TERMS_VERSION, '2026-09-08-v1');
+});
+
+test('/offer/1 renders the offer preview without changing secure-token routes', () => {
+  assert.match(appSource, /path === '\/offer\/1'[\s\S]*?<OfferApp token="1" preview/);
+  assert.match(appSource, /path\.startsWith\('\/offer\/'\)[\s\S]*?<OfferApp token=\{token\}/);
+  assert.match(offerSource, /if \(preview\) return;/);
 });
 
 test('secure tokens are 64 lowercase hex chars (256 bits) and unique', () => {
