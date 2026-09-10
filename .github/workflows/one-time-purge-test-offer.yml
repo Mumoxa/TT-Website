@@ -1,0 +1,21 @@
+name: One-time purge authorized test offer
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  purge-exact-test-record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge exact test record and verify response
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --location https://talenttree.co.za/api/internal/purge-crafford-test-record)"
+          echo "$response"
+          echo "$response" | grep -Eq '"state":"(deleted_and_verified|already_absent)"'
