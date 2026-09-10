@@ -1,6 +1,6 @@
 /* Talent Tree — confidential employment offer delivery.
    Candidate-facing flow at /offer/<secure-token>.
-   Copy follows the approved 2026-09-08 wording exactly. UI follows the site
+   Copy follows the approved 2026-09-10 wording exactly. UI follows the site
    design system (src/styles.css tokens) + UI-UX-Pro-Max trust/authority rules:
    strong hierarchy, quiet reassurance, no alarm styling, mobile-first. */
 
@@ -140,6 +140,14 @@ function Locked({ offer, onAgree, busy, error }) {
             reproduction of it, to your current employer, another prospective employer, recruitment
             agency or other third party for the purpose of obtaining or negotiating a counter-offer
             or competing offer.
+          </p>
+          <p>
+            You further acknowledge and agree that, should you formally accept the employment offer
+            and thereafter withdraw your acceptance or fail to take up the employment for reasons
+            within your control, Talent Tree reserves the right to hold you liable for commercial
+            losses and damages reasonably suffered as a direct result of your withdrawal, including
+            wasted recruitment costs, resources and time reasonably incurred in the recruitment
+            process and any other demonstrable commercial prejudice arising from your withdrawal.
           </p>
           <p>
             This undertaking does not prevent you from obtaining confidential professional, legal,

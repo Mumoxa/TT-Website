@@ -1,7 +1,7 @@
 /* Shared core for the Talent Tree confidential offer API (Cloudflare Pages Functions).
    Pure JS — no dependencies. Runs on workerd (Cloudflare) and Node >= 22. */
 
-export const TERMS_VERSION = '2026-09-08-v1';
+export const TERMS_VERSION = '2026-09-10-v2';
 export const TOKEN_RE = /^[0-9a-f]{64}$/;         // 64 hex chars = 256 bits of entropy for real offers
 export const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;   // short slugs for seeded / well-known offers
 export const MAX_PDF_BYTES = 20 * 1024 * 1024;    // 20 MB upload cap
