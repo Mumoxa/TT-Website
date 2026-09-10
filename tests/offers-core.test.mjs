@@ -12,10 +12,13 @@ import assert from 'node:assert/strict';
 import {
   TERMS_VERSION,
   TOKEN_RE,
+  SLUG_RE,
   UNAVAILABLE_MESSAGE,
+  WELL_KNOWN_OFFERS,
   newSecureToken,
   offerState,
   unavailable,
+  getOfferByToken,
 } from '../functions/lib/core.js';
 
 test('terms version is the agreed 2026-09-08-v1 constant', () => {
@@ -57,4 +60,42 @@ test('unavailable payload only ever contains the friendly message and a short la
   assert.equal(payload.reason, 'unavailable'); // row data never echoed
   assert.equal(payload.candidate_name, undefined);
   assert.equal(payload.pdf_key, undefined);
+});
+
+test('short slug regex allows alphanumerics, dash and underscore (1–64 chars)', () => {
+  assert.ok(SLUG_RE.test('1'));
+  assert.ok(SLUG_RE.test('demo'));
+  assert.ok(SLUG_RE.test('preview-1'));
+  assert.ok(SLUG_RE.test('preview_1'));
+  assert.ok(!SLUG_RE.test(''));
+  assert.ok(!SLUG_RE.test('a'.repeat(65)));
+  assert.ok(!SLUG_RE.test('../etc'));
+  assert.ok(!SLUG_RE.test('hello world'));
+});
+
+test('well-known offer "1" exists, is active, and is flagged as a demo', () => {
+  const one = WELL_KNOWN_OFFERS['1'];
+  assert.ok(one, 'well-known offer 1 must exist so /offer/1 is live');
+  assert.equal(one.secure_token, '1');
+  assert.equal(one.status, 'active');
+  assert.equal(one.is_demo, true);
+  assert.ok(one.candidate_name && one.position_title && one.client_name);
+  // never expires so the public preview stays live
+  assert.equal(one.expires_at, null);
+});
+
+test('getOfferByToken returns the well-known offer synchronously (no DB needed)', async () => {
+  const fakeEnv = { DB: { prepare: () => ({ bind: () => ({ first: async () => { throw new Error('DB must not be hit for well-known slug'); } }) }) } };
+  const offer = await getOfferByToken(fakeEnv, '1');
+  assert.ok(offer);
+  assert.equal(offer.secure_token, '1');
+  assert.equal(offer.is_demo, true);
+});
+
+test('getOfferByToken rejects unknown short slugs without hitting the DB', async () => {
+  let hit = false;
+  const fakeEnv = { DB: { prepare: () => ({ bind: () => ({ first: async () => { hit = true; return null; } }) }) } };
+  const offer = await getOfferByToken(fakeEnv, '999');
+  assert.equal(offer, null);
+  assert.equal(hit, false, 'unknown short slugs must not reach the DB (prevents enumeration)');
 });

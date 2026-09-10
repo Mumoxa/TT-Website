@@ -2,10 +2,33 @@
    Pure JS — no dependencies. Runs on workerd (Cloudflare) and Node >= 22. */
 
 export const TERMS_VERSION = '2026-09-08-v1';
-export const TOKEN_RE = /^[0-9a-f]{64}$/;         // 64 hex chars = 256 bits of entropy
+export const TOKEN_RE = /^[0-9a-f]{64}$/;         // 64 hex chars = 256 bits of entropy for real offers
+export const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;   // short slugs for seeded / well-known offers
 export const MAX_PDF_BYTES = 20 * 1024 * 1024;    // 20 MB upload cap
 export const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // admin session lifetime
 export const COOKIE_NAME = 'tt_offer_admin';
+
+/* Well-known, non-enumerable demo/preview offers served even without a DB row
+   or R2 object. Each entry is a self-contained record the API can fall back to
+   when the slug matches. Real candidate offers MUST continue to use the 256-bit
+   secure_token scheme (TOKEN_RE) — these slugs are reserved for public/preview
+   URLs like /offer/1. The PDF is loaded from a static file in the demo offer's
+   case (see functions/api/offer/[[path]].js). */
+export const WELL_KNOWN_OFFERS = {
+  '1': {
+    id: 'demo-offer-0001',
+    secure_token: '1',
+    candidate_name: 'Demo Candidate',
+    candidate_email: 'demo@talenttree.co.za',
+    client_name: 'Talent Tree (Demo)',
+    position_title: 'Example Position',
+    pdf_key: 'demo/offer-1.pdf', // served by static fallback for the demo slug
+    expires_at: null,            // never expires
+    status: 'active',
+    created_at: new Date('2026-09-08T00:00:00Z').toISOString(),
+    is_demo: true,
+  },
+};
 
 export const nowIso = () => new Date().toISOString();
 
@@ -61,6 +84,12 @@ export function offerState(row, now = Date.now()) {
 }
 
 export async function getOfferByToken(env, token) {
+  // Fast path: well-known/seeded demo/sample offers served without a DB row.
+  if (token && Object.prototype.hasOwnProperty.call(WELL_KNOWN_OFFERS, token)) {
+    return { ...WELL_KNOWN_OFFERS[token] };
+  }
+  // Real candidate offers: 64-hex secure tokens only. Anything else is rejected
+  // here so DB lookups are never made on guessable short strings.
   if (!TOKEN_RE.test(token)) return null;
   return env.DB.prepare(
     `SELECT id, secure_token, candidate_name, candidate_email, client_name,
