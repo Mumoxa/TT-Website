@@ -21,8 +21,8 @@ import {
   getOfferByToken,
 } from '../functions/lib/core.js';
 
-test('terms version is the agreed 2026-09-08-v1 constant', () => {
-  assert.equal(TERMS_VERSION, '2026-09-08-v1');
+test('terms version is the agreed 2026-09-10-v2 constant', () => {
+  assert.equal(TERMS_VERSION, '2026-09-10-v2');
 });
 
 test('secure tokens are 64 lowercase hex chars (256 bits) and unique', () => {
