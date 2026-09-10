@@ -835,6 +835,7 @@ function App() {
    /profile/finance is the public Accounting & Finance search capability profile.
    /downloads is the public client document library (terms of business PDF).
    /specs is the internal job brief sanitizer.
+   /offer/1 is the public offer-page preview.
    /offer/<secure-token> is the confidential employment offer delivery flow.
    /admin/offers is the internal offer-creation tool (server-side key gate). */
 function Root() {
@@ -849,6 +850,7 @@ function Root() {
   if (path === '/downloads') return withFallback(<DownloadsApp />);
   if (path === '/cv-builda') return withFallback(<CvBuilda />);
   if (path === '/specs') return withFallback(<SpecsApp />);
+  if (path === '/offer/1') return withFallback(<OfferApp token="1" preview />);
   if (path === '/offer' || path.startsWith('/offer/')) {
     const token = path.slice('/offer/'.length);
     return withFallback(<OfferApp token={token} />);

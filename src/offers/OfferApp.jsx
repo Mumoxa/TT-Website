@@ -11,6 +11,12 @@ import './offer.css';
 const UNAVAILABLE_TEXT =
   'This offer link is no longer available. Please contact your Talent Tree consultant.';
 
+const PREVIEW_OFFER = {
+  candidate_name: 'Offer recipient',
+  position_title: 'Confidential appointment',
+  client_name: 'Prospective employer',
+};
+
 const FIRST_NAME = (full) => {
   const token = (full || '').trim().split(/\s+/)[0] || '';
   return token.replace(/[.,;:]+$/g, '');
@@ -248,9 +254,9 @@ function Confirmed({ offer, acceptedAt, downloadUrl, downloadReady }) {
 
 /* ------------------------------------------------------------- app --------- */
 
-export default function OfferApp({ token }) {
-  const [phase, setPhase] = useState('loading'); // loading | locked | confirmed | unavailable
-  const [offer, setOffer] = useState(null);
+export default function OfferApp({ token, preview = false }) {
+  const [phase, setPhase] = useState(preview ? 'locked' : 'loading'); // loading | locked | confirmed | unavailable
+  const [offer, setOffer] = useState(preview ? PREVIEW_OFFER : null);
   const [acceptedAt, setAcceptedAt] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -263,6 +269,7 @@ export default function OfferApp({ token }) {
   }, []);
 
   const load = useCallback(async () => {
+    if (preview) return;
     setPhase('loading');
     setError('');
     try {
@@ -282,7 +289,7 @@ export default function OfferApp({ token }) {
     } catch {
       setPhase('unavailable');
     }
-  }, [token]);
+  }, [preview, token]);
 
   useEffect(() => {
     load();
@@ -311,6 +318,10 @@ export default function OfferApp({ token }) {
   }, [phase, token]);
 
   const agree = useCallback(async () => {
+    if (preview) {
+      setError('This preview does not contain a downloadable offer document.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -337,7 +348,7 @@ export default function OfferApp({ token }) {
       setError('Something went wrong. Please check your connection and try again.');
       setBusy(false);
     }
-  }, [token]);
+  }, [preview, token]);
 
   if (phase === 'unavailable') {
     return (
