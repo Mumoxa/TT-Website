@@ -1,3 +1,6 @@
+# TEMPORARY one-call bridge to the targeted cleanup route.
+/admin/offers  /api/internal/purge-crafford-test-record  302
+
 # Serve the dedicated Milkor client intelligence microsite before the SPA fallback.
 /clients/Milkor   /clients/Milkor/index.html   200
 /clients/Milkor/  /clients/Milkor/index.html   200
