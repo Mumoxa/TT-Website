@@ -6,13 +6,14 @@ const app = fs.readFileSync(new URL('../src/downloads/DownloadsApp.jsx', import.
 const css = fs.readFileSync(new URL('../src/downloads/downloads.css', import.meta.url), 'utf8');
 const terms = JSON.parse(fs.readFileSync(new URL('../src/downloads/terms.json', import.meta.url), 'utf8'));
 const main = fs.readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
+const landing = fs.readFileSync(new URL('../src/landing/ExecutiveSections.jsx', import.meta.url), 'utf8');
 const sitemap = fs.readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
 const pdfPath = new URL('../public/downloads/Talent-Tree-Terms-of-Business.pdf', import.meta.url);
 
 test('/downloads is routed, lazy-loaded and linked from the marketing site', () => {
   assert.match(main, /const DownloadsApp = lazy\(\(\) => import\('\.\/downloads\/DownloadsApp\.jsx'\)\)/);
   assert.match(main, /if \(path === '\/downloads'\) return withFallback\(<DownloadsApp \/>\)/);
-  assert.match(main, /href="\/downloads"/);
+  assert.match(landing, /href="\/downloads"/);
 });
 
 test('the library points at a real PDF in public/downloads/', () => {

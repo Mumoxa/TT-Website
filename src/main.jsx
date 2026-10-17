@@ -10,6 +10,8 @@ import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
 import './styles.css';
 import './landing.css';
+import { Arrow, CTA, Icon } from './landing/Primitives.jsx';
+import { LandingHeader, ExecutiveHero, ValueMetrics, PartnerBento, CapabilitiesSwitcher, CorePillars, DirectContact, LandingFooter } from './landing/ExecutiveSections.jsx';
 
 /* Route-level pages are loaded on demand so a candidate opening a secure offer
    link never downloads the marketing site or the internal CV/specs tooling.
@@ -40,87 +42,6 @@ function RouteFallback() {
 }
 
 const withFallback = (element) => <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
-
-const Arrow = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M5 12h13M13 6l6 6-6 6" />
-  </svg>
-);
-
-function Icon({ name = 'search', className = '' }) {
-  const paths = {
-    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5M8 10.5h5M10.5 8v5" /></>,
-    people: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /><circle cx="9" cy="7" r="4" /></>,
-    map: <><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3ZM9 3v15M15 6v15" /></>,
-    shield: <><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z" /><path d="m8 12 3 3 5-6" /></>,
-    network: <><rect x="8" y="2" width="8" height="6" rx="2" /><rect x="2" y="16" width="7" height="6" rx="2" /><rect x="15" y="16" width="7" height="6" rx="2" /><path d="M12 8v4H5.5v4M12 12h6.5v4" /></>,
-    mail: <><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m3 6 9 7 9-7" /></>,
-    check: <path d="m5 12 4 4L19 6" />,
-  };
-  return <svg className={`line-icon ${className}`} viewBox="0 0 24 24" aria-hidden="true">{paths[name] || paths.search}</svg>;
-}
-
-function MandatePreview() {
-  return (
-    <div className="hero-visual">
-      <div className="mandate-preview">
-        <div className="preview-bar">
-          <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
-          <span>Who we partner with</span>
-          <Icon name="network" />
-        </div>
-        <div className="preview-metrics">
-          {[stats[0], stats[2], stats[3]].map((stat, index) => (
-            <div key={stat.label}>
-              <Icon name={['shield', 'search', 'network'][index]} />
-              <strong>{stat.value}{stat.suffix}</strong>
-              <span>{stat.label}</span>
-            </div>
-          ))}
-        </div>
-        <div className="preview-mandates">
-          {flagships.map((item) => (
-            <a href="#clients" key={item.number} className="preview-mandate">
-              <span className="preview-avatar">{item.number}</span>
-              <span className="preview-client">
-                <strong>{item.client}</strong>
-                <span>{item.mandate}</span>
-              </span>
-              <Icon name="shield" />
-            </a>
-          ))}
-        </div>
-        <div className="preview-footer"><span className="status-dot" />Sole. Preferred. Dedicated. Earned.</div>
-      </div>
-      <div className="floating-note note-network"><Icon name="network" /><span>Proprietary databases,<br /><strong>built over years</strong></span></div>
-      <div className="floating-note note-search"><Icon name="search" /><span>Headhunting,<br /><strong>not advertising</strong></span></div>
-      <a className="preview-link" href="#approach">Brief to signed offer. <Arrow /></a>
-    </div>
-  );
-}
-
-function FloatingCTA() {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const update = () => {
-      const contact = document.getElementById('contact');
-      setVisible(window.scrollY > window.innerHeight * 0.9 && (!contact || contact.getBoundingClientRect().top > window.innerHeight));
-    };
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
-  }, []);
-  return (
-    <div className="floating-cta" hidden={!visible}>
-      <span><i className="status-dot" />Start a conversation</span>
-      <CTA small>Discuss a brief</CTA>
-    </div>
-  );
-}
 
 const flagships = [
   {
@@ -358,69 +279,14 @@ function Reveal({ as: Tag = 'div', children, delay = 0, className = '', ...rest 
   );
 }
 
-function Counter({ value, suffix, label }) {
-  const ref = useRef(null);
-  const [shown, setShown] = useState(0);
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return undefined;
-    if (typeof IntersectionObserver === 'undefined' || prefersReducedMotion()) {
-      setShown(value);
-      return undefined;
-    }
-
-    let frame = 0;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          observer.disconnect();
-          const duration = 1400;
-          const start = performance.now();
-          const step = (now) => {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setShown(Math.round(value * eased));
-            if (progress < 1) frame = requestAnimationFrame(step);
-          };
-          frame = requestAnimationFrame(step);
-        });
-      },
-      { threshold: 0.4 }
-    );
-    observer.observe(node);
-    return () => {
-      observer.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [value]);
-
-  return (
-    <div className="stat" ref={ref}>
-      <strong>{shown}{suffix}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
 function Logo() {
   return (
     <a href="#top" className="logo" aria-label="Talent Tree home">
       <img src={talentTreeLogo} alt="Talent Tree" width="132" height="108" />
       <span className="brand-lockup" aria-hidden="true">
         <span className="brand-name">Talent Tree</span>
-        <span className="brand-line">Niche skills · Executive search</span>
+        <span className="brand-line">Executive Search</span>
       </span>
-    </a>
-  );
-}
-
-function CTA({ children, href = '#contact', quiet = false, small = false }) {
-  return (
-    <a className={`button${quiet ? ' button-quiet' : ''}${small ? ' button-sm' : ''}`} href={href}>
-      <span>{children}</span>
-      <Arrow />
     </a>
   );
 }
@@ -449,209 +315,109 @@ function FAQItem({ item, index, openFaq, setOpenFaq }) {
 }
 
 function App() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeService, setActiveService] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState('');
-  const [formStatus, setFormStatus] = useState({ type: 'idle', message: '' });
-  const navToggleRef = useRef(null);
+  const [mandatesOpen, setMandatesOpen] = useState(false);
 
-  const closeMenu = () => setMenuOpen(false);
-
-  const navSections = ['services', 'clients', 'why', 'about', 'faq'];
-
-  useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 16);
-      const marker = window.innerHeight * 0.38;
-      let current = '';
-      navSections.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= marker) current = id;
-      });
-      setActiveSection(current);
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Lock body scroll while the mobile drawer is open, and close it cleanly.
-  useEffect(() => {
-    document.body.classList.toggle('menu-open', menuOpen);
-    return () => document.body.classList.remove('menu-open');
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setMenuOpen(false);
-        if (navToggleRef.current) navToggleRef.current.focus({ preventScroll: true });
-      }
-    };
-    const onResize = () => {
-      if (window.innerWidth > 1000) setMenuOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', onResize);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', onResize);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuOpen]);
-
-  const submitEnquiry = (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const name = String(data.get('name') || '').trim();
-    const email = String(data.get('email') || '').trim();
-    const service = String(data.get('service') || '').trim();
-    const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-    if (name.length < 2 || !emailLooksValid || !service) {
-      setFormStatus({
-        type: 'error',
-        message: 'Please add your name, a valid work email and the service you want to discuss.',
-      });
-      return;
-    }
-
-    setFormStatus({
-      type: 'ready',
-      message: 'Your details are complete. This form is frontend-only and is not connected to a backend or CRM yet — please email hello@talenttree.co.za and we will come back to you.',
+  const exploreMandate = (id) => {
+    setMandatesOpen(true);
+    requestAnimationFrame(() => {
+      const card = document.getElementById(id);
+      if (!card) return;
+      card.scrollIntoView({ behavior: prefersReducedMotion() ? 'instant' : 'smooth', block: 'start' });
+      card.focus({ preventScroll: true });
     });
   };
 
   return (
-    <div className="app" id="top">
+    <div className="app executive" id="top">
       <a className="skip-link" href="#main-content">Skip to content</a>
-
-      <header className={`site-header${scrolled ? ' is-scrolled' : ''}${menuOpen ? ' is-open' : ''}`}>
-        <div className="header-inner">
-          <Logo />
-          <nav id="primary-navigation" className={menuOpen ? 'primary-nav is-open' : 'primary-nav'} aria-label="Primary navigation">
-            <a href="#clients" onClick={closeMenu} aria-current={activeSection === 'clients' ? 'true' : undefined}>Clients</a>
-            <a href="#services" onClick={closeMenu} aria-current={activeSection === 'services' ? 'true' : undefined}>Services</a>
-            <a href="#why" onClick={closeMenu} aria-current={activeSection === 'why' ? 'true' : undefined}>Why us</a>
-            <a href="#about" onClick={closeMenu} aria-current={activeSection === 'about' ? 'true' : undefined}>About</a>
-            <a href="#faq" onClick={closeMenu} aria-current={activeSection === 'faq' ? 'true' : undefined}>FAQ</a>
-            <a href="/profile" onClick={closeMenu}>Profile</a>
-            <a className="nav-contact" href="#contact" onClick={closeMenu}>Discuss a brief</a>
-          </nav>
-          <button
-            ref={navToggleRef}
-            className="menu-toggle"
-            type="button"
-            aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
-            aria-controls="primary-navigation"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((value) => !value)}
-          >
-            <span />
-            <span />
-          </button>
-        </div>
-      </header>
-
+      <LandingHeader logo={<Logo />} />
       <main id="main-content">
-        <section className="hero" aria-labelledby="hero-heading">
-          <div className="hero-rings" aria-hidden="true"><span /><span /><span /></div>
-          <div className="shell hero-grid">
-            <div className="hero-intro">
-              <div className="hero-badges"><p className="eyebrow">Niche skills · Executive search · South Africa</p><span className="hero-established"><Icon name="shield" /> Established 2013</span></div>
-              <h1 id="hero-heading">Your next hire is already <em>working somewhere else.</em></h1>
-              <div className="hero-copy">
-                <p className="hero-lead">We headhunt the in-demand professionals who never answer job ads — and position your opportunity so the right person takes the call.</p>
-                <p>Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring.</p>
-              </div>
-              <div className="hero-ctas">
-                <CTA>Discuss a brief</CTA>
-                <CTA href="#clients" quiet>Who we partner with</CTA>
-              </div>
-              <div className="hero-proof"><span className="proof-icon"><Icon name="people" /></span><p><strong>10+ years</strong><span>Years in niche-skills recruitment and executive search</span></p><Icon name="shield" /></div>
-            </div>
-            <MandatePreview />
-          </div>
-          <div className="marquee" aria-hidden="true">
-            <div className="marquee-track">
-              {[0, 1].map((group) => (
-                <span className="marquee-group" key={group}>
-                  {marqueeItems.map((item) => (
-                    <span className="marquee-item" key={item}>
-                      {item}
-                      <span className="marquee-dot" aria-hidden="true">·</span>
-                    </span>
-                  ))}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="stats-band" aria-label="Talent Tree in numbers">
-          <div className="shell stats-grid">
-            {stats.map((stat) => (
-              <Counter key={stat.label} value={stat.value} suffix={stat.suffix} label={stat.label} />
-            ))}
-          </div>
-        </section>
-
-        <section className="section services" id="services" aria-labelledby="services-heading">
-          <span className="section-numeral" aria-hidden="true">02</span>
-          <div className="shell">
-            <div className="section-heading-row">
-              <Reveal className="section-kicker"><span>02</span> Services</Reveal>
-              <Reveal delay={80}>
-                <h2 id="services-heading">Four ways we put scarce skills in your business.</h2>
-                <p>Select a service to see how the mandate runs.</p>
-              </Reveal>
-            </div>
-
-            <div className="service-list">
-              {services.map((service, index) => {
-                const expanded = activeService === index;
-                return (
-                  <Reveal delay={index * 70} key={service.title}>
-                    <article className={expanded ? 'service-row is-active' : 'service-row'}>
-                      <button
-                        className="service-toggle"
-                        type="button"
-                        aria-expanded={activeService === index}
-                        aria-controls={`service-panel-${index}`}
-                        onClick={() => setActiveService(expanded ? -1 : index)}
-                      >
-                        <span className="service-card-top">
-                          <span className="service-icon"><Icon name={['search', 'people', 'map', 'network'][index]} /></span>
-                          <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
-                        </span>
-                        <span className="service-title">{service.title}</span>
-                        <span className="service-summary">{service.summary}</span>
-                        <span className="service-card-bottom">
-                          <span>{expanded ? 'Close details' : 'View details'}</span>
-                          <span className="toggle-mark" aria-hidden="true" />
-                        </span>
-                      </button>
-                      <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
-                        <p>{service.detail}</p>
-                        <CTA href="#contact" quiet small>Discuss {service.title.toLowerCase()}</CTA>
-                      </div>
-                    </article>
+        <ExecutiveHero />
+        <ValueMetrics stats={stats} />
+        <PartnerBento onExplore={exploreMandate} />
+        <section className="section clients" id="mandate-book" aria-labelledby="clients-heading">
+          <span className="section-numeral" aria-hidden="true">01</span>
+          <div className="ex-shell">
+            <details
+              className="ex-mandate-disclosure"
+              open={mandatesOpen}
+              onToggle={(event) => setMandatesOpen(event.currentTarget.open)}
+            >
+              <summary>
+                <span>Explore the full mandate book</span>
+                <span>{flagships.length + mandateBook.length} mandates <span className="toggle-mark" aria-hidden="true" /></span>
+              </summary>
+              <div className="ex-ledger-content">
+                <div className="section-heading-row">
+                  <Reveal className="section-kicker"><span>01</span> Who we partner with</Reveal>
+                  <Reveal delay={80}>
+                    <h2 id="clients-heading">Sole. Preferred. Dedicated. <em>Earned.</em></h2>
+                    <p>These are not vendor listings. They are the mandates companies hand to one partner — and they take years of delivery to win and a standard to keep.</p>
                   </Reveal>
-                );
-              })}
-            </div>
+                </div>
+
+                <div className="flagship-list">
+                  {flagships.map((item, index) => (
+                    <Reveal delay={index * 90} key={item.client}>
+                      <article className="flagship">
+                        <div className="flagship-head">
+                          <span className="flagship-number" aria-hidden="true">{item.number}</span>
+                          <span className="flagship-tag">{item.tag}</span>
+                        </div>
+                        <h3>{item.client}</h3>
+                        <p className="flagship-mandate">{item.mandate}</p>
+                        <p className="flagship-note">{item.note}</p>
+                      </article>
+                    </Reveal>
+                  ))}
+                </div>
+
+                <div className="mandate-book">
+                  <Reveal className="mandate-book-head">
+                    <h3>The wider mandate book.</h3>
+                    <p>The specialist and executive search mandates we run across financial services, health, fintech, data, logistics, food manufacturing and heavy industry. Client names stay confidential; the weight of the work does not.</p>
+                  </Reveal>
+
+                  <div className="mandate-grid">
+                    {mandateBook.map((item, index) => (
+                      <Reveal delay={index * 60} key={item.number}>
+                        <article className="mandate" id={`client-mandate-${item.number}`} tabIndex={-1}>
+                          <div className="mandate-head">
+                            <span className="mandate-number" aria-hidden="true">{item.number}</span>
+                            <span className="mandate-tag">{item.tag}</span>
+                          </div>
+                          <h3>{item.client}</h3>
+                          <p className="mandate-meta">{item.meta}</p>
+                          <p className="mandate-lead">{item.lead}</p>
+                          <ul className="mandate-focus">
+                            {item.focus.map((area) => (
+                              <li key={area}>{area}</li>
+                            ))}
+                          </ul>
+                          <p className="mandate-note">{item.note}</p>
+                        </article>
+                      </Reveal>
+                    ))}
+                  </div>
+                </div>
+
+                <Reveal className="clients-tail" delay={120}>
+                  <p>Alongside these mandates: an extensive client book across the SMME market, valued blue-chip companies, and scaling startups we grow with from first hire to first hundred.</p>
+                </Reveal>
+              </div>
+            </details>
+            <div className="ex-market-list" aria-label="Markets we work with">{marqueeItems.map((item) => <span key={item}>{item}</span>)}</div>
           </div>
         </section>
+
+        <CapabilitiesSwitcher services={services} />
 
         <section className="section approach" id="approach" aria-labelledby="approach-heading">
           <span className="section-numeral" aria-hidden="true">04</span>
-          <div className="shell">
+          <div className="ex-shell">
             <div className="section-heading-row compact">
               <Reveal className="section-kicker"><span>04</span> How a mandate runs</Reveal>
               <Reveal delay={80}><h2 id="approach-heading">Brief to signed offer.</h2></Reveal>
@@ -701,110 +467,11 @@ function App() {
           </div>
         </section>
 
-        <section className="section clients" id="clients" aria-labelledby="clients-heading">
-          <span className="section-numeral" aria-hidden="true">01</span>
-          <div className="shell">
-            <div className="section-heading-row">
-              <Reveal className="section-kicker"><span>01</span> Who we partner with</Reveal>
-              <Reveal delay={80}>
-                <h2 id="clients-heading">Sole. Preferred. Dedicated. <em>Earned.</em></h2>
-                <p>These are not vendor listings. They are the mandates companies hand to one partner — and they take years of delivery to win and a standard to keep.</p>
-              </Reveal>
-            </div>
-
-            <div className="flagship-list">
-              {flagships.map((item, index) => (
-                <Reveal delay={index * 90} key={item.client}>
-                  <article className="flagship">
-                    <div className="flagship-head">
-                      <span className="flagship-number" aria-hidden="true">{item.number}</span>
-                      <span className="flagship-tag">{item.tag}</span>
-                    </div>
-                    <h3>{item.client}</h3>
-                    <p className="flagship-mandate">{item.mandate}</p>
-                    <p className="flagship-note">{item.note}</p>
-                  </article>
-                </Reveal>
-              ))}
-            </div>
-
-            <div className="mandate-book">
-              <Reveal className="mandate-book-head">
-                <h3>The wider mandate book.</h3>
-                <p>The specialist and executive search mandates we run across financial services, health, fintech, data, logistics, food manufacturing and heavy industry. Client names stay confidential; the weight of the work does not.</p>
-              </Reveal>
-
-              <div className="mandate-grid">
-                {mandateBook.map((item, index) => (
-                  <Reveal delay={index * 60} key={item.number}>
-                    <article className="mandate">
-                      <div className="mandate-head">
-                        <span className="mandate-number" aria-hidden="true">{item.number}</span>
-                        <span className="mandate-tag">{item.tag}</span>
-                      </div>
-                      <h3>{item.client}</h3>
-                      <p className="mandate-meta">{item.meta}</p>
-                      <p className="mandate-lead">{item.lead}</p>
-                      <ul className="mandate-focus">
-                        {item.focus.map((area) => (
-                          <li key={area}>{area}</li>
-                        ))}
-                      </ul>
-                      <p className="mandate-note">{item.note}</p>
-                    </article>
-                  </Reveal>
-                ))}
-              </div>
-            </div>
-
-            <Reveal className="clients-tail" delay={120}>
-              <p>Alongside these mandates: an extensive client book across the SMME market, valued blue-chip companies, and scaling startups we grow with from first hire to first hundred.</p>
-            </Reveal>
-          </div>
-        </section>
-
-        <section className="section why" id="why" aria-labelledby="why-heading">
-          <span className="section-numeral" aria-hidden="true">03</span>
-          <div className="shell">
-            <div className="section-heading-row">
-              <Reveal className="section-kicker"><span>03</span> Why Talent Tree</Reveal>
-              <Reveal delay={80}>
-                <h2 id="why-heading">A headhunting model, not a job-board model.</h2>
-                <p>Six reasons our clients stop advertising roles and start briefing us instead.</p>
-              </Reveal>
-            </div>
-            <div className="benefits-layout">
-              <Reveal className="benefits-visual">
-                <span className="visual-icon"><Icon name="network" /></span>
-                <p className="eyebrow">Why Talent Tree</p>
-                <h3>Headhunting,<br /><em>not advertising.</em></h3>
-                <div className="benefits-principles">
-                  {[differentiators[0], differentiators[3], differentiators[4]].map(([number, title]) => (
-                    <div key={number}><Icon name="check" /><span>{title}</span></div>
-                  ))}
-                </div>
-                <a href="#contact" className="benefits-link">Start a conversation <Arrow /></a>
-              </Reveal>
-              <div className="why-grid">
-                {differentiators.map(([number, title, text], index) => (
-                  <Reveal delay={index * 60} key={number}>
-                    <article className="why-item">
-                      <span className="why-number" aria-hidden="true">{number}</span>
-                      <div>
-                        <h3>{title}</h3>
-                        <p>{text}</p>
-                      </div>
-                    </article>
-                  </Reveal>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <CorePillars differentiators={differentiators} />
 
         <section className="section candidates" id="candidates" aria-labelledby="candidates-heading">
           <span className="section-numeral" aria-hidden="true">05</span>
-          <div className="shell candidates-grid">
+          <div className="ex-shell candidates-grid">
             <Reveal>
               <div className="section-kicker"><span>05</span> For candidates</div>
               <h2 id="candidates-heading">Best of breed people deserve a specialist.</h2>
@@ -819,7 +486,7 @@ function App() {
 
         <section className="section about" id="about" aria-labelledby="about-heading">
           <span className="section-numeral" aria-hidden="true">06</span>
-          <div className="shell about-grid">
+          <div className="ex-shell about-grid">
             <Reveal className="about-facts" aria-label="Talent Tree facts">
               <div className="fact-row">
                 <span>Established</span>
@@ -833,7 +500,9 @@ function App() {
             </Reveal>
             <Reveal className="about-copy" delay={120}>
               <div className="section-kicker"><span>06</span> About</div>
+              <p className="ex-about-position">Your next hire is already working somewhere else.</p>
               <h2 id="about-heading">Specialists in the markets you are hiring from.</h2>
+              <p>Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring.</p>
               <p>Talent Tree was built on a simple conviction: the best people are rarely available, and never advertised. So we spent years building our own talent databases and networking them personally, so that when a brief lands we already know who to call.</p>
               <p>Clients treat us as an extension of their HR team. Candidates treat us as the people who make the next move possible. Both relationships are built the same way — with discretion, market knowledge and a phone that never stops.</p>
               <blockquote className="pull-quote">
@@ -847,7 +516,7 @@ function App() {
         {/* Quotes written in-house and signed off by Talent Tree for publication. */}
         <section className="section testimonials" id="testimonials" aria-labelledby="testimonials-heading">
           <span className="section-numeral" aria-hidden="true">07</span>
-          <div className="shell">
+          <div className="ex-shell">
             <div className="section-heading-row compact">
               <Reveal className="section-kicker"><span>07</span> What partners say</Reveal>
               <Reveal delay={80}><h2 id="testimonials-heading">Trusted quietly. Repeatedly.</h2></Reveal>
@@ -888,7 +557,7 @@ function App() {
 
         <section className="section faq" id="faq" aria-labelledby="faq-heading">
           <span className="section-numeral" aria-hidden="true">08</span>
-          <div className="shell faq-grid">
+          <div className="ex-shell faq-grid">
             <Reveal>
               <div className="section-kicker"><span>08</span> FAQ</div>
               <h2 id="faq-heading">Straight answers before you brief us.</h2>
@@ -904,78 +573,9 @@ function App() {
           </div>
         </section>
 
-        <section className="contact" id="contact" aria-labelledby="contact-heading">
-          <div className="shell contact-grid">
-            <Reveal className="contact-copy" delay={60}>
-              <p className="eyebrow">Contact</p>
-              <h2 id="contact-heading">Tell us the role nobody can fill.</h2>
-              <p>Share enough context to make the first conversation useful — the skill, the market and the deadline. We will tell you honestly whether we can reach the people you need.</p>
-              <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
-            </Reveal>
-
-            <Reveal as="form" className="enquiry-form" noValidate onSubmit={submitEnquiry} delay={140}>
-              <label>
-                <span>Your name</span>
-                <input name="name" autoComplete="name" required />
-              </label>
-              <label>
-                <span>Work email</span>
-                <input name="email" type="email" autoComplete="email" required />
-              </label>
-              <label>
-                <span>What would you like to discuss?</span>
-                <select name="service" defaultValue="" required>
-                  <option value="" disabled>Select a service</option>
-                  <option value="Specialist search">Specialist search</option>
-                  <option value="Executive search">Executive search</option>
-                  <option value="Market mapping">Market mapping</option>
-                  <option value="Selective team builds">Selective team builds</option>
-                  <option value="Other">Something else</option>
-                </select>
-              </label>
-              <label>
-                <span>Brief context <small>Optional</small></span>
-                <textarea name="message" rows="4" />
-              </label>
-              <button className="submit-button" type="submit">
-                <span>Check enquiry</span>
-                <Arrow />
-              </button>
-              <p className="form-note">Frontend-only form. Secure backend / CRM wiring is still required for production sending.</p>
-              {formStatus.type !== 'idle' && (
-                <div
-                  className={`form-status ${formStatus.type}`}
-                  role={formStatus.type === 'error' ? 'alert' : 'status'}
-                  aria-live="polite"
-                >
-                  {formStatus.message}
-                </div>
-              )}
-            </Reveal>
-          </div>
-        </section>
+        <DirectContact />
       </main>
-
-      <footer className="site-footer">
-        <div className="shell">
-          <div className="footer-top">
-            <div>
-              <Logo />
-              <p className="footer-line">Talent Tree Consulting · Established 2013 · South Africa · Niche-skills recruitment and executive search</p>
-            </div>
-            <div className="footer-email">
-              <a className="email-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>
-              <p className="footer-line"><a href="/profile">Read the full company profile</a></p>
-              <p className="footer-line"><a href="/downloads">Download terms of business</a></p>
-            </div>
-          </div>
-          <div className="footer-legal">
-            <p>© 2026 Talent Tree Consulting</p>
-            <p><a href="/downloads">Terms of business</a></p>
-          </div>
-        </div>
-      </footer>
-      <FloatingCTA />
+      <LandingFooter logo={<Logo />} />
     </div>
   );
 }

@@ -5,13 +5,14 @@ import fs from 'node:fs';
 const profile = fs.readFileSync(new URL('../src/profile/ProfileApp.jsx', import.meta.url), 'utf8');
 const profileCss = fs.readFileSync(new URL('../src/profile/profile.css', import.meta.url), 'utf8');
 const main = fs.readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
+const landing = fs.readFileSync(new URL('../src/landing/ExecutiveSections.jsx', import.meta.url), 'utf8');
 const sitemap = fs.readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
 const robots = fs.readFileSync(new URL('../public/robots.txt', import.meta.url), 'utf8');
 
 test('/profile is routed, lazy-loaded and linked from the marketing site', () => {
   assert.match(main, /const ProfileApp = lazy\(\(\) => import\('\.\/profile\/ProfileApp\.jsx'\)\)/);
   assert.match(main, /if \(path === '\/profile'\) return withFallback\(<ProfileApp \/>\)/);
-  assert.match(main, /href="\/profile"/);
+  assert.match(landing, /href="\/profile"/);
 });
 
 test('the profile excludes candidate contact content and the fees chapter', () => {
