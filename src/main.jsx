@@ -9,6 +9,7 @@ import '@fontsource/fraunces/latin-400-italic.css';
 import '@fontsource/fraunces/latin-500.css';
 import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';
 import './styles.css';
+import './landing.css';
 
 /* Route-level pages are loaded on demand so a candidate opening a secure offer
    link never downloads the marketing site or the internal CV/specs tooling.
@@ -45,6 +46,81 @@ const Arrow = () => (
     <path d="M5 12h13M13 6l6 6-6 6" />
   </svg>
 );
+
+function Icon({ name = 'search', className = '' }) {
+  const paths = {
+    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5M8 10.5h5M10.5 8v5" /></>,
+    people: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /><circle cx="9" cy="7" r="4" /></>,
+    map: <><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3ZM9 3v15M15 6v15" /></>,
+    shield: <><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z" /><path d="m8 12 3 3 5-6" /></>,
+    network: <><rect x="8" y="2" width="8" height="6" rx="2" /><rect x="2" y="16" width="7" height="6" rx="2" /><rect x="15" y="16" width="7" height="6" rx="2" /><path d="M12 8v4H5.5v4M12 12h6.5v4" /></>,
+    mail: <><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m3 6 9 7 9-7" /></>,
+    check: <path d="m5 12 4 4L19 6" />,
+  };
+  return <svg className={`line-icon ${className}`} viewBox="0 0 24 24" aria-hidden="true">{paths[name] || paths.search}</svg>;
+}
+
+function MandatePreview() {
+  return (
+    <div className="hero-visual">
+      <div className="mandate-preview">
+        <div className="preview-bar">
+          <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
+          <span>Who we partner with</span>
+          <Icon name="network" />
+        </div>
+        <div className="preview-metrics">
+          {[stats[0], stats[2], stats[3]].map((stat, index) => (
+            <div key={stat.label}>
+              <Icon name={['shield', 'search', 'network'][index]} />
+              <strong>{stat.value}{stat.suffix}</strong>
+              <span>{stat.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="preview-mandates">
+          {flagships.map((item) => (
+            <a href="#clients" key={item.number} className="preview-mandate">
+              <span className="preview-avatar">{item.number}</span>
+              <span className="preview-client">
+                <strong>{item.client}</strong>
+                <span>{item.mandate}</span>
+              </span>
+              <Icon name="shield" />
+            </a>
+          ))}
+        </div>
+        <div className="preview-footer"><span className="status-dot" />Sole. Preferred. Dedicated. Earned.</div>
+      </div>
+      <div className="floating-note note-network"><Icon name="network" /><span>Proprietary databases,<br /><strong>built over years</strong></span></div>
+      <div className="floating-note note-search"><Icon name="search" /><span>Headhunting,<br /><strong>not advertising</strong></span></div>
+      <a className="preview-link" href="#approach">Brief to signed offer. <Arrow /></a>
+    </div>
+  );
+}
+
+function FloatingCTA() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const update = () => {
+      const contact = document.getElementById('contact');
+      setVisible(window.scrollY > window.innerHeight * 0.9 && (!contact || contact.getBoundingClientRect().top > window.innerHeight));
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+  return (
+    <div className="floating-cta" hidden={!visible}>
+      <span><i className="status-dot" />Start a conversation</span>
+      <CTA small>Discuss a brief</CTA>
+    </div>
+  );
+}
 
 const flagships = [
   {
@@ -353,7 +429,7 @@ function FAQItem({ item, index, openFaq, setOpenFaq }) {
   const expanded = openFaq === index;
   const panelId = `faq-panel-${index}`;
   return (
-    <article className="faq-item">
+    <article className={expanded ? 'faq-item is-active' : 'faq-item'}>
       <h3>
         <button
           type="button"
@@ -375,6 +451,8 @@ function FAQItem({ item, index, openFaq, setOpenFaq }) {
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeService, setActiveService] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('');
@@ -383,7 +461,7 @@ function App() {
 
   const closeMenu = () => setMenuOpen(false);
 
-  const navSections = ['clients', 'services', 'why', 'about', 'faq'];
+  const navSections = ['services', 'clients', 'why', 'about', 'faq'];
 
   useEffect(() => {
     const onScroll = () => {
@@ -483,12 +561,11 @@ function App() {
 
       <main id="main-content">
         <section className="hero" aria-labelledby="hero-heading">
+          <div className="hero-rings" aria-hidden="true"><span /><span /><span /></div>
           <div className="shell hero-grid">
             <div className="hero-intro">
-              <p className="eyebrow">Niche skills · Executive search · South Africa</p>
+              <div className="hero-badges"><p className="eyebrow">Niche skills · Executive search · South Africa</p><span className="hero-established"><Icon name="shield" /> Established 2013</span></div>
               <h1 id="hero-heading">Your next hire is already <em>working somewhere else.</em></h1>
-            </div>
-            <div className="hero-row">
               <div className="hero-copy">
                 <p className="hero-lead">We headhunt the in-demand professionals who never answer job ads — and position your opportunity so the right person takes the call.</p>
                 <p>Talent Tree is a specialist recruitment and executive search firm, established in South Africa in 2013 and powered by industry specialists with more than ten years in niche-skills hiring.</p>
@@ -497,7 +574,9 @@ function App() {
                 <CTA>Discuss a brief</CTA>
                 <CTA href="#clients" quiet>Who we partner with</CTA>
               </div>
+              <div className="hero-proof"><span className="proof-icon"><Icon name="people" /></span><p><strong>10+ years</strong><span>Years in niche-skills recruitment and executive search</span></p><Icon name="shield" /></div>
             </div>
+            <MandatePreview />
           </div>
           <div className="marquee" aria-hidden="true">
             <div className="marquee-track">
@@ -511,6 +590,113 @@ function App() {
                   ))}
                 </span>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="stats-band" aria-label="Talent Tree in numbers">
+          <div className="shell stats-grid">
+            {stats.map((stat) => (
+              <Counter key={stat.label} value={stat.value} suffix={stat.suffix} label={stat.label} />
+            ))}
+          </div>
+        </section>
+
+        <section className="section services" id="services" aria-labelledby="services-heading">
+          <span className="section-numeral" aria-hidden="true">02</span>
+          <div className="shell">
+            <div className="section-heading-row">
+              <Reveal className="section-kicker"><span>02</span> Services</Reveal>
+              <Reveal delay={80}>
+                <h2 id="services-heading">Four ways we put scarce skills in your business.</h2>
+                <p>Select a service to see how the mandate runs.</p>
+              </Reveal>
+            </div>
+
+            <div className="service-list">
+              {services.map((service, index) => {
+                const expanded = activeService === index;
+                return (
+                  <Reveal delay={index * 70} key={service.title}>
+                    <article className={expanded ? 'service-row is-active' : 'service-row'}>
+                      <button
+                        className="service-toggle"
+                        type="button"
+                        aria-expanded={activeService === index}
+                        aria-controls={`service-panel-${index}`}
+                        onClick={() => setActiveService(expanded ? -1 : index)}
+                      >
+                        <span className="service-card-top">
+                          <span className="service-icon"><Icon name={['search', 'people', 'map', 'network'][index]} /></span>
+                          <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
+                        </span>
+                        <span className="service-title">{service.title}</span>
+                        <span className="service-summary">{service.summary}</span>
+                        <span className="service-card-bottom">
+                          <span>{expanded ? 'Close details' : 'View details'}</span>
+                          <span className="toggle-mark" aria-hidden="true" />
+                        </span>
+                      </button>
+                      <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
+                        <p>{service.detail}</p>
+                        <CTA href="#contact" quiet small>Discuss {service.title.toLowerCase()}</CTA>
+                      </div>
+                    </article>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="section approach" id="approach" aria-labelledby="approach-heading">
+          <span className="section-numeral" aria-hidden="true">04</span>
+          <div className="shell">
+            <div className="section-heading-row compact">
+              <Reveal className="section-kicker"><span>04</span> How a mandate runs</Reveal>
+              <Reveal delay={80}><h2 id="approach-heading">Brief to signed offer.</h2></Reveal>
+            </div>
+            <div className="method-layout">
+              <ol className="approach-list">
+                {approach.map(([number, title], index) => (
+                  <li key={number}>
+                    <button
+                      type="button"
+                      id={`method-step-${index}`}
+                      className={activeStep === index ? 'method-step is-active' : 'method-step'}
+                      aria-pressed={activeStep === index}
+                      aria-controls={`method-panel-${index}`}
+                      onClick={() => setActiveStep(index)}
+                    >
+                      <span className="step-number">{number}</span>
+                      <span><small>How a mandate runs</small><strong>{title}</strong></span>
+                      <Arrow />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <div className="method-detail">
+                {approach.map(([number, title, text], index) => (
+                  <div
+                    id={`method-panel-${index}`}
+                    key={number}
+                    role="region"
+                    aria-labelledby={`method-step-${index}`}
+                    hidden={activeStep !== index}
+                  >
+                    <span className="method-detail-number" aria-hidden="true">{number}</span>
+                    <p className="eyebrow">Brief to signed offer.</p>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                    <div className="method-progress" aria-label={`Step ${index + 1} of ${approach.length}`}>
+                      {approach.map(([step]) => (
+                        <span className={Number(step) <= index + 1 ? 'is-complete' : ''} key={step} />
+                      ))}
+                    </div>
+                    <CTA>Discuss a brief</CTA>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -577,55 +763,6 @@ function App() {
           </div>
         </section>
 
-        <section className="stats-band" aria-label="Talent Tree in numbers">
-          <div className="shell stats-grid">
-            {stats.map((stat) => (
-              <Counter key={stat.label} value={stat.value} suffix={stat.suffix} label={stat.label} />
-            ))}
-          </div>
-        </section>
-
-        <section className="section services" id="services" aria-labelledby="services-heading">
-          <span className="section-numeral" aria-hidden="true">02</span>
-          <div className="shell">
-            <div className="section-heading-row">
-              <Reveal className="section-kicker"><span>02</span> Services</Reveal>
-              <Reveal delay={80}>
-                <h2 id="services-heading">Four ways we put scarce skills in your business.</h2>
-                <p>Select a service to see how the mandate runs.</p>
-              </Reveal>
-            </div>
-
-            <div className="service-list">
-              {services.map((service, index) => {
-                const expanded = activeService === index;
-                return (
-                  <Reveal delay={index * 70} key={service.title}>
-                    <article className={expanded ? 'service-row is-active' : 'service-row'}>
-                      <button
-                        className="service-toggle"
-                        type="button"
-                        aria-expanded={activeService === index}
-                        aria-controls={`service-panel-${index}`}
-                        onClick={() => setActiveService(expanded ? -1 : index)}
-                      >
-                        <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
-                        <span className="service-title">{service.title}</span>
-                        <span className="service-summary">{service.summary}</span>
-                        <span className="toggle-mark" aria-hidden="true" />
-                      </button>
-                      <div id={`service-panel-${index}`} className="service-panel" hidden={!expanded}>
-                        <p>{service.detail}</p>
-                        <CTA href="#contact" quiet small>Discuss {service.title.toLowerCase()}</CTA>
-                      </div>
-                    </article>
-                  </Reveal>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
         <section className="section why" id="why" aria-labelledby="why-heading">
           <span className="section-numeral" aria-hidden="true">03</span>
           <div className="shell">
@@ -636,38 +773,32 @@ function App() {
                 <p>Six reasons our clients stop advertising roles and start briefing us instead.</p>
               </Reveal>
             </div>
-            <div className="why-grid">
-              {differentiators.map(([number, title, text], index) => (
-                <Reveal delay={index * 60} key={number}>
-                  <article className="why-item">
-                    <span className="why-number" aria-hidden="true">{number}</span>
-                    <div>
-                      <h3>{title}</h3>
-                      <p>{text}</p>
-                    </div>
-                  </article>
-                </Reveal>
-              ))}
+            <div className="benefits-layout">
+              <Reveal className="benefits-visual">
+                <span className="visual-icon"><Icon name="network" /></span>
+                <p className="eyebrow">Why Talent Tree</p>
+                <h3>Headhunting,<br /><em>not advertising.</em></h3>
+                <div className="benefits-principles">
+                  {[differentiators[0], differentiators[3], differentiators[4]].map(([number, title]) => (
+                    <div key={number}><Icon name="check" /><span>{title}</span></div>
+                  ))}
+                </div>
+                <a href="#contact" className="benefits-link">Start a conversation <Arrow /></a>
+              </Reveal>
+              <div className="why-grid">
+                {differentiators.map(([number, title, text], index) => (
+                  <Reveal delay={index * 60} key={number}>
+                    <article className="why-item">
+                      <span className="why-number" aria-hidden="true">{number}</span>
+                      <div>
+                        <h3>{title}</h3>
+                        <p>{text}</p>
+                      </div>
+                    </article>
+                  </Reveal>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
-
-        <section className="section approach" id="approach" aria-labelledby="approach-heading">
-          <span className="section-numeral" aria-hidden="true">04</span>
-          <div className="shell">
-            <div className="section-heading-row compact">
-              <Reveal className="section-kicker"><span>04</span> How a mandate runs</Reveal>
-              <Reveal delay={80}><h2 id="approach-heading">Brief to signed offer.</h2></Reveal>
-            </div>
-            <ol className="approach-list">
-              {approach.map(([number, title, text], index) => (
-                <Reveal as="li" delay={index * 80} key={number}>
-                  <span className="step-number">{number}</span>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                </Reveal>
-              ))}
-            </ol>
           </div>
         </section>
 
@@ -721,17 +852,35 @@ function App() {
               <Reveal className="section-kicker"><span>07</span> What partners say</Reveal>
               <Reveal delay={80}><h2 id="testimonials-heading">Trusted quietly. Repeatedly.</h2></Reveal>
             </div>
-            <div className="testimonial-list">
+            <div className="testimonial-controls">
+              <button type="button" aria-label="Previous testimonial" onClick={() => setActiveTestimonial((index) => (index + testimonials.length - 1) % testimonials.length)}>
+                <span className="arrow-back"><Arrow /></span>
+              </button>
+              <button type="button" aria-label="Next testimonial" onClick={() => setActiveTestimonial((index) => (index + 1) % testimonials.length)}>
+                <Arrow />
+              </button>
+            </div>
+            <div className="testimonial-list" aria-live="polite" aria-atomic="true">
               {testimonials.map(([quote, person, org], index) => (
-                <Reveal delay={index * 90} key={person}>
-                  <blockquote className="testimonial">
-                    <p>“{quote}”</p>
-                    <footer>
-                      <strong>{person}</strong>
-                      <span>{org}</span>
-                    </footer>
-                  </blockquote>
-                </Reveal>
+                <blockquote className="testimonial" key={person} hidden={index !== activeTestimonial}>
+                  <span className="quote-mark" aria-hidden="true">“</span>
+                  <p>“{quote}”</p>
+                  <footer>
+                    <span className="testimonial-avatar" aria-hidden="true">{person.split(' ').map((word) => word[0]).slice(0, 2).join('')}</span>
+                    <div><strong>{person}</strong><span>{org}</span></div>
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+            <div className="testimonial-pagination" aria-label="Choose a testimonial">
+              {testimonials.map(([, person], index) => (
+                <button
+                  type="button"
+                  key={person}
+                  aria-label={`Show testimonial ${index + 1}`}
+                  aria-pressed={index === activeTestimonial}
+                  onClick={() => setActiveTestimonial(index)}
+                />
               ))}
             </div>
           </div>
@@ -743,6 +892,7 @@ function App() {
             <Reveal>
               <div className="section-kicker"><span>08</span> FAQ</div>
               <h2 id="faq-heading">Straight answers before you brief us.</h2>
+              <a className="faq-contact" href="mailto:hello@talenttree.co.za"><Icon name="mail" /><span><strong>Start a conversation</strong><span>hello@talenttree.co.za</span></span><Arrow /></a>
             </Reveal>
             <div className="faq-list">
               {faqs.map((item, index) => (
@@ -756,7 +906,7 @@ function App() {
 
         <section className="contact" id="contact" aria-labelledby="contact-heading">
           <div className="shell contact-grid">
-            <Reveal delay={60}>
+            <Reveal className="contact-copy" delay={60}>
               <p className="eyebrow">Contact</p>
               <h2 id="contact-heading">Tell us the role nobody can fill.</h2>
               <p>Share enough context to make the first conversation useful — the skill, the market and the deadline. We will tell you honestly whether we can reach the people you need.</p>
@@ -825,6 +975,7 @@ function App() {
           </div>
         </div>
       </footer>
+      <FloatingCTA />
     </div>
   );
 }
