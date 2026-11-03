@@ -107,7 +107,7 @@ export function validateAssessmentPackage(pkg) {
   }
   const refs = new Set();
   for (const side of [scenario.supplier, scenario.ledger]) {
-    if (side.length < 3 || side.length > 24) throw new Error('Reconciliation data must have between 3 and 24 transactions per side.');
+    if (side.length < 3 || side.length > 19) throw new Error('Reconciliation data must have between 3 and 19 transactions per side.');
     for (const item of side) {
       if (!validId(item.ref) || !Number.isFinite(item.amount) || Math.abs(item.amount) > 1e8) throw new Error('Invalid transaction row.');
       refs.add(item.ref);
