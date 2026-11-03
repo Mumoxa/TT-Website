@@ -34,6 +34,14 @@ function blockPublicSearchIndex() {
   return { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store, private' };
 }
 
+async function audit(db, actorType, actorId, attemptId, eventType) {
+  // Deliberately no raw invitation token, PII or workbook data in audit metadata.
+  try {
+    await db.prepare('INSERT INTO audit_events (id, actor_type, actor_id, attempt_id, event_type, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(id(), actorType, actorId || null, attemptId || null, eventType, nowIso()).run();
+  } catch { /* audit failures should not destroy a completed assessment */ }
+}
+
 function errorResponse(error) {
   if (String(error?.message || '').includes('UNIQUE constraint failed')) return failure('This invitation is already in use.', 409);
   if (error instanceof SyntaxError || error?.message?.startsWith('Invalid') ||
@@ -102,7 +110,10 @@ async function closeAttempt(db, a, now, requestedStatus) {
   const changed = await db.prepare(
     'UPDATE attempts SET status=?, closed_at_ms=?, updated_at=? WHERE id=? AND status=? ' + clause
   ).bind(status, now, nowIso(), a.id, 'active', now).run();
-  if (changed?.meta?.changes) await gradeAndStore(db, a.id);
+  if (changed?.meta?.changes) {
+    await gradeAndStore(db, a.id);
+    await audit(db, 'system', null, a.id, status === 'timed_out' ? 'assessment.timed_out' : 'assessment.submitted');
+  }
   const refreshed = await db.prepare('SELECT status FROM attempts WHERE id=?').bind(a.id).first();
   // Best effort to repair a result missing after a previous failure.
   if (refreshed?.status !== 'active') await gradeAndStore(db, a.id);
@@ -167,6 +178,7 @@ async function startAttempt(request, db) {
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
     'JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?'
   ).bind(attemptId).first();
+  await audit(db, 'candidate', candidateId, attemptId, 'assessment.started');
   return apiJson({ ok: true, ...attemptView(a) }, 200, { 'Set-Cookie': cookieHeader(request, sessionToken) });
 }
 
@@ -219,6 +231,7 @@ async function adminPublish(request, db) {
     'UPDATE assessment_definitions SET current_version_id=?, client_name=?, title=?, duration_seconds=?, status=?, updated_at=? WHERE id=?'
   ).bind(versionId, name, title, duration, 'published', at, definitionId));
   await db.batch(operations);
+  await audit(db, 'admin', null, null, 'assessment.published');
   return apiJson({ ok: true, assessment_id: definitionId, version_id: versionId, version_label: versionLabel });
 }
 
@@ -239,6 +252,7 @@ async function adminInvite(request, db) {
     'INSERT INTO invitations (id, definition_id, token_sha256, intended_email, status, issued_at, expires_at, created_at) ' +
     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(id(), assessmentId, await tokenHash(token), email || null, 'issued', at, expires, at).run();
+  await audit(db, 'admin', null, null, 'assessment.invitation_created');
   const origin = new URL(request.url).origin;
   return apiJson({ ok: true, invitation_url: origin + '/assessment?invite=' + token, expires_at: expires });
 }
@@ -274,6 +288,7 @@ async function adminReport(db, attemptId) {
     'LEFT JOIN results r ON r.attempt_id=a.id WHERE a.id=?'
   ).bind(attemptId).first();
   if (!a) return failure('Assessment result not found.', 404);
+  await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
   if (a.status === 'active' && Date.now() >= Number(a.expires_at_ms)) {
     await closeAttempt(db, a, Date.now(), null);
     return adminReport(db, attemptId);
