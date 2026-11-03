@@ -74,7 +74,7 @@ export function cookieHeader(request, token) {
   return ASSESSMENT_COOKIE + '=' + token + '; HttpOnly; SameSite=Strict; Path=/api/assessment; Max-Age=' + SESSION_SECONDS + secure;
 }
 export function getCookie(request) {
-  const cookie = (request.headers.get('Cookie') || '').split('; ').find((entry) => entry.startsWith(ASSESSMENT_COOKIE + '='));
+  const cookie = (request.headers.get('Cookie') || '').split(';').map((entry) => entry.trim()).find((entry) => entry.startsWith(ASSESSMENT_COOKIE + '='));
   const value = cookie ? cookie.slice(ASSESSMENT_COOKIE.length + 1) : '';
   return isToken(value) ? value : null;
 }
@@ -90,7 +90,7 @@ export function validateAssessmentPackage(pkg) {
     !Array.isArray(scenario.supplier) || !Array.isArray(scenario.ledger) ||
     !Array.isArray(scenario.action_options) || !object(key.mcq) ||
     !Array.isArray(key.discrepancies) || key.discrepancies.length !== 3 ||
-    !object(key.actions) || !Number.isFinite(Number(key.corrected_balance))) {
+    !object(key.actions) || key.corrected_balance === null || key.corrected_balance === '' || !Number.isFinite(Number(key.corrected_balance))) {
     throw new Error('Assessment must contain 5 scenario MCQs and a three-discrepancy reconciliation.');
   }
   const qIds = new Set();
@@ -132,8 +132,18 @@ export function validateAssessmentPackage(pkg) {
 export function publicAssessment(version) {
   const payload = JSON.parse(version.question_payload_json);
   return {
-    questions: payload.questions.map((q) => ({ id: q.id, prompt: q.prompt, options: q.options })),
-    scenario: payload.scenario,
+    questions: payload.questions.map((q) => ({
+      id: q.id, prompt: q.prompt,
+      options: q.options.map((o) => ({ id: o.id, text: o.text })),
+    })),
+    // Strict allowlist: prevent accidental answer-key fields inside admin payloads
+    // from ever reaching the candidate browser.
+    scenario: {
+      instructions: typeof payload.scenario.instructions === 'string' ? payload.scenario.instructions.slice(0, 1000) : '',
+      supplier: payload.scenario.supplier.map((row) => ({ ref: row.ref, amount: row.amount, description: row.description || '' })),
+      ledger: payload.scenario.ledger.map((row) => ({ ref: row.ref, amount: row.amount, description: row.description || '' })),
+      action_options: payload.scenario.action_options.map((o) => ({ id: o.id, text: o.text })),
+    },
   };
 }
 
