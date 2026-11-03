@@ -139,6 +139,13 @@ async function saveProgress(db, a, data) {
     if (status !== 'active') return failure('Your assessment has closed. Your last saved work was retained.', 409);
     return apiJson({ ok: false, conflict: true, message: 'Another save was completed. Reload your saved answers before continuing.' }, 409);
   }
+  // Persist an audit snapshot of each successfully saved workbook revision.
+  // The attempts row remains the authoritative last saved state if this
+  // supplementary snapshot write ever fails.
+  try {
+    await db.prepare('INSERT INTO workbook_snapshots (id, attempt_id, revision, workbook_json, saved_at_ms) VALUES (?, ?, ?, ?, ?)')
+      .bind(id(), a.id, expectedRevision + 1, JSON.stringify(workbook), now).run();
+  } catch { /* last saved workbook remains in attempts.workbook_json */ }
   return apiJson({ ok: true, save_revision: expectedRevision + 1, saved_at_ms: now, server_now_ms: Date.now() });
 }
 
@@ -293,8 +300,11 @@ async function adminReport(db, attemptId) {
     await closeAttempt(db, a, Date.now(), null);
     return adminReport(db, attemptId);
   }
+  const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200')
+    .bind(attemptId).all();
   return apiJson({
     ok: true,
+    workbook_save_history: resultRows(saves),
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
     assessment: { client_name: a.client_name, title: a.title, version: a.version_label, scenario: safeParse(a.question_payload_json, {}).scenario },
     attempt: { id: a.id, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
