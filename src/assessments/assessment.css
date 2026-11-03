@@ -373,3 +373,7 @@
   .tta-run-meta { grid-template-columns: 1fr; }
   .tta-run-meta .tta-timer { grid-column: 1; grid-row: auto; }
 }
+
+.tta-privacy-details { margin-top: 14px; border: 1px solid var(--line); background: var(--paper); padding: 12px 14px; color: var(--muted); font-size: 0.79rem; line-height: 1.58; }
+.tta-privacy-details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+.tta-privacy-details p { margin: 10px 0 0; }
