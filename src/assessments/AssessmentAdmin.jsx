@@ -99,11 +99,20 @@ function ResultReport({ report, onBack }) {
       </dl>
     </section>}
     <section className="tta-admin-panel">
+      <h2>Technical knowledge — question review</h2>
+      <div className="tta-admin-table-scroll"><table className="tta-admin-table">
+        <thead><tr><th>Question</th><th>Candidate's answer</th><th>Expected answer</th><th>Outcome</th></tr></thead>
+        <tbody>{(report.question_review || []).map((q, i) => <tr key={i}>
+          <td>{q.prompt}</td><td>{q.chosen}</td><td>{q.expected}</td><td>{q.correct ? 'Correct' : 'Incorrect'}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </section>
+    <section className="tta-admin-panel">
       <h2>Candidate's reconciliation decisions</h2>
       <p>Selected discrepancy references: {(report.responses.structured?.discrepancies || []).join(', ') || 'None recorded'}</p>
       <p>Corrective actions:</p>
       <dl className="tta-admin-score-breakdown">
-        {Object.entries(report.responses.structured?.actions || {}).map(([ref, value]) => <div key={ref}><dt>{ref}</dt><dd>{value}</dd></div>)}
+        {Object.entries(report.responses.structured?.actions || {}).map(([ref, value]) => <div key={ref}><dt>{ref}</dt><dd>{report.assessment.scenario?.action_options?.find((o) => o.id === value)?.text || value}</dd></div>)}
       </dl>
       <p>Entered corrected balance: R{report.responses.structured?.corrected_balance ?? '—'}</p>
     </section>
