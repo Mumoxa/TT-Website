@@ -169,6 +169,7 @@ export function cleanSubmission(payload, questions) {
   }
   const a = {};
   for (const [ref, action] of Object.entries(actions)) {
+    if (action === '' || action === null) continue; // cleared selection is unanswered, not invalid
     if (!txRefs.has(ref) || !actionIds.has(action)) throw new Error('Invalid transaction action.');
     a[ref] = action;
   }
