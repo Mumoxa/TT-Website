@@ -19,6 +19,6 @@ test('SUM and ABS operate on cell ranges', () => {
 test('circular references, malformed expressions and division by zero fail safely', () => {
   assert.equal(calculateCell({ A1: '=A1+1' }, 'A1'), '#CYCLE!');
   assert.equal(calculateCell({ A1: '=1/0' }, 'A1'), '#DIV/0!');
-  assert.equal(calculateCell({ A1: '=SUM(A1:Z999999)' }, 'A1'), '#FORMULA!');
+  assert.equal(calculateCell({ A1: '=SUM(A1:Z999999)' }, 'A1'), '#REF!');
   assert.equal(calculateCell({ A1: '=untrusted()' }, 'A1'), '#FORMULA!');
 });
