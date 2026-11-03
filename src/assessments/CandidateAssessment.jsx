@@ -3,6 +3,7 @@ import {
   AssessmentWelcome, AssessmentRunnerLayout, AssessmentComplete, AssessmentFrame,
 } from './AssessmentApp.jsx';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
+import { BatteryPanels } from './BatteryPanels.jsx';
 import './candidate.css';
 
 const BASE = '/api/assessment';
@@ -242,6 +243,28 @@ export default function CandidateAssessment() {
   }
 
   const assessment = attempt.assessment;
+  if (assessment.format === 'battery-v2') {
+    return (
+      <AssessmentRunnerLayout client={client.client_name}
+        candidateName={attempt.first_name + ' ' + attempt.surname}
+        sectionLabel="Assessment battery"
+        sectionNumber={1}
+        expiresAt={remainingExpiry}
+        onExpired={()=>{blockedRef.current=true;setExpired(true);void refreshStatus();}}
+        saveStatus={saveStatus}>
+        {conflicted && <div className="tta-error" role="alert"><p>{error}</p><button type="button" onClick={recover}>Load saved work</button></div>}
+        {expired && <p role="status">Time has expired. Confirming receipt of your saved work…</p>}
+        <fieldset className="tta-run-fields" disabled={conflicted||expired||submitting}>
+          <BatteryPanels assessment={assessment} draft={draft} patchDraft={patchDraft} />
+          {error && <div className="tta-error" role="alert">{error}</div>}
+          <div className="tta-run-actions">
+            <button type="button" className="tta-submit" disabled={submitting || saveStatus.startsWith('Not saved')}
+              onClick={submit}>{submitting ? 'Submitting…' : 'Submit assessment'} <span aria-hidden="true">→</span></button>
+          </div>
+        </fieldset>
+      </AssessmentRunnerLayout>
+    );
+  }
   const scenario = assessment.scenario;
   const refs = [...new Set([...scenario.supplier, ...scenario.ledger].map((row) => row.ref))].sort();
   const chosen = draft.structured.discrepancies || [];

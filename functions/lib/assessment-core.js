@@ -4,6 +4,8 @@
  * Never commit or ship a live answer key in this public repository.
  */
 import { canPersistAttempt, expiryForStart } from './assessment-deadlines.js';
+import { BATTERY_FORMAT, cleanBatterySubmission, cleanBatteryWorkbook, isBatteryPayload, publicBattery, validateBattery } from './battery.js';
+import { CELL_REF } from '../../src/assessments/formulas.js';
 
 export const ASSESSMENT_COOKIE = 'tt_assessment_session';
 export const SESSION_SECONDS = 60 * 60; // absolute attempt expiry remains 600s
@@ -99,6 +101,7 @@ export function getCookie(request) {
 function object(value) { return !!value && typeof value === 'object' && !Array.isArray(value); }
 export function validId(value) { return typeof value === 'string' && ID.test(value); }
 export function validateAssessmentPackage(pkg) {
+  if (isBatteryPayload(pkg?.question_payload)) return validateBattery(pkg);
   if (!object(pkg) || !object(pkg.question_payload) || !object(pkg.scoring_key)) throw new AssessmentInputError('Assessment package requires question_payload and scoring_key.');
   const questions = pkg.question_payload.questions;
   const scenario = pkg.question_payload.scenario;
@@ -151,6 +154,7 @@ export function validateAssessmentPackage(pkg) {
 // The client receives no answer IDs, expected values, or marking notes.
 export function publicAssessment(version) {
   const payload = JSON.parse(version.question_payload_json);
+  if (isBatteryPayload(payload)) return publicBattery(payload);
   return {
     questions: payload.questions.map((q) => ({
       id: q.id, prompt: q.prompt,
@@ -168,6 +172,7 @@ export function publicAssessment(version) {
 }
 
 export function cleanSubmission(payload, questions) {
+  if (questions?.format === BATTERY_FORMAT) return cleanBatterySubmission(payload, questions);
   const mcq = object(payload?.mcq) ? payload.mcq : {};
   const actions = object(payload?.structured?.actions) ? payload.structured.actions : {};
   const found = Array.isArray(payload?.structured?.discrepancies) ? payload.structured.discrepancies : [];
@@ -204,11 +209,12 @@ export function cleanSubmission(payload, questions) {
 
 // Only editable numeric/text/formula cells from the Reconciliation tab are stored.
 // Source sheets are rebuilt from the assessment version on every page load.
-export function cleanWorkbook(cells) {
+export function cleanWorkbook(cells, readOnly = new Set()) {
   if (!object(cells) || Object.keys(cells).length > 120) throw new AssessmentInputError('Invalid workbook cells.');
   const safe = {};
   for (const [ref, raw] of Object.entries(cells)) {
-    if (!/^[A-F](?:[1-9]|1[0-9]|20)$/.test(ref)) throw new AssessmentInputError('Invalid workbook cell.');
+    if (!CELL_REF.test(ref)) throw new AssessmentInputError('Invalid workbook cell.');
+    if (readOnly.has(ref)) throw new AssessmentInputError('Source cells are read-only.');
     if (typeof raw !== 'string' && typeof raw !== 'number') throw new AssessmentInputError('Invalid cell value.');
     const value = String(raw);
     if (value.length > 200) throw new AssessmentInputError('Cell content is too long.');

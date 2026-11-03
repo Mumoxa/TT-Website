@@ -5,9 +5,9 @@ test('cleared prefilled cells stay empty on recovery',()=>{
  const base=scenarioWorkingCells({supplier:[{ref:'S1',amount:12}],ledger:[]});
  const saved=editCell(base,'B2','');assert.equal({...base,...saved}.B2,'');
 });
-test('tabular paste clips at F20 and preserves explicit empty cells',()=>{
- const result=pasteCells({A1:'keep',F20:'old'},'F20','1\t2\n3\t4');
- assert.deepEqual(result,{A1:'keep',F20:'1'});
+test('tabular paste clips at the bottom-right grid corner J40 and preserves explicit empty cells',()=>{
+ const result=pasteCells({A1:'keep',J40:'old'},'J40','1\t2\n3\t4');
+ assert.deepEqual(result,{A1:'keep',J40:'1'});
  assert.equal(pasteCells({B2:'old'},'B2','\t2').B2,'');
 });
 test('undo restores the preceding workbook and redo restores the edit',()=>{

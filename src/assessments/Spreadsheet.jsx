@@ -17,14 +17,21 @@ import { COLS, ROWS, CELL_REF, calculateCell } from './formulas.js';
 // The official statement and ledger tabs remain read-only and authoritative.
 
 const emptyGrid = () => ({});
-export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onChange, readOnly = false }) {
+// Battery mode: `source` holds read-only cells shown on the same grid. Edits to those refs are
+// dropped before onChange, so the saved snapshot contains only candidate working cells.
+export function ReconciliationSpreadsheet({ scenario, source = null, cells = emptyGrid(), onChange, readOnly = false }) {
   const [tab, setTab] = useState('work');
+  const sourceRefs = useMemo(() => new Set(source ? Object.keys(source) : []), [source]);
+  const withoutSource = (map) => Object.fromEntries(Object.entries(map).filter(([ref]) => !sourceRefs.has(ref)));
   const [selected, setSelected] = useState('A1');
   const [editing, setEditing] = useState(null);
   const inputRefs = useRef({});
   const history = useRef({past:[],present:null,future:[]});
   const [,renderHistory] = useState(0);
-  const workingCells = useMemo(() => ({ ...scenarioWorkingCells(scenario), ...cells }), [scenario, cells]);
+  const workingCells = useMemo(
+    () => (source ? { ...source, ...withoutSource(cells) } : { ...scenarioWorkingCells(scenario), ...cells }),
+    [scenario, cells, source] // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const computed = useMemo(() => {
     const out = {};
     for (const col of COLS) for (let i = 1; i <= ROWS; i++) {
@@ -37,16 +44,16 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
   function commit(updated) {
     if(readOnly)return;
     history.current = workbookHistory({...history.current,present:workingCells},{type:'edit',cells:updated});
-    onChange?.(updated);
+    onChange?.(withoutSource(updated));
     renderHistory(n=>n+1);
   }
   function travel(type) {
     if(readOnly)return;
     history.current=workbookHistory({...history.current,present:workingCells},{type});
-    onChange?.(history.current.present);
+    onChange?.(withoutSource(history.current.present));
     renderHistory(n=>n+1);
   }
-  function update(ref,value) { if(!readOnly)commit(editCell(workingCells,ref,value)); }
+  function update(ref,value) { if(!readOnly && !sourceRefs.has(ref))commit(editCell(workingCells,ref,value)); }
 
   function navigate(ref, key) {
     const col = COLS.indexOf(ref[0]), row = Number(ref.slice(1)) - 1;
@@ -74,7 +81,7 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
         e.preventDefault();travel(e.key.toLowerCase()==='y'||e.shiftKey?'redo':'undo');
       }
     }}>
-      <div className="tta-sheet-tabs" role="tablist" aria-label="Workbook worksheets">
+      {!source && <div className="tta-sheet-tabs" role="tablist" aria-label="Workbook worksheets">
         {[
           ['supplier', 'Supplier statement'],
           ['ledger', 'Company ledger'],
@@ -83,8 +90,8 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
           <button type="button" role="tab" key={key} aria-selected={tab === key}
             className={tab === key ? 'tta-sheet-active' : ''} onClick={() => setTab(key)}>{label}</button>
         ))}
-      </div>
-      {tab === 'work' ? (
+      </div>}
+      {tab === 'work' || source ? (
         <>
           {!readOnly && <div className="tta-sheet-toolbar">
             <button type="button" disabled={!history.current.past.length} onClick={()=>travel('undo')}>Undo</button>
@@ -109,7 +116,8 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
                         <input ref={(el) => { inputRefs.current[ref] = el; }}
                           aria-label={'Cell ' + ref}
                           value={editing === ref ? String(workingCells[ref] ?? '') : computed[ref]}
-                          disabled={readOnly}
+                          disabled={readOnly || sourceRefs.has(ref)}
+                          className={sourceRefs.has(ref) ? 'tta-source-cell' : undefined}
                           onFocus={() => { setSelected(ref); setEditing(ref); }}
                           onChange={(e) => update(ref, e.target.value)}
                           onBlur={() => setEditing((prev) => prev === ref ? null : prev)}
@@ -138,7 +146,7 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
               </tbody>
             </table>
           </div>
-          <p className="tta-sheet-help">Live formulas: =A1+B1, =SUM(A1:A8), =ABS(A1-B1), =MIN(A1:B2). You can paste rows or columns from Excel. Undo/redo: Ctrl+Z / Ctrl+Shift+Z. Copy the active cell or selected text with Ctrl+C. Your working cells are saved automatically.</p>
+          <p className="tta-sheet-help">{source ? 'Grey cells are read-only source records. Calculate in the empty cells, for example in column B rows 21 to 28.' : null}Live formulas: =A1+B1, =SUM(A1:A8), =ABS(A1-B1), =MIN(A1:B2). You can paste rows or columns from Excel. Undo/redo: Ctrl+Z / Ctrl+Shift+Z. Copy the active cell or selected text with Ctrl+C. Your working cells are saved automatically.</p>
         </>
       ) : (
         <div className="tta-grid-scroll">

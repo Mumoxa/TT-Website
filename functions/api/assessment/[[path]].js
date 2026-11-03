@@ -18,6 +18,7 @@ import { calculateCell } from '../../../src/assessments/formulas.js';
 import { scenarioWorkingCells } from '../../../src/assessments/workbook.js';
 import { newAttemptTimes } from '../../lib/assessment-core.js';
 import { notifyPendingResults } from '../../lib/assessment-email.js';
+import { BATTERY_FORMAT, BatteryError, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,7 +63,7 @@ async function publicRateLimit(request, db, operation) {
 function errorResponse(error) {
   if (/UNIQUE constraint failed|FOREIGN KEY constraint failed/.test(String(error?.message || ''))) return failure('This invitation is already in use.', 409);
   if (error?.message === 'Request too large.') return failure(error.message,413);
-  if (error instanceof AssessmentInputError) return failure(error.message,400);
+  if (error instanceof AssessmentInputError || error instanceof BatteryError) return failure(error.message,400);
   if (error instanceof SyntaxError || error?.message?.startsWith('Invalid') ||
     error?.message?.startsWith('Please') || error?.message?.startsWith('Assessment') ||
     error?.message?.startsWith('Question') || error?.message?.startsWith('Too many') ||
@@ -104,14 +105,17 @@ function attemptView(a) {
 
 async function gradeAndStore(db, attemptId) {
   const a = await db.prepare(
-    'SELECT a.id, a.mcq_answers_json, a.structured_answers_json, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
+    'SELECT a.id, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
     'FROM attempts a JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=? AND a.status IN (\'completed\', \'timed_out\')'
   ).bind(attemptId).first();
   if (!a) return;
   const questions = publicAssessment({ question_payload_json: a.question_payload_json });
   const rubric = safeParse(a.scoring_key_json, {});
   const answers = { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}) };
-  const score = scoreAssessment(questions, rubric, answers);
+  const payloadObj = safeParse(a.question_payload_json, {});
+  const score = isBatteryPayload(payloadObj)
+    ? gradeBattery({ payload: payloadObj, key: rubric }, { ...answers, workbook: safeParse(a.workbook_json, {}) })
+    : scoreAssessment(questions, rubric, answers);
   await db.prepare(
     'INSERT INTO results (id, attempt_id, scoring_version, overall_score, knowledge_score, reconciliation_score, breakdown_json, critical_flags_json, interpretation, graded_at) ' +
     'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(attempt_id) DO NOTHING'
@@ -144,7 +148,10 @@ async function saveProgress(db, a, data, submit = false) {
   if(data.attempt_id!==a.id)return apiJson({ok:false,session_changed:true,message:"This tab belongs to another assessment session. Reopen the correct invitation."},409);
   const publicQuestions = publicAssessment({ question_payload_json: a.question_payload_json });
   const submission = cleanSubmission(data, publicQuestions);
-  const workbook = cleanWorkbook(data.workbook || {});
+  const isBattery = publicQuestions.format === BATTERY_FORMAT;
+  const workbook = isBattery
+    ? cleanBatteryWorkbook(data.workbook || {}, new Set(Object.keys(publicQuestions.workbook.source)))
+    : cleanWorkbook(data.workbook || {});
   const expectedRevision = Number(data.save_revision);
   if (!Number.isInteger(expectedRevision) || expectedRevision < 0) return failure('Missing or invalid save revision.', 400);
   const now = Date.now();
@@ -258,7 +265,7 @@ async function adminDraft(request, db) {
     'INSERT INTO assessment_versions (id, definition_id, version_label, question_payload_json, scoring_key_json, scoring_engine_version, published_at, created_at) ' +
     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(versionId, definitionId, versionLabel, JSON.stringify({...pkg.question_payload,_metadata:{title,client_name:name}}),
-    JSON.stringify(pkg.scoring_key), 'ap-deterministic-v1', null, at));
+    JSON.stringify(pkg.scoring_key), pkg.engine || 'ap-deterministic-v1', null, at));
   await db.batch(operations);
   await audit(db, 'admin', null, null, 'assessment.draft_saved');
   return apiJson({ ok: true, assessment_id: definitionId, version_id: versionId, version_label: versionLabel });
@@ -338,6 +345,38 @@ async function adminList(db) {
   })) });
 }
 
+// Battery report: item-level review with stored (auditable) scores, plus saved workbook history.
+async function batteryReport(db, a, attemptId) {
+  const payloadObj = safeParse(a.question_payload_json, {});
+  const rubric = safeParse(a.scoring_key_json, {});
+  const answers = { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}), workbook: safeParse(a.workbook_json, {}) };
+  const graded = gradeBattery({ payload: payloadObj, key: rubric }, answers);
+  const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200').bind(attemptId).all();
+  const auditEvents = await db.prepare('SELECT event_type,actor_type,created_at FROM audit_events WHERE attempt_id=? ORDER BY created_at LIMIT 300').bind(attemptId).all();
+  await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
+  return apiJson({
+    ok: true,
+    audit_events: resultRows(auditEvents),
+    workbook_values: graded.workbook_values,
+    workbook_source: payloadObj.workbook?.source || {},
+    reconciliation_review: null,
+    workbook_save_history: resultRows(saves),
+    candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
+    assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format },
+    attempt: { id: a.id, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
+    responses: answers,
+    question_review: graded.items.map((i) => ({
+      id: i.id, section: i.section, category: i.category, prompt: i.prompt, chosen: i.given ?? 'Not answered',
+      expected: i.correctAnswer, correct: i.correct, awarded: i.awarded, points: i.points,
+    })),
+    result: a.overall_score === null ? null : {
+      overall_score: a.overall_score, knowledge_score: a.knowledge_score, reconciliation_score: a.reconciliation_score,
+      breakdown: safeParse(a.breakdown_json, {}), critical_flags: safeParse(a.critical_flags_json, []),
+      interpretation: a.interpretation, graded_at: a.graded_at,
+    },
+  });
+}
+
 async function adminReport(db, attemptId) {
   if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
   const a = await db.prepare(
@@ -356,6 +395,7 @@ async function adminReport(db, attemptId) {
     return adminReport(db, attemptId);
   }
   if(['completed','timed_out'].includes(a.status) && a.overall_score===null){await gradeAndStore(db,a.id);return adminReport(db,attemptId);}
+  if (isBatteryPayload(safeParse(a.question_payload_json, {}))) return await batteryReport(db, a, attemptId);
   const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200')
     .bind(attemptId).all();
   const scenario=safeParse(a.question_payload_json,{}).scenario;

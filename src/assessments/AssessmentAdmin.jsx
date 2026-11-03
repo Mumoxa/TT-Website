@@ -96,7 +96,7 @@ function ResultReport({ report, onBack }) {
     {r?.breakdown && <section className="tta-admin-panel">
       <h2>Scoring breakdown</h2>
       <dl className="tta-admin-score-breakdown">
-        {Object.entries(r.breakdown).map(([key, value]) => <div key={key}><dt>{key.replace(/_/g, ' ')}</dt><dd>{value}</dd></div>)}
+        {breakdownRows(r.breakdown).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
       </dl>
     </section>}
     <section className="tta-admin-panel">
@@ -120,7 +120,7 @@ function ResultReport({ report, onBack }) {
     <section className="tta-admin-panel">
       <h2>Saved spreadsheet working</h2>
       <p className="tta-admin-muted">Read-only replay of the candidate's last saved cells and formulas; source tabs are reconstructed from the published assessment scenario.</p>
-      <ReconciliationSpreadsheet scenario={report.assessment.scenario} cells={workbook} readOnly />
+      <ReconciliationSpreadsheet scenario={report.assessment.scenario} source={report.workbook_source || null} cells={workbook} readOnly />
       <p className="tta-admin-muted">Last saved: {formattedTime(a.last_saved_at_ms)} · {report.workbook_save_history?.length || 0} saved workbook revisions</p>
       {!!report.workbook_save_history?.length && <details className="tta-admin-save-history">
         <summary>View saved revision timeline</summary>
@@ -288,7 +288,7 @@ function Workspace({ onExpired }) {
     </section>}
     {tab === 'publish' && <section className="tta-admin-panel">
       <h2>Author a private assessment draft</h2>
-      <p>The assessment JSON must contain five technical questions, a practical scenario, and its private scoring key. This form saves the package directly to the protected assessment database. Never commit live answers in GitHub.</p>
+      <p>The assessment JSON must either use the v1 structure (five technical questions, a practical scenario and its private scoring key) or the battery-v2 format (format: "battery-v2", sections, workbook.source and a private scoring key). This form saves the package directly to the protected assessment database. Never commit live answers in GitHub.</p>
       <div className="tta-admin-form">
         {records.definitions.map(d=><button type="button" key={d.id} onClick={()=>loadDraft(d.latest_version_id)} disabled={busy||!d.latest_version_id}>Edit latest: {d.client_name} — {d.title}</button>)}
       </div>
@@ -327,4 +327,19 @@ export default function AssessmentAdmin() {
       : signedIn ? <Workspace onExpired={() => setSignedIn(false)} />
         : <Login onSuccess={() => setSignedIn(true)} />}
   </div>;
+}// Flattens either breakdown shape into label/value rows. v1 breakdowns are flat numbers;
+// battery-v2 breakdowns nest categories and sections.
+function breakdownRows(b) {
+  if (b && b.categories) {
+    const cat = (c, label) => [label, `${c.earned} / ${c.max} points (${c.percent}%)`];
+    return [
+      cat(b.categories.knowledge, 'Knowledge'),
+      cat(b.categories.reconciliation, 'Practical reconciliation'),
+      ['Items correct', `${b.items_correct} / ${b.items_total}`],
+      ...(b.sections || []).map((s) => [s.title, `${s.earned} / ${s.max} (${s.percent}%)`]),
+    ];
+  }
+  return Object.entries(b || {}).map(([key, value]) => [key.replace(/_/g, ' '), String(value)]);
 }
+
+
