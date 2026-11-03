@@ -1,0 +1,36 @@
+/* Assessment runner controls — inherit main site design tokens. */
+.tta-loading { min-height: 60vh; display: grid; place-items: center; font-family: var(--serif); font-size: 1.5rem; }
+.tta-section-header { border-bottom: 1px solid var(--line); padding-bottom: 22px; margin-bottom: 24px; }
+.tta-section-header h2 { font: 500 clamp(1.6rem, 2.5vw, 2.4rem)/1.14 var(--serif); letter-spacing: -0.03em; margin: 10px 0; }
+.tta-section-header p { color: var(--muted); font-size: 0.88rem; max-width: 70ch; }
+.tta-question { padding: 0 0 23px; margin: 0 0 25px; border: 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.tta-question legend { font-weight: 600; font-size: 0.91rem; padding: 0 0 14px; line-height: 1.6; }
+.tta-question legend > span { font-family: var(--serif); font-size: 1.1rem; color: var(--accent); margin-right: 9px; }
+.tta-choice { display: flex; align-items: start; gap: 12px; margin: 8px 0; padding: 12px 13px; border: 1px solid var(--line); background: var(--white); font-size: 0.84rem; line-height: 1.5; cursor: pointer; }
+.tta-choice:hover { background: var(--accent-soft); }
+.tta-choice-selected { border-color: var(--accent); background: var(--accent-soft); }
+.tta-choice input, .tta-reference-list input { accent-color: var(--accent); margin-top: 4px; }
+.tta-choice input { flex: 0 0 auto; }
+.tta-scenario-instructions { color: var(--muted); margin: 0 0 18px; font-size: 0.85rem; }
+.tta-recon-response { padding-top: 25px; }
+.tta-recon-response h3 { font: 500 1.35rem/1.3 var(--serif); margin: 12px 0 8px; }
+.tta-recon-response > p { color: var(--muted); font-size: 0.83rem; }
+.tta-reference-list { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 25px; }
+.tta-reference-list label { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); padding: 9px 11px; background: var(--white); font: 600 0.8rem/1.2 ui-monospace, Consolas, monospace; cursor: pointer; }
+.tta-reference-list label.tta-reference-selected { background: var(--accent-soft); border-color: var(--accent); }
+.tta-recon-action { display: flex; align-items: center; gap: 12px; margin: 11px 0; font-size: 0.83rem; }
+.tta-recon-action strong { min-width: 94px; font-family: ui-monospace, Consolas, monospace; }
+.tta-recon-action select { flex: 1; min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 10px; background: var(--white); color: var(--ink); }
+.tta-inline-help { color: var(--muted); font-size: 0.83rem; }
+.tta-balance-field { display: flex; flex-direction: column; gap: 9px; max-width: 270px; color: var(--ink); font-weight: 600; font-size: 0.84rem; }
+.tta-balance-field input { padding: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--white); }
+.tta-run-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 14px; border-top: 1px solid var(--line); padding-top: 18px; margin-top: 35px; }
+.tta-run-actions .tta-submit { margin-top: 0; min-width: 230px; }
+.tta-back { cursor: pointer; border: 1px solid var(--line-strong); color: var(--ink); padding: 14px 18px; background: transparent; }
+.tta-back:hover { background: var(--accent-soft); }
+.tta-run-workspace .tta-error { padding: 12px; background: #fff1ef; border: 1px solid #cf716b; font-size: 0.82rem; }
+@media (max-width: 560px) {
+  .tta-run-actions { justify-content: stretch; }
+  .tta-run-actions > button { width: 100%; }
+  .tta-recon-action { align-items: stretch; flex-direction: column; gap: 5px; }
+}
