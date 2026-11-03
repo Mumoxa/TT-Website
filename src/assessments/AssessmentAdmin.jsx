@@ -120,7 +120,11 @@ function ResultReport({ report, onBack }) {
       <h2>Saved spreadsheet working</h2>
       <p className="tta-admin-muted">Read-only replay of the candidate's last saved cells and formulas; source tabs are reconstructed from the published assessment scenario.</p>
       <ReconciliationSpreadsheet scenario={report.assessment.scenario} cells={workbook} readOnly />
-      <p className="tta-admin-muted">Last saved: {formattedTime(a.last_saved_at_ms)}</p>
+      <p className="tta-admin-muted">Last saved: {formattedTime(a.last_saved_at_ms)} · {report.workbook_save_history?.length || 0} saved workbook revisions</p>
+      {!!report.workbook_save_history?.length && <details className="tta-admin-save-history">
+        <summary>View saved revision timeline</summary>
+        <ol>{report.workbook_save_history.map((rev) => <li key={rev.revision}>Revision {rev.revision} — {formattedTime(rev.saved_at_ms)}</li>)}</ol>
+      </details>}
     </section>
     <section className="tta-admin-panel no-print">
       <h2>Structured response evidence</h2>
