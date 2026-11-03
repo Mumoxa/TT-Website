@@ -17,6 +17,8 @@ Time limit: **600 seconds, enforced by the server**
 - \`migrations/0065_core_finance_work_sample_optimisation.sql\`, \`0066_auto_scored_admin_work_samples.sql\`: structured, deterministically auto-scored tasks;
 - \`migrations/0035_assessment_time_limits_and_attempt_cap.sql\`: attempts and time-limit precedent.
 
+**Public repository warning**: `Mumoxa/TT-Website` is a **public** GitHub repository. Real live questions, scenario data, answer keys, scoring thresholds that disclose correct answers, secret invitation lists, and unpublished assessment versions must **NOT** be committed in source code, SQL migration seed files, public fixtures, client bundles or GitHub issues. Store published assessment content and private answer rubrics in protected D1 records, provisioned through authenticated admin tooling or a secure out-of-repository seeding process. Public code may contain only plainly labelled synthetic demos with no overlap with production questions. Assume Git history is accessible even after deletion.
+
 **Security warning**: Talza's examined submit handler flags excessively late submissions rather than strictly rejecting post-deadline writes. This is NOT acceptable for Talent Tree's 10-minute hard stop. Implement new server-validated deadlines, atomic state changes, and finalisation using the last data saved before expiry.
 
 ## 2. Non-negotiable visual identity
