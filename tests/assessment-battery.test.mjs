@@ -96,9 +96,9 @@ test('workbook saves reject writes to read-only source cells', () => {
 });
 
 test('loose number parsing accepts thousands separators and rejects locale-ambiguous forms', () => {
-  assert.equal(parseLooseNumber('22,050.00'), 22050);
+  assert.equal(parseLooseNumber('12,345.67'), 12345.67);
   assert.equal(parseLooseNumber('-3200'), -3200);
   assert.equal(parseLooseNumber('#VALUE!'), null);
-  assert.equal(parseLooseNumber('22.050,00'), null);
+  assert.equal(parseLooseNumber('12.345,67'), null);
   assert.equal(parseLooseNumber('1,2345'), null);
 });
