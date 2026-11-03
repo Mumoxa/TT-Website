@@ -100,9 +100,14 @@ export function AssessmentWelcome({
             <input id="tta-email" name="email" type="email" value={email}
               onChange={(e) => setEmail(e.target.value)} autoComplete="email"
               maxLength={254} required placeholder="you@example.com" />
+            <details className="tta-privacy-details">
+              <summary>How your assessment information is used</summary>
+              <p>Talent Tree Consulting collects your name, surname, email address, answers, spreadsheet work and assessment results to assess your suitability for this recruitment assignment. The results may be shared with the hiring client. You can contact your Talent Tree recruiter about access, correction or deletion of your information.</p>
+              <p>Your recruiter must provide the applicable privacy notice and retention information before you start. Do not proceed if that information has not been provided.</p>
+            </details>
             <label className="tta-consent">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-              <span>I understand that Talent Tree will record my answers and assessment results for recruitment screening, and may share the report with the hiring client. I have read the privacy notice supplied with my invitation.</span>
+              <span>I understand how my information will be used and confirm that I have received the applicable privacy notice from Talent Tree.</span>
             </label>
             {error && <p className="tta-error" role="alert">{error}</p>}
             <button className="tta-submit" type="submit" disabled={!canStart}>
