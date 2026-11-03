@@ -154,3 +154,17 @@ Real assessment content and marking keys must not be committed to this public re
 - Load it through the admin API: `POST /api/assessment/admin/draft` (with the admin session cookie and the `x-tt-assessment-admin: 1` header), then `POST /api/assessment/admin/publish` with `content_approved`, `privacy_approved` and an `approval_reference`.
 - The publish step is blocked until both approvals are supplied. Invitations are then issued with `POST /api/assessment/admin/invite`.
 - Run the local end-to-end check against a local D1 before any preview or production use. It must not use real candidates.
+
+## Status log (2026-11-03)
+
+- **D1 migrations applied (remote):** `tt-assessments` (production binding `ASSESSMENT_DB`) has 0001 and 0002 applied and recorded in `d1_migrations`. `tt-assessments-preview` has 0001 and 0002 applied. Both checked via the D1 query tool.
+- **Resend sending domain created:** `talenttree.co.za` (Resend domain ID `290fc61b-b588-445a-9fd8-984343e3bf7a`, region eu-west-1). Status: not yet verified.
+  - Records to add at GoDaddy (DNS only, all on new subdomain names):
+    - TXT `resend._domainkey` (DKIM value shown in the Resend dashboard)
+    - MX `send` → `feedback-smtp.eu-west-1.amazonses.com`, priority 10
+    - TXT `send` → `v=spf1 include:amazonses.com ~all`
+    - CNAME `rsend` → `send.forge.rmta.net`
+  - Do **not** change the root (`@`) MX, the root SPF TXT, or any existing DKIM selectors. Titan mail depends on them.
+  - Only one SPF TXT record may exist per name. The `send` name is new, so this is safe.
+- **Local browser tests:** the five Playwright tests in `tests/browser/assessment.spec.mjs` pass against the isolated local Pages project (`CHROMIUM_PATH=/opt/pw-browsers/chromium`).
+- **Not yet done:** Pages secrets (`RESEND_API_KEY`, `ASSESSMENT_FROM_EMAIL`, `ASSESSMENT_ADMIN_KEY`), domain verification, live email send, content approval and publication.
