@@ -145,3 +145,12 @@ Status: implemented and unit-tested with a stubbed provider. **Not verified agai
 - Migration to apply to the assessment database before deploying: `migrations/assessments/0002_result_notifications.sql`.
 - Behaviour: one email per graded result. Failures are retried on later API calls, up to 5 times. Missing configuration does not consume retries (`notify_status = 'not_configured'`). Admin panel shows nothing about delivery yet; check `results.notify_status` in D1 if needed.
 - Known limitation: if the process dies between the provider accepting the message and the database update, the same result can be sent twice. The provider idempotency key was not used; confirm the provider's duplicate behaviour before relying on this.
+
+## Provisioning assessment content (added 2026-11-03)
+
+Real assessment content and marking keys must not be committed to this public repository (see the warning in `TALENT_TREE_AP_ASSESSMENT_V1.md`).
+
+- Keep each real package as a private file outside the repo, for example in a local, untracked folder.
+- Load it through the admin API: `POST /api/assessment/admin/draft` (with the admin session cookie and the `x-tt-assessment-admin: 1` header), then `POST /api/assessment/admin/publish` with `content_approved`, `privacy_approved` and an `approval_reference`.
+- The publish step is blocked until both approvals are supplied. Invitations are then issued with `POST /api/assessment/admin/invite`.
+- Run the local end-to-end check against a local D1 before any preview or production use. It must not use real candidates.
