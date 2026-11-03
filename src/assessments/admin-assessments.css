@@ -79,3 +79,17 @@
   .tta-sheet { break-inside: avoid; }
   .tta-grid-scroll { overflow: visible; max-height: none; }
 }
+
+.tta-report-logo {width:90px;height:90px;object-fit:contain;}
+.tta-admin-evidence {width:100%;border-collapse:collapse;font-size:.8rem;table-layout:fixed;}
+.tta-admin-evidence td,.tta-admin-evidence th {padding:8px;border:1px solid var(--line);text-align:left;overflow-wrap:anywhere;}
+.tta-admin-form input[type=checkbox] {width:auto;justify-self:start;}
+@media print {
+  @page {size:A4;margin:14mm;}
+  .tta-admin-topbar {display:none!important;}
+  .tta-admin-panel {break-inside:auto;}
+  .tta-admin-table {min-width:0;table-layout:fixed;}
+  .tta-admin-table td,.tta-admin-table th {overflow-wrap:anywhere;padding:6px;font-size:9pt;}
+  .tta-admin-evidence tr {break-inside:avoid;}
+  .tta-admin-report .tta-sheet {display:none;}
+}

@@ -41,6 +41,10 @@ export default function CandidateAssessment() {
   const [error, setError] = useState('');
   const [saveStatus, setSaveStatus] = useState('All changes saved');
   const [submitting, setSubmitting] = useState(false);
+  const [conflicted,setConflicted] = useState(false);
+  const [expired,setExpired] = useState(false);
+  const blockedRef=useRef(false);
+  const submittingRef=useRef(false);
   const draftRef = useRef(blankAnswers());
   const revisionRef = useRef(0);
   const dirtyRef = useRef(false);
@@ -48,6 +52,7 @@ export default function CandidateAssessment() {
   const attemptRef = useRef(null);
 
   const activate = useCallback((data) => {
+    blockedRef.current=false;setConflicted(false);setExpired(data.status!=='active');setError('');
     attemptRef.current = data;
     revisionRef.current = Number(data.save_revision) || 0;
     const saved = data.responses || blankAnswers();
@@ -72,7 +77,12 @@ export default function CandidateAssessment() {
         // If a new invitation is present, start with its own welcome screen
         // even when this browser has a completed older attempt cookie.
         if (invitationToken.current) {
-          const meta = await api('invite?token=' + encodeURIComponent(invitationToken.current), undefined, 'GET');
+          let meta;
+          try { meta = await api('invite?token=' + encodeURIComponent(invitationToken.current), undefined, 'GET'); }
+          catch(e) {
+            const resumed=await api('me?invite='+encodeURIComponent(invitationToken.current),undefined,'GET');
+            if(!cancelled){window.history.replaceState(null,'','/assessment');invitationToken.current='';activate(resumed);}return;
+          }
           if (cancelled) return;
           setClient(meta);
           setPhase('welcome');
@@ -91,6 +101,7 @@ export default function CandidateAssessment() {
   }, [activate]);
 
   function patchDraft(update) {
+    if(blockedRef.current || submittingRef.current)return;
     const next = update(draftRef.current);
     draftRef.current = next;
     dirtyRef.current = true;
@@ -98,38 +109,32 @@ export default function CandidateAssessment() {
     setSaveStatus('Changes not saved yet');
   }
 
-  const save = useCallback(async () => {
-    if (savingRef.current || !dirtyRef.current || !attemptRef.current || attemptRef.current.status !== 'active') return;
+  const save = useCallback(async (finalSave = false) => {
+    if (blockedRef.current || (submittingRef.current && !finalSave) || savingRef.current || !dirtyRef.current || !attemptRef.current || attemptRef.current.status !== 'active') return;
     savingRef.current = true;
     dirtyRef.current = false;
     const answers = draftRef.current;
     const revision = revisionRef.current;
     setSaveStatus('Saving…');
     try {
-      const result = await api('save', { ...answers, save_revision: revision });
+      const result = await api('save', { ...answers, attempt_id:attemptRef.current.attempt_id, save_revision: revision });
       revisionRef.current = result.save_revision;
       setSaveStatus(dirtyRef.current ? 'Changes not saved yet' : 'All changes saved');
     } catch (e) {
       dirtyRef.current = true;
-      if (e.conflict) {
-        // Fetch the latest revision without overwriting still-unsaved local edits.
+      if (e.status===409) {
         try {
-          const fresh = await api('me', undefined, 'GET');
-          revisionRef.current = Number(fresh.save_revision) || 0;
-          if (fresh.status !== 'active') {
-            attemptRef.current = fresh;
-            setAttempt(fresh);
-            setPhase('complete');
-            return;
-          }
-        } catch { /* keep local draft and retry after connection recovery */ }
+          const fresh=await api('me?attempt_id='+attemptRef.current.attempt_id,undefined,'GET');
+          if(fresh.status!=='active'){activate(fresh);return;}
+        } catch { /* retain local edits without automatically replacing server work */ }
+        {blockedRef.current=true;setConflicted(true);setSaveStatus('Save conflict — recovery required');setError('Another tab or an earlier request saved a newer revision. Load saved work to continue; this discards unsaved edits in this tab.');return;}
       }
       setSaveStatus('Not saved — retrying');
       setError(e.message);
     } finally {
       savingRef.current = false;
     }
-  }, []);
+  }, [activate]);
 
   useEffect(() => {
     if (phase !== 'active') return undefined;
@@ -171,7 +176,7 @@ export default function CandidateAssessment() {
 
   const refreshStatus = useCallback(async () => {
     try {
-      const updated = await api('me', undefined, 'GET');
+      const updated = await api('me?attempt_id='+attemptRef.current.attempt_id, undefined, 'GET');
       if (updated.status !== 'active') {
         attemptRef.current = updated;
         setAttempt(updated);
@@ -185,26 +190,37 @@ export default function CandidateAssessment() {
   }, []);
 
   async function submit() {
-    if (submitting || phase !== 'active') return;
+    if (submittingRef.current || blockedRef.current || phase !== 'active') return;
+    submittingRef.current=true;
     setSubmitting(true);
     setError('');
     try {
       // Allow any earlier save request to finish before the final write.
       while (savingRef.current) await new Promise((r) => window.setTimeout(r, 75));
-      if (dirtyRef.current) await save();
+      if (dirtyRef.current) await save(true);
       if (dirtyRef.current) throw new Error('Your changes have not been saved. Please retry before the deadline.');
-      const result = await api('submit', { ...draftRef.current, save_revision: revisionRef.current });
+      const result = await api('submit', { ...draftRef.current, attempt_id:attemptRef.current.attempt_id, save_revision: revisionRef.current });
       attemptRef.current = { ...attemptRef.current, status: result.status };
       setAttempt((a) => ({ ...a, status: result.status }));
       setPhase('complete');
     } catch (e) {
-      if (e.status === 409) await refreshStatus();
-      else setError(e.message);
+      setError(e.message);
+      if (e.status === 409) { blockedRef.current=true;setConflicted(true);await refreshStatus(); }
     } finally {
-      setSubmitting(false);
+      submittingRef.current=false;setSubmitting(false);
     }
   }
 
+  useEffect(()=>{
+    if(phase!=='active')return;
+    const timer=window.setInterval(()=>{void refreshStatus();},15000);
+    const visible=()=>{if(document.visibilityState==='visible')void refreshStatus();};
+    document.addEventListener('visibilitychange',visible);
+    return ()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
+  },[phase,refreshStatus]);
+  async function recover() {
+    try {activate(await api('me?attempt_id='+attemptRef.current.attempt_id,undefined,'GET'));}catch(e){setError(e.message);}
+  }
   const remainingExpiry = useMemo(() => {
     if (!attempt) return new Date(Date.now()).toISOString();
     const offset = Number(attempt.server_now_ms || Date.now()) - Date.now();
@@ -236,8 +252,11 @@ export default function CandidateAssessment() {
       sectionLabel={section === 'questions' ? 'Technical knowledge' : 'Practical reconciliation'}
       sectionNumber={section === 'questions' ? 1 : 2}
       expiresAt={remainingExpiry}
-      onExpired={refreshStatus}
+      onExpired={()=>{blockedRef.current=true;setExpired(true);void refreshStatus();}}
       saveStatus={saveStatus}>
+      {conflicted && <div className="tta-error" role="alert"><p>{error}</p><button type="button" onClick={recover}>Load saved work</button></div>}
+      {expired && <p role="status">Time has expired. Confirming receipt of your saved work…</p>}
+      <fieldset className="tta-run-fields" disabled={conflicted||expired||submitting}>
       <div className="tta-section-header">
         <div className="tta-kicker">Section {section === 'questions' ? '01' : '02'}</div>
         <h2>{section === 'questions' ? 'Accounting decisions' : 'Supplier reconciliation'}</h2>
@@ -316,6 +335,7 @@ export default function CandidateAssessment() {
           </>
         )}
       </div>
+      </fieldset>
     </AssessmentRunnerLayout>
   );
 }

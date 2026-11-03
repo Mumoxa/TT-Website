@@ -2,12 +2,12 @@
 export const COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
 export const ROWS = 20;
 export const CELL_REF = /^[A-F](?:[1-9]|1[0-9]|20)$/;
-const pretty = (number) => Number.isFinite(number) ? String(Math.round(number * 100000) / 100000) : '#NUM!';
+const pretty = (number) => Number.isFinite(number) ? String(number) : '#NUM!';
 
 function tokenize(expression) {
   const tokens = [];
   const source = expression.replace(/\s+/g, '');
-  const scanner = /\d+(?:\.\d+)?|[A-F](?:20|1[0-9]|[1-9])|[a-z]+|[()+\-*/,:]/giy;
+  const scanner = /(?:\d+(?:\.\d+)?|\.\d+)|[A-F](?:20|1[0-9]|[1-9])|[a-z]+|[()+\-*/,:]/giy;
   let offset = 0, match;
   while (offset < source.length) {
     scanner.lastIndex = offset;
@@ -35,7 +35,10 @@ function rangeValues(from, to, resolve) {
   const values = [];
   for (let row = Math.min(r1, r2); row <= Math.max(r1, r2); row++) {
     for (let col = Math.min(c1, c2); col <= Math.max(c1, c2); col++) {
-      values.push(cellNumber(resolve(COLS[col] + row)));
+      const value = resolve(COLS[col] + row);
+      // SUM/MIN/MAX ranges ignore text headings, like spreadsheet ranges.
+      const text=String(value ?? '').trim();
+      if (!text || Number.isFinite(Number(text.replace(/,/g,'')))) values.push(cellNumber(value));
     }
   }
   return values;
@@ -69,7 +72,7 @@ function evaluate(formula, resolve) {
     if (t === '-') return -factor();
     if (t === '+') return factor();
     if (t === '(') { const n = expression(); expect(')'); return n; }
-    if (/^\d/.test(t)) return Number(t);
+    if (/^[\d.]/.test(t)) return Number(t);
     if (CELL_REF.test(t)) return cellNumber(resolve(t));
     if (['SUM', 'ABS', 'MIN', 'MAX'].includes(t)) {
       expect('(');
@@ -99,7 +102,8 @@ function evaluate(formula, resolve) {
   return pretty(result);
 }
 
-export function calculateCell(cells, ref, stack = new Set()) {
+export function calculateCell(cells, ref, stack = new Set(), cache = new Map()) {
+  if(cache.has(ref))return cache.get(ref);
   if (!CELL_REF.test(ref)) return '#REF!';
   if (stack.has(ref)) return '#CYCLE!';
   const raw = cells[ref] ?? '';
@@ -107,11 +111,13 @@ export function calculateCell(cells, ref, stack = new Set()) {
   const nextStack = new Set(stack);
   nextStack.add(ref);
   try {
-    return evaluate(String(raw), (referenced) => {
-      const result = calculateCell(cells, referenced, nextStack);
+    const calculated = evaluate(String(raw), (referenced) => {
+      const result = calculateCell(cells, referenced, nextStack, cache);
       if (result.startsWith('#')) throw new Error(result);
       return result;
     });
+    cache.set(ref,calculated);
+    return calculated;
   } catch (error) {
     const msg = String(error?.message || '');
     return msg.startsWith('#') ? msg : '#FORMULA!';

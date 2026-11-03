@@ -34,3 +34,6 @@
   .tta-run-actions > button { width: 100%; }
   .tta-recon-action { align-items: stretch; flex-direction: column; gap: 5px; }
 }
+
+.tta-run-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.tta-run-fields:disabled { opacity: .72; }

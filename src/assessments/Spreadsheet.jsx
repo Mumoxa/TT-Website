@@ -1,5 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import './spreadsheet.css';
+import {scenarioWorkingCells,editCell,pasteCells,workbookHistory} from './workbook.js';
+export {scenarioWorkingCells} from './workbook.js';
 import { COLS, ROWS, CELL_REF, calculateCell } from './formulas.js';
 
 /**
@@ -13,18 +15,6 @@ import { COLS, ROWS, CELL_REF, calculateCell } from './formulas.js';
  */
 // Working copy is prefilled so candidates analyse rather than retype each source row.
 // The official statement and ledger tabs remain read-only and authoritative.
-export function scenarioWorkingCells(scenario) {
-  const base = { A1: 'Supplier reference', B1: 'Statement amount', D1: 'Ledger reference', E1: 'Ledger amount' };
-  (scenario?.supplier || []).slice(0, 19).forEach((row, i) => {
-    base['A' + (i + 2)] = row.ref;
-    base['B' + (i + 2)] = String(row.amount);
-  });
-  (scenario?.ledger || []).slice(0, 19).forEach((row, i) => {
-    base['D' + (i + 2)] = row.ref;
-    base['E' + (i + 2)] = String(row.amount);
-  });
-  return base;
-}
 
 const emptyGrid = () => ({});
 export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onChange, readOnly = false }) {
@@ -32,6 +22,8 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
   const [selected, setSelected] = useState('A1');
   const [editing, setEditing] = useState(null);
   const inputRefs = useRef({});
+  const history = useRef({past:[],present:null,future:[]});
+  const [,renderHistory] = useState(0);
   const workingCells = useMemo(() => ({ ...scenarioWorkingCells(scenario), ...cells }), [scenario, cells]);
   const computed = useMemo(() => {
     const out = {};
@@ -42,12 +34,19 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
     return out;
   }, [workingCells]);
 
-  function update(ref, value) {
-    if (readOnly || !CELL_REF.test(ref)) return;
-    const updated = { ...workingCells };
-    if (value === '') delete updated[ref]; else updated[ref] = value.slice(0, 200);
+  function commit(updated) {
+    if(readOnly)return;
+    history.current = workbookHistory({...history.current,present:workingCells},{type:'edit',cells:updated});
     onChange?.(updated);
+    renderHistory(n=>n+1);
   }
+  function travel(type) {
+    if(readOnly)return;
+    history.current=workbookHistory({...history.current,present:workingCells},{type});
+    onChange?.(history.current.present);
+    renderHistory(n=>n+1);
+  }
+  function update(ref,value) { if(!readOnly)commit(editCell(workingCells,ref,value)); }
 
   function navigate(ref, key) {
     const col = COLS.indexOf(ref[0]), row = Number(ref.slice(1)) - 1;
@@ -64,25 +63,17 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
   function pasteRange(ref, value) {
     const rows = value.replace(/\r/g, '').split('\n').filter((r, i, a) => i < a.length - 1 || r);
     if (rows.length <= 1 && !value.includes('\t')) return false;
-    const startRow = Number(ref.slice(1)) - 1;
-    const startCol = COLS.indexOf(ref[0]);
-    const updated = { ...cells };
-    rows.forEach((line, rowIndex) => {
-      line.split('\t').forEach((item, colIndex) => {
-        const r = startRow + rowIndex, c = startCol + colIndex;
-        if (r >= ROWS || c >= COLS) return;
-        const target = COLS[c] + (r + 1);
-        const clean = item.slice(0, 200);
-        if (clean) updated[target] = clean; else delete updated[target];
-      });
-    });
-    onChange?.(updated);
+    commit(pasteCells(workingCells,ref,value));
     return true;
   }
 
   const current = String(workingCells[selected] ?? '');
   return (
-    <section className="tta-sheet" aria-label="Live reconciliation spreadsheet">
+    <section className="tta-sheet" aria-label="Live reconciliation spreadsheet" onKeyDown={e=>{
+      if(!readOnly && (e.ctrlKey||e.metaKey) && ['z','y'].includes(e.key.toLowerCase())) {
+        e.preventDefault();travel(e.key.toLowerCase()==='y'||e.shiftKey?'redo':'undo');
+      }
+    }}>
       <div className="tta-sheet-tabs" role="tablist" aria-label="Workbook worksheets">
         {[
           ['supplier', 'Supplier statement'],
@@ -95,6 +86,10 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
       </div>
       {tab === 'work' ? (
         <>
+          {!readOnly && <div className="tta-sheet-toolbar">
+            <button type="button" disabled={!history.current.past.length} onClick={()=>travel('undo')}>Undo</button>
+            <button type="button" disabled={!history.current.future.length} onClick={()=>travel('redo')}>Redo</button>
+          </div>}
           <div className="tta-formula-bar">
             <output className="tta-cell-address" aria-label="Selected cell">{selected}</output>
             <span aria-hidden="true">fx</span>
@@ -118,6 +113,11 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
                           onFocus={() => { setSelected(ref); setEditing(ref); }}
                           onChange={(e) => update(ref, e.target.value)}
                           onBlur={() => setEditing((prev) => prev === ref ? null : prev)}
+                          onCopy={e=>{
+                            if(!e.currentTarget.value.slice(e.currentTarget.selectionStart,e.currentTarget.selectionEnd)) {
+                              e.clipboardData.setData('text/plain',String(workingCells[ref]??''));e.preventDefault();
+                            }
+                          }}
                           onPaste={(e) => {
                             if (readOnly) return;
                             const text = e.clipboardData.getData('text/plain');
@@ -125,9 +125,9 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === 'Tab') {
-                              e.preventDefault(); navigate(ref, e.key);
+                              e.preventDefault(); navigate(ref, e.key === 'Tab' && e.shiftKey ? 'ArrowLeft' : e.key);
                             } else if (['ArrowUp', 'ArrowDown'].includes(e.key) && e.currentTarget.selectionStart === 0) {
-                              e.preventDefault(); navigate(ref, e.key);
+                              e.preventDefault(); navigate(ref, e.key === 'Tab' && e.shiftKey ? 'ArrowLeft' : e.key);
                             }
                           }}
                         />
@@ -138,7 +138,7 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
               </tbody>
             </table>
           </div>
-          <p className="tta-sheet-help">Live formulas: =A1+B1, =SUM(A1:A8), =ABS(A1-B1), =MIN(A1:B2). You can paste rows or columns from Excel. Your working cells are saved automatically.</p>
+          <p className="tta-sheet-help">Live formulas: =A1+B1, =SUM(A1:A8), =ABS(A1-B1), =MIN(A1:B2). You can paste rows or columns from Excel. Undo/redo: Ctrl+Z / Ctrl+Shift+Z. Copy the active cell or selected text with Ctrl+C. Your working cells are saved automatically.</p>
         </>
       ) : (
         <div className="tta-grid-scroll">

@@ -126,20 +126,23 @@ export function AssessmentTimer({ expiresAt, onExpired }) {
   const expiryMs = Date.parse(expiresAt);
   const [remainingMs, setRemainingMs] = useState(() => Math.max(0, expiryMs - Date.now()));
   const didExpire = useRef(false);
+  const expiryCallback=useRef(onExpired);expiryCallback.current=onExpired;
   useEffect(() => {
     didExpire.current = false;
+    const initialRemaining=Math.max(0,expiryMs-Date.now());
+    const anchor=performance.now();
     const tick = () => {
-      const ms = Math.max(0, expiryMs - Date.now());
+      const ms = Math.max(0, initialRemaining-(performance.now()-anchor));
       setRemainingMs(ms);
       if (ms === 0 && !didExpire.current) {
         didExpire.current = true;
-        if (onExpired) onExpired();
+        expiryCallback.current?.();
       }
     };
     tick();
     const interval = window.setInterval(tick, 250);
     return () => window.clearInterval(interval);
-  }, [expiryMs, onExpired]);
+  }, [expiryMs]);
   const seconds = Math.ceil(remainingMs / 1000);
   const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
   const secs = String(seconds % 60).padStart(2, '0');

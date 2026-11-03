@@ -149,3 +149,7 @@
   .tta-sheet-tabs button { padding: 10px 8px; font-size: 0.72rem; }
   .tta-grid-scroll { max-height: 320px; }
 }
+
+.tta-sheet-toolbar {display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--line);}
+.tta-sheet-toolbar button {padding:6px 12px;background:var(--paper-soft);color:var(--ink);border:1px solid var(--line);cursor:pointer;}
+.tta-sheet-toolbar button:disabled {opacity:.5;cursor:default;}

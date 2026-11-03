@@ -22,3 +22,13 @@ test('circular references, malformed expressions and division by zero fail safel
   assert.equal(calculateCell({ A1: '=SUM(A1:Z999999)' }, 'A1'), '#REF!');
   assert.equal(calculateCell({ A1: '=untrusted()' }, 'A1'), '#FORMULA!');
 });
+
+test('dependent formulas preserve precision and sum ranges ignore text headings',()=>{
+ assert.equal(calculateCell({A1:'=1/3',B1:'=A1*3'},'B1'),'1');
+ assert.equal(calculateCell({A1:'Heading',A2:'12',A3:'3',B1:'=SUM(A1:A3)'},'B1'),'15');
+ assert.equal(calculateCell({A1:'=.5+1.25'},'A1'),'1.75');
+});
+test('repeated dependency graphs complete without exponential evaluation',()=>{
+ const cells={A1:'1'};for(let r=2;r<=20;r++)cells['A'+r]='=SUM('+Array(6).fill('A'+(r-1)).join(',')+')';
+ assert.ok(Number.isFinite(Number(calculateCell(cells,'A20'))));
+});

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
 import './admin-assessments.css';
@@ -43,7 +43,7 @@ function Login({ onSuccess }) {
     event.preventDefault();
     setBusy(true); setError('');
     try {
-      await request('/api/admin/login', { login: true, method: 'POST', body: { key } });
+      await request('login', { method: 'POST', body: { key } });
       setKey('');
       onSuccess();
     } catch (e) { setError(e.message); }
@@ -51,7 +51,7 @@ function Login({ onSuccess }) {
   }
   return <section className="tta-admin-login">
     <h1>Recruiter sign-in</h1>
-    <p>Enter your existing Talent Tree admin key. Assessment results are private.</p>
+    <p>Enter your assessment admin key. This access is separate from confidential offers.</p>
     <form onSubmit={login}>
       <label htmlFor="tta-admin-key">Admin access key</label>
       <input id="tta-admin-key" type="password" value={key} onChange={(e) => setKey(e.target.value)}
@@ -73,6 +73,7 @@ function ResultReport({ report, onBack }) {
       <button onClick={printReport}>Print / Save PDF</button>
     </div>
     <div className="tta-admin-report-heading">
+      <img className="tta-report-logo" src={talentTreeLogo} alt="Talent Tree Consulting"/>
       <span className="tta-admin-kicker">Talent Tree | Assessment evidence</span>
       <h1>{report.candidate.first_name} {report.candidate.surname}</h1>
       <p>{report.assessment.title} · {report.assessment.client_name}</p>
@@ -126,6 +127,22 @@ function ResultReport({ report, onBack }) {
         <ol>{report.workbook_save_history.map((rev) => <li key={rev.revision}>Revision {rev.revision} — {formattedTime(rev.saved_at_ms)}</li>)}</ol>
       </details>}
     </section>
+    <section className="tta-admin-panel">
+      <h2>Saved cells and formulas</h2>
+      <p>Raw entries and independently recalculated values. Empty cells are omitted; source copies remain editable working only.</p>
+      <table className="tta-admin-evidence"><thead><tr><th>Cell</th><th>Saved entry / formula</th><th>Calculated value</th></tr></thead><tbody>
+        {Object.entries(workbook).filter(([,value])=>value!=='').map(([ref,value])=><tr key={ref}><th>{ref}</th><td>{value}</td><td>{report.workbook_values?.[ref]}</td></tr>)}
+      </tbody></table>
+    </section>
+    <section className="tta-admin-panel">
+      <h2>Reconciliation marking evidence</h2>
+      <p>Expected corrected balance: R{report.reconciliation_review?.expected_balance ?? '—'}</p>
+      {(report.reconciliation_review?.expected_discrepancies||[]).map(ref=><p key={ref}>{ref}: {report.assessment.scenario?.action_options?.find(o=>o.id===report.reconciliation_review.expected_actions?.[ref])?.text || 'Review private rubric'}</p>)}
+    </section>
+    <section className="tta-admin-panel">
+      <h2>Audit records</h2>
+      <ol>{(report.audit_events||[]).map((event,i)=><li key={i}>{formattedTime(event.created_at)} — {event.event_type} ({event.actor_type})</li>)}</ol>
+    </section>
     <section className="tta-admin-panel no-print">
       <h2>Structured response evidence</h2>
       <pre className="tta-admin-json">{JSON.stringify(report.responses, null, 2)}</pre>
@@ -141,6 +158,10 @@ function Workspace({ onExpired }) {
   const [selectedDefinition, setSelectedDefinition] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [packageJson, setPackageJson] = useState('');
+  const [draftVersion,setDraftVersion]=useState('');
+  const [contentApproved,setContentApproved]=useState(false);
+  const [privacyApproved,setPrivacyApproved]=useState(false);
+  const [approvalReference,setApprovalReference]=useState('');
   const [tab, setTab] = useState('results');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -171,17 +192,26 @@ function Workspace({ onExpired }) {
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
-  async function publish(e) {
-    e.preventDefault(); if (busy) return;
-    setBusy(true); setError(''); setMessage('');
+  async function saveDraft(e) {
+    e.preventDefault();if(busy)return;
+    setBusy(true);setError('');setMessage('');
     try {
-      const data = JSON.parse(packageJson);
-      const result = await request('publish', { method: 'POST', body: data });
-      setMessage('Published private assessment ' + result.version_label + '. Live answers remain in D1, not GitHub.');
-      setPackageJson('');
-      await load();
-    } catch (e) { setError(e.message); }
-    finally { setBusy(false); }
+      const result=await request('draft',{method:'POST',body:JSON.parse(packageJson)});
+      setDraftVersion(result.version_id);setContentApproved(false);setPrivacyApproved(false);setApprovalReference('');
+      setMessage('Draft saved privately. Approval is required before publishing.');await load();
+    }catch(e){setError(e.message);}finally{setBusy(false);}
+  }
+  async function loadDraft(versionId) {
+    setBusy(true);setError('');
+    try {const result=await request('draft/'+versionId);setPackageJson(JSON.stringify(result.package,null,2));setDraftVersion(versionId);setContentApproved(false);setPrivacyApproved(false);setApprovalReference('');}
+    catch(e){setError(e.message);}finally{setBusy(false);}
+  }
+  async function publish() {
+    if(busy)return;setBusy(true);setError('');setMessage('');
+    try {
+      const result=await request('publish',{method:'POST',body:{version_id:draftVersion,content_approved:contentApproved,privacy_approved:privacyApproved,approval_reference:approvalReference}});
+      setMessage('Published private assessment '+result.version_label+'.');setDraftVersion('');setPackageJson('');await load();
+    }catch(e){setError(e.message);}finally{setBusy(false);}
   }
   async function openReport(id) {
     setBusy(true); setError('');
@@ -244,8 +274,8 @@ function Workspace({ onExpired }) {
               <option value={d.id} key={d.id}>{d.client_name} — {d.title}</option>)}
           </select>
         </label>
-        <label>Candidate email (recommended)
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="candidate@example.com" />
+        <label>Candidate email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="candidate@example.com" required />
         </label>
         <button type="submit" disabled={busy || !selectedDefinition}>Generate secure link</button>
       </form>
@@ -257,15 +287,26 @@ function Workspace({ onExpired }) {
       </div>}
     </section>}
     {tab === 'publish' && <section className="tta-admin-panel">
-      <h2>Publish a private assessment version</h2>
+      <h2>Author a private assessment draft</h2>
       <p>The assessment JSON must contain five technical questions, a practical scenario, and its private scoring key. This form saves the package directly to the protected assessment database. Never commit live answers in GitHub.</p>
-      <form onSubmit={publish} className="tta-admin-form">
+      <div className="tta-admin-form">
+        {records.definitions.map(d=><button type="button" key={d.id} onClick={()=>loadDraft(d.latest_version_id)} disabled={busy||!d.latest_version_id}>Edit latest: {d.client_name} — {d.title}</button>)}
+      </div>
+      <p>Each question needs an id, prompt, and four options with id/text. scenario requires instructions, supplier and ledger rows (ref, amount, description), and action_options (id/text). The private scoring_key requires mcq answer ids, exactly three discrepancy refs, actions by ref, corrected_balance and optional unsafe_actions. Amounts use signed debits/credits as explained in your instructions. Save a new immutable version after editing.</p>
+      <form onSubmit={saveDraft} className="tta-admin-form">
         <label>Assessment package (JSON)
-          <textarea value={packageJson} onChange={(e) => setPackageJson(e.target.value)}
+          <textarea value={packageJson} onChange={(e) => {setPackageJson(e.target.value);setDraftVersion('');}}
             rows={15} placeholder={'{\n  "slug": "saturc-ap",\n  "client_name": "SATURC",\n  "title": "Accounts Payable Competency Assessment",\n  "question_payload": { "questions": [], "scenario": {} },\n  "scoring_key": { "mcq": {}, "discrepancies": [], "actions": {}, "corrected_balance": 0 }\n}'} required />
         </label>
-        <button type="submit" disabled={busy || !packageJson.trim()}>Validate and publish</button>
+        <button type="submit" disabled={busy || !packageJson.trim()}>Save private draft</button>
       </form>
+      {draftVersion && <section className="tta-admin-form" aria-label="Publishing approval">
+        <p>Publishing makes this version available for new candidate invitations. Do not approve synthetic tests as a real SATURC assessment.</p>
+        <label><input type="checkbox" checked={contentApproved} onChange={e=>setContentApproved(e.target.checked)}/> The client-approved content and private marking key have been reviewed.</label>
+        <label><input type="checkbox" checked={privacyApproved} onChange={e=>setPrivacyApproved(e.target.checked)}/> The privacy notice, retention period and employer disclosure have human approval.</label>
+        <label>Approval reference<input value={approvalReference} onChange={e=>setApprovalReference(e.target.value)} maxLength={200} placeholder="Internal approval reference; no candidate information"/></label>
+        <button type="button" onClick={publish} disabled={busy||!contentApproved||!privacyApproved||approvalReference.trim().length<8}>Publish approved version</button>
+      </section>}
       <p className="tta-admin-muted">Publishing a new version does not change the questions already assigned to an existing attempt. The real assessment package must be prepared and approved privately first.</p>
     </section>}
   </main>;
@@ -275,7 +316,7 @@ export default function AssessmentAdmin() {
   const [signedIn, setSignedIn] = useState(null);
   useEffect(() => {
     let live = true;
-    fetch('/api/admin/session', { credentials: 'same-origin', cache: 'no-store' })
+    fetch('/api/assessment/admin/session', { credentials: 'same-origin', cache: 'no-store' })
       .then((r) => r.json()).then((v) => { if (live) setSignedIn(!!v.loggedIn); })
       .catch(() => { if (live) setSignedIn(false); });
     return () => { live = false; };
