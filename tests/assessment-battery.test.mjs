@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  validateBattery, publicBattery, cleanBatterySubmission, cleanBatteryWorkbook, gradeBattery, parseLooseNumber, BatteryError,
+  validateBattery, publicBattery, cleanBatterySubmission, cleanBatteryWorkbook, batteryWorkbookRules, gradeBattery, parseLooseNumber, BatteryError,
 } from '../functions/lib/battery.js';
-import { SYNTHETIC_BATTERY, SYNTHETIC_BATTERY_KEY } from './fixtures/synthetic-battery.mjs';
+import { SYNTHETIC_BATTERY, SYNTHETIC_BATTERY_KEY, SYNTHETIC_SHEETS_BATTERY, SYNTHETIC_SHEETS_KEY } from './fixtures/synthetic-battery.mjs';
 
 const pkg = () => ({ question_payload: structuredClone(SYNTHETIC_BATTERY), scoring_key: structuredClone(SYNTHETIC_BATTERY_KEY) });
 const perfect = () => ({
@@ -89,10 +89,38 @@ test('submission cleaning rejects unknown items and invalid options', () => {
   assert.deepEqual(ok, { mcq: { k1: 'o2' }, structured: { text: { k2: 'hi' }, multi: { k3: ['o1'] } } });
 });
 
-test('workbook saves reject writes to read-only source cells', () => {
-  const readOnly = new Set(['A1', 'B2']);
-  assert.throws(() => cleanBatteryWorkbook({ B2: '5' }, readOnly), /read-only/);
-  assert.deepEqual(cleanBatteryWorkbook({ B12: '=SUM(B2:B4)' }, readOnly), { B12: '=SUM(B2:B4)' });
+test('workbook saves reject writes to read-only source cells (default sheet)', () => {
+  const rules = { sourceCanon: new Set(['A1', 'B2']), writableSheets: null };
+  assert.throws(() => cleanBatteryWorkbook({ B2: '5' }, rules), /read-only/);
+  assert.deepEqual(cleanBatteryWorkbook({ B12: '=SUM(B2:B4)' }, rules), { B12: '=SUM(B2:B4)' });
+});
+
+test('three-tab workbook: statement and ledger are read-only, only the reconciliation tab accepts saves', () => {
+  const p = pkg();
+  p.question_payload.workbook = {
+    sheets: [{ name: 'Supplier', writable: false }, { name: 'Ledger', writable: false }, { name: 'Reconciliation', writable: true }],
+    source: { 'Supplier!A1': 'Ref', 'Supplier!D2': '100', 'Ledger!I2': '100' },
+  };
+  p.question_payload.sections[1].items[0].ref = 'Reconciliation!B12';
+  p.question_payload.sections[1].items[1].ref = 'Reconciliation!B13';
+  const v = validateBattery(p);
+  const rules = batteryWorkbookRules(publicBattery(v.question_payload));
+  assert.deepEqual(cleanBatteryWorkbook({ 'Reconciliation!B5': '=SUM(Supplier!D2:D2)' }, rules), { 'Reconciliation!B5': '=SUM(Supplier!D2:D2)' });
+  assert.throws(() => cleanBatteryWorkbook({ 'Supplier!D3': '5' }, rules), /read-only/);
+  assert.throws(() => cleanBatteryWorkbook({ 'Ledger!J9': '5' }, rules), /read-only/);
+  assert.throws(() => cleanBatteryWorkbook({ 'Reconciliation!a1': '1' }, rules), /Invalid workbook cell/);
+  assert.throws(() => cleanBatteryWorkbook({ 'Supplier!A1': 'x' }, rules), /read-only/);
+  assert.throws(() => cleanBatteryWorkbook({ 'Nope!B1': '5' }, rules), /read-only/);
+});
+
+test('a battery item may not write to a read-only sheet, and sheet names must be declared', () => {
+  const p = pkg();
+  p.question_payload.workbook = { sheets: [{ name: 'Supplier', writable: false }, { name: 'Recon', writable: true }], source: { 'Supplier!A1': 'x' } };
+  p.question_payload.sections[1].items[0].ref = 'Supplier!B12';
+  assert.throws(() => validateBattery(p), /writable sheet/);
+  p.question_payload.sections[1].items[0].ref = 'Recon!B12';
+  p.question_payload.workbook.source = { 'Mystery!A1': 'x' };
+  assert.throws(() => validateBattery(p), /unknown sheet/);
 });
 
 test('loose number parsing accepts thousands separators and rejects locale-ambiguous forms', () => {
@@ -101,4 +129,23 @@ test('loose number parsing accepts thousands separators and rejects locale-ambig
   assert.equal(parseLooseNumber('#VALUE!'), null);
   assert.equal(parseLooseNumber('12.345,67'), null);
   assert.equal(parseLooseNumber('1,2345'), null);
+});
+
+test('two-tab synthetic battery grades cross-tab formulas, lookups and IF', () => {
+  const v = validateBattery({ question_payload: structuredClone(SYNTHETIC_SHEETS_BATTERY), scoring_key: structuredClone(SYNTHETIC_SHEETS_KEY) });
+  const g = gradeBattery({ payload: v.question_payload, key: v.scoring_key }, {
+    mcq: { p1: 'o1' }, structured: {},
+    workbook: { 'Working!B2': '=SUM(Supplier!B2:B4)', 'Working!B3': '=VLOOKUP("S-2",Supplier!A2:B4,2,FALSE)', 'Working!B4': '=IF(Working!B2=400,"AGREES","DIFFERS")' },
+  });
+  assert.equal(g.overall_score, 100);
+  assert.equal(g.breakdown.items_correct, 4);
+});
+
+test('a formula on the read-only tab is never accepted as a candidate answer', () => {
+  const v = validateBattery({ question_payload: structuredClone(SYNTHETIC_SHEETS_BATTERY), scoring_key: structuredClone(SYNTHETIC_SHEETS_KEY) });
+  const rules = batteryWorkbookRules(publicBattery(v.question_payload));
+  assert.throws(() => cleanBatteryWorkbook({ 'Supplier!B2': '999' }, rules), /read-only/);
+  // Source values are the only values on that tab: the grader sees 400 from the source.
+  const g = gradeBattery({ payload: v.question_payload, key: v.scoring_key }, { mcq: {}, structured: {}, workbook: { 'Working!B2': '=SUM(Supplier!B2:B4)' } });
+  assert.equal(g.items.find((i) => i.id === 'p2').correct, true);
 });

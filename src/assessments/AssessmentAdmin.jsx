@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
+import { Workbook } from './Workbook.jsx';
 import './admin-assessments.css';
 
 async function request(path, { method = 'GET', body, login = false } = {}) {
@@ -120,7 +121,9 @@ function ResultReport({ report, onBack }) {
     <section className="tta-admin-panel">
       <h2>Saved spreadsheet working</h2>
       <p className="tta-admin-muted">Read-only replay of the candidate's last saved cells and formulas; source tabs are reconstructed from the published assessment scenario.</p>
-      <ReconciliationSpreadsheet scenario={report.assessment.scenario} source={report.workbook_source || null} cells={workbook} readOnly />
+      {report.assessment.format === 'battery-v2'
+        ? <Workbook sheets={report.assessment.sheets || null} source={report.workbook_source || {}} cells={workbook} readOnly />
+        : <ReconciliationSpreadsheet scenario={report.assessment.scenario} cells={workbook} readOnly />}
       <p className="tta-admin-muted">Last saved: {formattedTime(a.last_saved_at_ms)} · {report.workbook_save_history?.length || 0} saved workbook revisions</p>
       {!!report.workbook_save_history?.length && <details className="tta-admin-save-history">
         <summary>View saved revision timeline</summary>

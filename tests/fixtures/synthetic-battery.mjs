@@ -36,3 +36,28 @@ export const SYNTHETIC_BATTERY_KEY = {
     r3: { answer: 'o1', unsafe: ['o2'] },
   },
 };
+
+// Synthetic two-tab battery: a read-only source tab and a writable working tab. Test data only.
+export const SYNTHETIC_SHEETS_BATTERY = {
+  format: 'battery-v2',
+  instructions: 'Synthetic two-tab battery for automated tests. Work on the Working tab; the Supplier tab is read-only.',
+  workbook: {
+    sheets: [{ name: 'Supplier', writable: false }, { name: 'Working', writable: true }],
+    source: { 'Supplier!A1': 'Ref', 'Supplier!B1': 'Amount', 'Supplier!A2': 'S-1', 'Supplier!B2': '100', 'Supplier!A3': 'S-2', 'Supplier!B3': '250', 'Supplier!A4': 'S-3', 'Supplier!B4': '50' },
+  },
+  sections: [
+    { id: 'synthetic-knowledge', title: 'Synthetic knowledge', items: [
+      { id: 'p1', type: 'single', category: 'knowledge', points: 2, prompt: 'Synthetic question: pick the first option.', options: [{ id: 'o1', text: 'First' }, { id: 'o2', text: 'Second' }] },
+    ] },
+    { id: 'synthetic-tabs', title: 'Synthetic tabs', items: [
+      { id: 'p2', type: 'cell', category: 'reconciliation', points: 3, ref: 'Working!B2', prompt: 'Working!B2: total of the Supplier amounts (SUM across tabs).' },
+      { id: 'p3', type: 'cell', category: 'reconciliation', points: 3, ref: 'Working!B3', prompt: 'Working!B3: amount for reference S-2 using VLOOKUP on the Supplier tab.' },
+      { id: 'p4', type: 'cell', category: 'reconciliation', points: 2, ref: 'Working!B4', prompt: 'Working!B4: AGREES if B2 equals 400, otherwise DIFFERS (use IF).' },
+    ] },
+  ],
+};
+export const SYNTHETIC_SHEETS_KEY = {
+  format: 'battery-v2',
+  pass_percent: 75,
+  items: { p1: { answer: 'o1' }, p2: { answer: 400 }, p3: { answer: 250 }, p4: { answer: 'AGREES' } },
+};

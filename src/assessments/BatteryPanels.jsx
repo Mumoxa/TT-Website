@@ -3,7 +3,7 @@
    Cell items are answered in the workbook; the live value shown here is for feedback only.
    The server re-evaluates every formula, so the displayed value is not trusted for grading. */
 import React, { useMemo } from 'react';
-import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
+import { Workbook } from './Workbook.jsx';
 import { calculateCell } from './formulas.js';
 
 const fmt = (value) => (value === '' || value === undefined ? '—' : value);
@@ -78,7 +78,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
       ))}
       <section className="tta-battery-section" aria-label="Shared workbook">
         <h2>Workbook</h2>
-        <ReconciliationSpreadsheet source={source} cells={draft.workbook || {}}
+        <Workbook sheets={assessment.workbook?.sheets || null} source={source} cells={draft.workbook || {}}
           onChange={(workbook) => patchDraft((old) => ({ ...old, workbook }))} />
       </section>
     </div>

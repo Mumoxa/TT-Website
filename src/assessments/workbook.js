@@ -1,4 +1,4 @@
-import {COLS,ROWS,CELL_REF} from './formulas.js';
+import {COLS,ROWS,CELL_REF,QUALIFIED_REF,splitRef} from './formulas.js';
 export function scenarioWorkingCells(scenario) {
   const base = { A1: 'Supplier reference', B1: 'Statement amount', D1: 'Ledger reference', E1: 'Ledger amount' };
   (scenario?.supplier || []).slice(0, 19).forEach((row, i) => {
@@ -13,8 +13,21 @@ export function scenarioWorkingCells(scenario) {
 }
 
 export function editCell(cells,ref,value) {
-  if (!CELL_REF.test(ref)) return cells;
+  if (!QUALIFIED_REF.test(ref)) return cells;
   return {...cells,[ref]:String(value).slice(0,200)};
+}
+// Paste onto a qualified or unqualified anchor cell. Clipped at the grid's bottom-right corner.
+export function pasteKeys(cells,ref,value) {
+  const {sheet,cell}=splitRef(ref);
+  const prefix=sheet?sheet+'!':'';
+  const updated={...cells};
+  const startRow=Number(cell.slice(1))-1,startCol=COLS.indexOf(cell[0]);
+  value.replace(/\r/g,'').replace(/\n$/,'').split('\n').slice(0,ROWS-startRow).forEach((line,r)=>{
+    line.split('\t').slice(0,COLS.length-startCol).forEach((item,c)=>{
+      updated[prefix+COLS[startCol+c]+(startRow+r+1)]=item.slice(0,200);
+    });
+  });
+  return updated;
 }
 export function pasteCells(cells,ref,value) {
   const updated={...cells};

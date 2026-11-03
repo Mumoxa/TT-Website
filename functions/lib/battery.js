@@ -11,7 +11,7 @@
    matching the results table bounds. Scoring is deterministic and all-or-nothing per item.
    Answer keys are only in scoring_key_json (never returned to the candidate). */
 
-import { calculateCell, CELL_REF, COLS, ROWS } from '../../src/assessments/formulas.js';
+import { calculateCell, CELL_REF, QUALIFIED_REF, splitRef } from '../../src/assessments/formulas.js';
 
 export const BATTERY_FORMAT = 'battery-v2';
 export const BATTERY_ENGINE = 'ap-battery-v2';
@@ -23,6 +23,13 @@ const MAX_SECTIONS = 6;
 const MAX_SOURCE_CELLS = 300;
 const MAX_PACKAGE_BYTES = 60_000;
 const ID = /^[a-z][a-z0-9_-]{0,31}$/;
+const SHEET_NAME = /^[A-Za-z][A-Za-z0-9_]{0,15}$/;
+const MAX_SHEETS = 4;
+// Canonical form for comparing references: sheet names are case-insensitive, cells are upper case.
+export const canonRef = (ref) => {
+  const { sheet, cell } = splitRef(ref);
+  return (sheet ? sheet.toLowerCase() + '!' : '') + String(cell).toUpperCase();
+};
 // Option ids are sent to the candidate, so they must not reveal meaning (e.g. 'o_correct'). Use o1, o2, ...
 const OPAQUE_ID = /^o[1-8]$/;
 
@@ -47,6 +54,24 @@ export function isBatteryPayload(payload) {
 
 /* ---- validation ----------------------------------------------------------- */
 
+/* Sheets: optional. Without sheets the battery uses one default sheet (unqualified refs), as before.
+   With sheets, every reference must be qualified with a declared sheet name. */
+export function workbookSheets(workbook) {
+  if (!workbook || workbook.sheets === undefined) return { sheetNames: null, writableSheets: null };
+  const list = workbook.sheets;
+  if (!Array.isArray(list) || list.length < 1 || list.length > MAX_SHEETS) bad('Workbook needs 1–4 sheets.');
+  const names = new Set(), writable = new Set();
+  for (const sheet of list) {
+    if (!isObj(sheet) || typeof sheet.name !== 'string' || !SHEET_NAME.test(sheet.name) || typeof sheet.writable !== 'boolean') bad('Invalid sheet definition.');
+    const key = sheet.name.toLowerCase();
+    if (names.has(key)) bad('Sheet names must be unique.');
+    names.add(key);
+    if (sheet.writable) writable.add(key);
+  }
+  if (writable.size < 1) bad('At least one sheet must be writable.');
+  return { sheetNames: names, writableSheets: writable };
+}
+
 export function validateBattery(pkg) {
   const payload = pkg.question_payload;
   const key = pkg.scoring_key;
@@ -56,9 +81,13 @@ export function validateBattery(pkg) {
   if (!isObj(payload.workbook) || !isObj(payload.workbook.source)) bad('Battery requires workbook.source (read-only cells).');
   const source = payload.workbook.source;
   const sourceRefs = Object.keys(source);
+  const { sheetNames, writableSheets } = workbookSheets(payload.workbook);
+  const sourceCanon = new Set(sourceRefs.map(canonRef));
   if (sourceRefs.length < 1 || sourceRefs.length > MAX_SOURCE_CELLS) bad('Source cell count out of range.');
   for (const ref of sourceRefs) {
-    if (!CELL_REF.test(ref)) bad('Invalid source cell reference.');
+    if (!QUALIFIED_REF.test(ref)) bad('Invalid source cell reference.');
+    const { sheet } = splitRef(ref);
+    if (sheetNames ? !sheetNames.has(sheet.toLowerCase()) : sheet !== '') bad('Source cell names an unknown sheet.');
     const v = source[ref];
     if ((typeof v !== 'string' && typeof v !== 'number') || String(v).length > 200) bad('Invalid source cell value.');
   }
@@ -100,14 +129,19 @@ export function validateBattery(pkg) {
       } else if (item.type === 'text') {
         if (typeof k.answer !== 'string' || !k.answer.trim() || k.answer.length > 100) bad(`Text answer for ${item.id} is invalid.`);
       } else if (item.type === 'cell') {
-        if (!CELL_REF.test(item.ref)) bad(`Invalid cell reference for ${item.id}.`);
-        if (Object.prototype.hasOwnProperty.call(source, item.ref)) bad(`${item.id} points at a read-only source cell.`);
-        if (typeof k.answer !== 'number' || !Number.isFinite(k.answer)) bad(`Cell answer for ${item.id} must be a number.`);
+        if (!QUALIFIED_REF.test(item.ref)) bad(`Invalid cell reference for ${item.id}.`);
+        const { sheet: itemSheet } = splitRef(item.ref);
+        if (sheetNames ? !writableSheets.has(itemSheet.toLowerCase()) : itemSheet !== '') bad(`${item.id} must point at a writable sheet.`);
+        if (sourceCanon.has(canonRef(item.ref))) bad(`${item.id} points at a read-only source cell.`);
+        const numericAnswer = typeof k.answer === 'number' && Number.isFinite(k.answer);
+        const textAnswer = typeof k.answer === 'string' && k.answer.trim().length > 0 && k.answer.length <= 100;
+        if (!numericAnswer && !textAnswer) bad(`Cell answer for ${item.id} must be a number or short text.`);
         if (k.tolerance !== undefined && (typeof k.tolerance !== 'number' || k.tolerance < 0 || k.tolerance > 1)) bad('Tolerance must be 0–1.');
       }
     }
   }
   if (count < 3 || count > MAX_ITEMS) bad('Battery needs 3–30 items.');
+  // A sheet that is not writable is read-only; every source cell must sit in a declared sheet.
   if (!categories.has('knowledge') || !categories.has('reconciliation')) bad('Battery needs knowledge and reconciliation items.');
   for (const id of Object.keys(key.items)) if (!seen.has(id)) bad(`Key has an answer for unknown item ${id}.`);
   return {
@@ -134,6 +168,7 @@ export function publicBattery(payload) {
       }),
     })),
     workbook: {
+      sheets: Array.isArray(payload.workbook.sheets) ? payload.workbook.sheets.map((s) => ({ name: s.name, writable: s.writable })) : null,
       source: Object.fromEntries(Object.entries(payload.workbook.source).map(([ref, v]) => [ref, String(v).slice(0, 200)])),
     },
   };
@@ -169,13 +204,24 @@ export function cleanBatterySubmission(payload, publicBat) {
   return { mcq, structured: { text, multi } };
 }
 
-/* Workbook: only candidate working cells. Source cells are rejected, not silently dropped. */
-export function cleanBatteryWorkbook(cells, sourceRefs) {
+/* Rules the server enforces on saves, derived from the published battery (candidate-facing). */
+export function batteryWorkbookRules(publicBat) {
+  const sheets = publicBat.workbook.sheets;
+  return {
+    sourceCanon: new Set(Object.keys(publicBat.workbook.source).map(canonRef)),
+    writableSheets: sheets ? new Set(sheets.filter((s) => s.writable).map((s) => s.name.toLowerCase())) : null,
+  };
+}
+
+/* Workbook: only candidate working cells on writable sheets. Source cells are rejected, not dropped. */
+export function cleanBatteryWorkbook(cells, rules) {
   if (!isObj(cells) || Object.keys(cells).length > 400) bad('Invalid workbook cells.');
   const safe = {};
   for (const [ref, raw] of Object.entries(cells)) {
-    if (!CELL_REF.test(ref)) bad('Invalid workbook cell.');
-    if (sourceRefs.has(ref)) bad('Source cells are read-only.');
+    if (!QUALIFIED_REF.test(ref)) bad('Invalid workbook cell.');
+    const { sheet } = splitRef(ref);
+    if (rules.writableSheets ? !rules.writableSheets.has(sheet.toLowerCase()) : sheet !== '') bad('That sheet is read-only.');
+    if (rules.sourceCanon.has(canonRef(ref))) bad('Source cells are read-only.');
     if (typeof raw !== 'string' && typeof raw !== 'number') bad('Invalid cell value.');
     const value = String(raw);
     if (value.length > 200) bad('Cell content is too long.');
@@ -210,8 +256,13 @@ function gradeItem(item, key, answers, merged) {
   } else {
     const shown = calculateCell(merged, item.ref);
     givenText = shown === '' ? null : shown;
-    const n = parseLooseNumber(shown);
-    correct = n !== null && Math.abs(n - key.answer) <= (key.tolerance ?? 0.005) + 1e-9;
+    if (typeof key.answer === 'string') {
+      // Text cell answers (e.g. IF(...) returning a word) compare like typed text.
+      correct = givenText !== null && normaliseText(givenText) === normaliseText(key.answer);
+    } else {
+      const n = parseLooseNumber(shown);
+      correct = n !== null && Math.abs(n - key.answer) <= (key.tolerance ?? 0.005) + 1e-9;
+    }
     correctText = String(key.answer);
   }
   const unsafeHit = (item.type === 'single' && Array.isArray(key.unsafe) && key.unsafe.includes(given.single))

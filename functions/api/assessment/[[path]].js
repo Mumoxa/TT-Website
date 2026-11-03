@@ -18,7 +18,7 @@ import { calculateCell } from '../../../src/assessments/formulas.js';
 import { scenarioWorkingCells } from '../../../src/assessments/workbook.js';
 import { newAttemptTimes } from '../../lib/assessment-core.js';
 import { notifyPendingResults } from '../../lib/assessment-email.js';
-import { BATTERY_FORMAT, BatteryError, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
+import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -150,7 +150,7 @@ async function saveProgress(db, a, data, submit = false) {
   const submission = cleanSubmission(data, publicQuestions);
   const isBattery = publicQuestions.format === BATTERY_FORMAT;
   const workbook = isBattery
-    ? cleanBatteryWorkbook(data.workbook || {}, new Set(Object.keys(publicQuestions.workbook.source)))
+    ? cleanBatteryWorkbook(data.workbook || {}, batteryWorkbookRules(publicQuestions))
     : cleanWorkbook(data.workbook || {});
   const expectedRevision = Number(data.save_revision);
   if (!Number.isInteger(expectedRevision) || expectedRevision < 0) return failure('Missing or invalid save revision.', 400);
@@ -362,7 +362,7 @@ async function batteryReport(db, a, attemptId) {
     reconciliation_review: null,
     workbook_save_history: resultRows(saves),
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
-    assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format },
+    assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format, sheets: payloadObj.workbook?.sheets || null },
     attempt: { id: a.id, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
     responses: answers,
     question_review: graded.items.map((i) => ({
