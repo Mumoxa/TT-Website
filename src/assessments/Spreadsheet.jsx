@@ -11,24 +11,40 @@ import { COLS, ROWS, CELL_REF, calculateCell } from './formulas.js';
  * The submitted snapshot includes only the working cells. The backend rebuilds
  * all read-only scenario tables from the private assessment version.
  */
+// Working copy is prefilled so candidates analyse rather than retype each source row.
+// The official statement and ledger tabs remain read-only and authoritative.
+export function scenarioWorkingCells(scenario) {
+  const base = { A1: 'Supplier reference', B1: 'Statement amount', D1: 'Ledger reference', E1: 'Ledger amount' };
+  (scenario?.supplier || []).slice(0, 19).forEach((row, i) => {
+    base['A' + (i + 2)] = row.ref;
+    base['B' + (i + 2)] = String(row.amount);
+  });
+  (scenario?.ledger || []).slice(0, 19).forEach((row, i) => {
+    base['D' + (i + 2)] = row.ref;
+    base['E' + (i + 2)] = String(row.amount);
+  });
+  return base;
+}
+
 const emptyGrid = () => ({});
 export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onChange, readOnly = false }) {
   const [tab, setTab] = useState('work');
   const [selected, setSelected] = useState('A1');
   const [editing, setEditing] = useState(null);
   const inputRefs = useRef({});
+  const workingCells = useMemo(() => ({ ...scenarioWorkingCells(scenario), ...cells }), [scenario, cells]);
   const computed = useMemo(() => {
     const out = {};
     for (const col of COLS) for (let i = 1; i <= ROWS; i++) {
       const ref = col + i;
-      out[ref] = calculateCell(cells, ref);
+      out[ref] = calculateCell(workingCells, ref);
     }
     return out;
-  }, [cells]);
+  }, [workingCells]);
 
   function update(ref, value) {
     if (readOnly || !CELL_REF.test(ref)) return;
-    const updated = { ...cells };
+    const updated = { ...workingCells };
     if (value === '') delete updated[ref]; else updated[ref] = value.slice(0, 200);
     onChange?.(updated);
   }
@@ -64,7 +80,7 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
     return true;
   }
 
-  const current = String(cells[selected] ?? '');
+  const current = String(workingCells[selected] ?? '');
   return (
     <section className="tta-sheet" aria-label="Live reconciliation spreadsheet">
       <div className="tta-sheet-tabs" role="tablist" aria-label="Workbook worksheets">
@@ -97,7 +113,7 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
                       return <td key={ref} className={selected === ref ? 'tta-cell-selected' : ''}>
                         <input ref={(el) => { inputRefs.current[ref] = el; }}
                           aria-label={'Cell ' + ref}
-                          value={editing === ref ? String(cells[ref] ?? '') : computed[ref]}
+                          value={editing === ref ? String(workingCells[ref] ?? '') : computed[ref]}
                           disabled={readOnly}
                           onFocus={() => { setSelected(ref); setEditing(ref); }}
                           onChange={(e) => update(ref, e.target.value)}
@@ -140,7 +156,7 @@ export function ReconciliationSpreadsheet({ scenario, cells = emptyGrid(), onCha
               <td>{(tab === 'supplier' ? scenario?.supplier : scenario?.ledger)?.reduce((sum, i) => sum + Number(i.amount), 0)
                 .toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr></tfoot>
           </table>
-          <p className="tta-sheet-help">Source records are read-only. Use the Your working tab to calculate and investigate differences.</p>
+          <p className="tta-sheet-help">Source records are read-only. Use the Your working tab to calculate and investigate differences. The working sheet contains a prefilled copy of the source transactions.</p>
         </div>
       )}
     </section>
