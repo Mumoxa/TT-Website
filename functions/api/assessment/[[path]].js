@@ -267,7 +267,7 @@ async function adminReport(db, attemptId) {
   const a = await db.prepare(
     'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, ' +
     'a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, ' +
-    'd.client_name, d.title, v.version_label, v.question_payload_json, ' +
+    'd.client_name, d.title, v.version_label, v.question_payload_json, v.scoring_key_json, ' +
     'r.overall_score, r.knowledge_score, r.reconciliation_score, r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id ' +
     'JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id ' +
@@ -284,6 +284,16 @@ async function adminReport(db, attemptId) {
     assessment: { client_name: a.client_name, title: a.title, version: a.version_label, scenario: safeParse(a.question_payload_json, {}).scenario },
     attempt: { id: a.id, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
     responses: { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}), workbook: safeParse(a.workbook_json, {}) },
+    question_review: safeParse(a.question_payload_json, {}).questions?.map((q) => {
+      const chosenId = safeParse(a.mcq_answers_json, {})[q.id] || null;
+      const expectedId = safeParse(a.scoring_key_json, {}).mcq?.[q.id] || null;
+      return {
+        prompt: q.prompt,
+        chosen: q.options.find((o) => o.id === chosenId)?.text || 'Not answered',
+        expected: q.options.find((o) => o.id === expectedId)?.text || 'Not available',
+        correct: chosenId !== null && chosenId === expectedId,
+      };
+    }) || [],
     result: a.overall_score === null ? null : {
       overall_score: a.overall_score, knowledge_score: a.knowledge_score, reconciliation_score: a.reconciliation_score,
       breakdown: safeParse(a.breakdown_json, {}), critical_flags: safeParse(a.critical_flags_json, []),
