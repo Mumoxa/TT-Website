@@ -1,0 +1,375 @@
+/* Talent Tree assessment extension. Imports the live site's tokens from src/styles.css.
+   No hardcoded alternate brand palette, no Talza colours or invented logos. */
+
+.tta-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.tta-shell {
+  width: min(1180px, calc(100% - 2 * var(--gutter)));
+  margin-inline: auto;
+}
+
+.tta-topbar {
+  background: var(--ink-deep);
+  border-bottom: 1px solid var(--line-invert);
+  color: var(--white);
+}
+
+.tta-topbar-inner {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.tta-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--white);
+}
+
+.tta-logo {
+  width: 66px;
+  height: 64px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.tta-brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tta-brand-copy strong {
+  font: 500 1.4rem/1 var(--serif);
+  letter-spacing: -0.02em;
+}
+
+.tta-brand-copy small {
+  color: var(--muted-on-dark);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tta-topbar-context {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-on-dark);
+}
+
+.tta-topbar-context span {
+  color: var(--accent-bright);
+  margin: 0 12px;
+}
+
+.tta-welcome-layout {
+  padding-block: clamp(40px, 7.6vw, 100px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(330px, 0.78fr);
+  align-items: start;
+  gap: clamp(28px, 7.5vw, 100px);
+  flex: 1;
+}
+
+.tta-kicker {
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.tta-kicker-line {
+  height: 1px;
+  width: 30px;
+  background: currentColor;
+}
+
+.tta-hero-copy h1,
+.tta-run-meta h1,
+.tta-complete h1 {
+  font-family: var(--serif);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.038em;
+}
+
+.tta-hero-copy h1 {
+  margin: 25px 0 24px;
+  font-size: clamp(3rem, 5.4vw, 5.3rem);
+}
+
+.tta-hero-copy h1 em,
+.tta-run-meta h1 em {
+  color: var(--accent);
+  font-weight: 400;
+}
+
+.tta-intro {
+  max-width: 51ch;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.78;
+}
+
+.tta-intro strong { color: var(--ink); }
+
+.tta-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(18px, 4vw, 40px);
+  margin: 38px 0 45px;
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.tta-metrics div { display: flex; flex-direction: column; gap: 8px; }
+
+.tta-metrics strong {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tta-metrics span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tta-instructions h2,
+.tta-registration h2 {
+  font: 500 clamp(1.4rem, 2.1vw, 1.85rem)/1.2 var(--serif);
+  letter-spacing: -0.02em;
+}
+
+.tta-instructions ol {
+  padding-left: 20px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.tta-instructions li { margin-bottom: 13px; line-height: 1.65; }
+.tta-instructions li::marker { color: var(--accent); font-weight: 700; }
+
+.tta-registration {
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  padding: clamp(24px, 4vw, 38px);
+  box-shadow: var(--shadow-soft), var(--shadow-lift);
+}
+
+.tta-card-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 25px;
+}
+
+.tta-card-topline span { color: var(--muted); }
+
+.tta-registration h2 { margin-bottom: 10px; }
+
+.tta-registration > p {
+  color: var(--muted);
+  font-size: 0.89rem;
+  margin-bottom: 24px;
+  line-height: 1.65;
+}
+
+.tta-registration form { display: flex; flex-direction: column; gap: 9px; }
+
+.tta-registration form > label:not(.tta-consent) {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.82rem;
+  margin-top: 10px;
+}
+
+.tta-registration input:not([type=checkbox]) {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--ink);
+  padding: 13px 14px;
+  min-height: 46px;
+}
+
+.tta-registration input:focus-visible,
+.tta-registration button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.tta-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: 20px;
+  font-size: 0.77rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.tta-consent input {
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+}
+
+.tta-submit {
+  min-height: 51px;
+  padding: 14px 18px;
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: var(--ink-deep);
+  color: var(--white);
+  border: 1px solid var(--ink-deep);
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 18px;
+  transition: background var(--fast), border-color var(--fast);
+}
+
+.tta-submit:not(:disabled):hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tta-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.tta-form-note {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  margin: 7px 0 0;
+}
+
+.tta-error { color: #9b2c2c; font-size: 0.85rem; }
+
+.tta-footer {
+  border-top: 1px solid var(--line);
+  background: var(--paper-soft);
+  color: var(--muted);
+  margin-top: auto;
+}
+
+.tta-footer-inner {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 0.73rem;
+}
+
+.tta-footer a { text-decoration: underline; text-underline-offset: 3px; }
+
+.tta-run-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(220px, 285px) minmax(0, 1fr);
+  gap: clamp(24px, 3.5vw, 50px);
+  padding-block: clamp(24px, 4.5vw, 58px);
+}
+
+.tta-run-meta h1 {
+  font-size: clamp(2rem, 3vw, 3rem);
+  margin: 18px 0;
+}
+
+.tta-run-meta > p { color: var(--muted); }
+
+.tta-timer {
+  display: grid;
+  gap: 9px;
+  padding: 24px 0;
+  margin: 23px 0;
+  border-block: 1px solid var(--line);
+}
+
+.tta-timer-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.tta-timer strong {
+  font: 500 3.3rem/1 var(--serif);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tta-timer-urgent strong { color: #a13131; }
+
+.tta-run-progress { display: grid; gap: 9px; font-size: 0.8rem; }
+.tta-run-progress span { color: var(--muted); }
+.tta-run-progress strong { font-weight: 600; }
+.tta-progress-track { background: var(--accent-soft); height: 5px; width: 100%; }
+.tta-progress-track > div { height: 100%; background: var(--accent); }
+
+.tta-save-status { font-size: 0.75rem; color: var(--muted); }
+.tta-run-workspace { min-width: 0; background: var(--paper-soft); border: 1px solid var(--line); padding: clamp(16px, 3vw, 30px); }
+.tta-complete { flex: 1; padding-block: clamp(56px, 10vw, 120px); max-width: 800px; }
+.tta-complete h1 { font-size: clamp(2.8rem, 5vw, 4.4rem); margin: 24px 0; }
+.tta-complete > p { max-width: 57ch; color: var(--muted); font-size: 1.05rem; }
+.tta-complete-note { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 34px; }
+
+@media (max-width: 900px) {
+  .tta-welcome-layout { grid-template-columns: 1fr; }
+  .tta-hero-copy h1 { max-width: 13ch; }
+  .tta-run-layout { grid-template-columns: 1fr; }
+  .tta-run-meta { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+  .tta-run-meta h1 { grid-column: 1; margin: 0; }
+  .tta-run-meta .tta-kicker, .tta-run-meta > p { grid-column: 1; }
+  .tta-run-meta .tta-timer { grid-column: 2; grid-row: 1 / span 3; margin: 0; padding: 8px; }
+  .tta-run-progress, .tta-save-status { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .tta-topbar-inner { min-height: 76px; }
+  .tta-logo { width: 50px; height: 52px; }
+  .tta-brand-copy strong { font-size: 1.15rem; }
+  .tta-brand-copy small { font-size: 0.58rem; }
+  .tta-topbar-context { display: none; }
+  .tta-hero-copy h1 { font-size: clamp(2.7rem, 11vw, 3.5rem); }
+  .tta-metrics { gap: 22px; }
+  .tta-registration { padding: 22px; }
+  .tta-footer-inner { flex-direction: column; align-items: flex-start; justify-content: center; padding-block: 14px; gap: 8px; }
+  .tta-run-meta { grid-template-columns: 1fr; }
+  .tta-run-meta .tta-timer { grid-column: 1; grid-row: auto; }
+}
