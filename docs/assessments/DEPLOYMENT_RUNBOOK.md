@@ -132,3 +132,16 @@ Existing redirect-loop and Request.cf-placeholder Wrangler warnings remain outsi
 this assessment change. Remote Access, secrets, schema and deployment remain unverified
 until access is available. Audit snapshots are supplementary; the attempts row is
 authoritative. No automated retention/deletion currently runs.
+
+## Result email (added 2026-11-03)
+
+Status: implemented and unit-tested with a stubbed provider. **Not verified against the live provider.**
+
+- Recipient: `ASSESSMENT_RESULTS_TO` in `wrangler.toml` (`christo@talenttree.co.za`). Set in both the top-level `[vars]` and `[env.preview.vars]`.
+- Provider: Resend HTTP API (`https://api.resend.com/emails`). Choosing this vendor needs your approval; it is not yet approved.
+- Secrets to add on the Pages project (never commit values):
+  - `RESEND_API_KEY`
+  - `ASSESSMENT_FROM_EMAIL`: a sender address on a domain verified with the provider. The `talenttree.co.za` domain must be verified (DNS records set by you). Not verified here.
+- Migration to apply to the assessment database before deploying: `migrations/assessments/0002_result_notifications.sql`.
+- Behaviour: one email per graded result. Failures are retried on later API calls, up to 5 times. Missing configuration does not consume retries (`notify_status = 'not_configured'`). Admin panel shows nothing about delivery yet; check `results.notify_status` in D1 if needed.
+- Known limitation: if the process dies between the provider accepting the message and the database update, the same result can be sent twice. The provider idempotency key was not used; confirm the provider's duplicate behaviour before relying on this.

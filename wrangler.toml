@@ -17,6 +17,11 @@
 #   5. Deploy via git push to main (existing Pages flow) or `npx wrangler pages deploy dist`.
 
 name = "tt-website"
+
+# Non-secret: where candidate result emails are sent. The API key is a secret (RESEND_API_KEY),
+# and ASSESSMENT_FROM_EMAIL must be a sender on a domain verified with the provider.
+[vars]
+ASSESSMENT_RESULTS_TO = "christo@talenttree.co.za"
 compatibility_date = "2026-09-08"
 pages_build_output_dir = "dist"
 
@@ -40,6 +45,9 @@ migrations_dir = "migrations/assessments"
 # Applying this shared preview configuration requires checking existing previews.
 [env.preview]
 r2_buckets = []
+
+[env.preview.vars]
+ASSESSMENT_RESULTS_TO = "christo@talenttree.co.za"
 
 [[env.preview.d1_databases]]
 binding = "ASSESSMENT_DB"

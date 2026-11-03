@@ -17,6 +17,7 @@ import {
 import { calculateCell } from '../../../src/assessments/formulas.js';
 import { scenarioWorkingCells } from '../../../src/assessments/workbook.js';
 import { newAttemptTimes } from '../../lib/assessment-core.js';
+import { notifyPendingResults } from '../../lib/assessment-email.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -310,6 +311,12 @@ async function adminInvite(request, db) {
   return apiJson({ ok: true, invitation_url: origin + '/assessment?invite=' + token, expires_at: expires });
 }
 
+// Email is best-effort and must never delay or fail a candidate response.
+function scheduleNotifications(context, env, db) {
+  const task = notifyPendingResults(env, db).catch(() => {});
+  if (context && typeof context.waitUntil === 'function') context.waitUntil(task);
+}
+
 async function adminList(db) {
   // Lazy-finalise expired attempts, including abandoned browser tabs.
   const overdue = await db.prepare('SELECT id, status, expires_at_ms FROM attempts WHERE status=? AND expires_at_ms<=? LIMIT 50')
@@ -407,7 +414,11 @@ export async function onRequest(context) {
       if (deny) return deny;
       if (write && request.headers.get(HEADER) !== '1') return failure('Invalid admin request.', 403);
       if (operation === 'admin/session' && request.method === 'GET') return apiJson({ok:true,loggedIn:true});
-      if (operation === 'admin/list' && request.method === 'GET') return await adminList(db);
+      if (operation === 'admin/list' && request.method === 'GET') {
+        const list = await adminList(db);
+        scheduleNotifications(context, env, db);
+        return list;
+      }
       if (operation === 'admin/draft' && write) return await adminDraft(request,db);
       if (segments.length===3 && segments[1]==='draft' && request.method==='GET') return await adminReadDraft(db,segments[2]);
       if (operation === 'admin/publish' && write) return await adminPublish(request, db);
@@ -428,6 +439,7 @@ export async function onRequest(context) {
     }
 
     const status = await closeAttempt(db, attempt, Date.now(), null);
+    if (status !== 'active') scheduleNotifications(context, env, db);
     if (operation === 'me' && request.method === 'GET') {
       return apiJson({ ok: true, ...attemptView({ ...await candidateAttempt(request,db), status }) });
     }
@@ -435,7 +447,9 @@ export async function onRequest(context) {
     if (status !== 'active') return operation === 'submit' ? apiJson({ok:true,status,server_now_ms:Date.now()}) : failure('Your assessment has closed. Your saved answers have been retained.', 409);
 
     const data = await requestJson(request);
-    return await saveProgress(db, attempt, data, operation === 'submit');
+    const response = await saveProgress(db, attempt, data, operation === 'submit');
+    if (operation === 'submit') scheduleNotifications(context, env, db);
+    return response;
   } catch (error) {
     return errorResponse(error);
   }
