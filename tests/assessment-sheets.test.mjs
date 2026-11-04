@@ -86,3 +86,11 @@ test('cross-sheet SUMIF with a cell criterion (typed criterion from another shee
   assert.equal(calculateCell(cells, 'Recon!C1'), '0');
   assert.equal(calculateCell(cells, 'Recon!C2'), '1');
 });
+
+test('repeated text doubling is bounded and returns an error instead of exhausting memory', () => {
+  const cells = { A1: 'x' };
+  for (let r = 2; r <= 21; r++) cells['A' + r] = `=A${r - 1}&A${r - 1}`;
+  const value = calculateCell(cells, 'A21');
+  assert.ok(value.startsWith('#'), 'doubling beyond the bound must be an error');
+  assert.ok(calculateCell(cells, 'A8').length <= 2000);
+});

@@ -84,3 +84,47 @@ test('missing configuration does not consume the retry budget', async () => {
   assert.equal(row.notify_attempts, 0);
   assert.equal(row.notify_status, 'not_configured');
 });
+
+import { cleanWorkbook } from '../functions/lib/assessment-core.js';
+import { gradeBattery, validateBattery } from '../functions/lib/battery.js';
+import { SYNTHETIC_BATTERY, SYNTHETIC_BATTERY_KEY } from './fixtures/synthetic-battery.mjs';
+
+test('a full 10x13 paste is accepted, and cleared cells are kept so they override pre-filled values', () => {
+  const cells = {};
+  for (const col of 'ABCDEFGHIJ') for (let r = 1; r <= 13; r++) cells[col + r] = `${col}${r}`;
+  cells.J13 = '';
+  const saved = cleanWorkbook(cells);
+  assert.equal(Object.keys(saved).length, 130);
+  assert.equal(saved.A1, 'A1');
+  assert.equal(saved.J13, '');
+});
+
+test('a battery result email shows categories and item review, never v1 zero fields', async () => {
+  const db = database();
+  const now = new Date().toISOString();
+  const v = validateBattery({ question_payload: structuredClone(SYNTHETIC_BATTERY), scoring_key: structuredClone(SYNTHETIC_BATTERY_KEY) });
+  const answers = {
+    mcq: { k1: 'o1', r3: 'o1' },
+    structured: { text: { k2: 'synthetic' }, multi: { k3: ['o1', 'o3'] } },
+    workbook: { B12: '=SUM(B2:B4)', B13: '=COUNTIF(C2:C4,"OPEN")' },
+  };
+  const graded = gradeBattery({ payload: v.question_payload, key: v.scoring_key }, answers);
+  db.sqlite.prepare('INSERT INTO assessment_definitions (id,slug,client_name,title,duration_seconds,current_version_id,status,created_at,updated_at) VALUES (?,?,?,?,600,?,?,?,?)').run('d1', 'battery-mail', 'Client', 'Battery mail', 'v1', 'published', now, now);
+  db.sqlite.prepare('INSERT INTO assessment_versions (id,definition_id,version_label,question_payload_json,scoring_key_json,scoring_engine_version,created_at) VALUES (?,?,?,?,?,?,?)').run('v1', 'd1', 'v1', JSON.stringify(v.question_payload), JSON.stringify(v.scoring_key), v.engine, now);
+  db.sqlite.prepare('INSERT INTO candidates (id,first_name,surname,email,privacy_notice_version,consent_recorded_at,created_at) VALUES (?,?,?,?,?,?,?)').run('c1', 'Synthetic', 'Battery', 'battery@example.invalid', 'assessment-v1', now, now);
+  db.sqlite.prepare('INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,created_at) VALUES (?,?,?,?,?,?,?)').run('i1', 'd1', 'h'.repeat(64), 'redeemed', now, now, now);
+  db.sqlite.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,mcq_answers_json,structured_answers_json,workbook_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run('a1', 'i1', 'c1', 'd1', 'v1', 's'.repeat(64), 'completed', 1, 600001, JSON.stringify(answers.mcq), JSON.stringify(answers.structured), JSON.stringify(answers.workbook), now, now);
+  db.sqlite.prepare('INSERT INTO results (id,attempt_id,scoring_version,overall_score,knowledge_score,reconciliation_score,breakdown_json,critical_flags_json,interpretation,graded_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run('r1', 'a1', v.engine, graded.overall_score, graded.knowledge_score, graded.reconciliation_score, JSON.stringify(graded.breakdown), JSON.stringify(graded.critical_flags), graded.interpretation, now);
+  const env = { RESEND_API_KEY: 'k', ASSESSMENT_FROM_EMAIL: 'from@example.invalid', ASSESSMENT_RESULTS_TO: 'christo@talenttree.co.za' };
+  let body = '';
+  await notifyPendingResults(env, db, async (_url, init) => { body = JSON.parse(init.body).html; return new Response('{}', { status: 200 }); });
+  assert.match(body, /Knowledge: 6 \/ 6 points/);
+  assert.match(body, /Practical work \(workbook and reconciliation\): 8 \/ 8 points/);
+  assert.match(body, /Items correct: 6 of 6/);
+  assert.match(body, /Synthetic question one/);
+  assert.match(body, /Item review/);
+  assert.doesNotMatch(body, /Discrepancies identified/);
+  assert.doesNotMatch(body, /Knowledge questions/);
+});

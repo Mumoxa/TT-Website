@@ -210,7 +210,8 @@ export function cleanSubmission(payload, questions) {
 // Only editable numeric/text/formula cells from the Reconciliation tab are stored.
 // Source sheets are rebuilt from the assessment version on every page load.
 export function cleanWorkbook(cells, readOnly = new Set()) {
-  if (!object(cells) || Object.keys(cells).length > 120) throw new AssessmentInputError('Invalid workbook cells.');
+  // Capacity is the editor grid (10 columns x 40 rows).
+  if (!object(cells) || Object.keys(cells).length > 400) throw new AssessmentInputError('Invalid workbook cells.');
   const safe = {};
   for (const [ref, raw] of Object.entries(cells)) {
     if (!CELL_REF.test(ref)) throw new AssessmentInputError('Invalid workbook cell.');
@@ -218,6 +219,7 @@ export function cleanWorkbook(cells, readOnly = new Set()) {
     if (typeof raw !== 'string' && typeof raw !== 'number') throw new AssessmentInputError('Invalid cell value.');
     const value = String(raw);
     if (value.length > 200) throw new AssessmentInputError('Cell content is too long.');
+    // Empty values are kept: a cleared cell must override the client's pre-filled source value.
     // Leading equals are supported by the client spreadsheet, but are DATA, never eval'd by server.
     safe[ref] = value;
   }

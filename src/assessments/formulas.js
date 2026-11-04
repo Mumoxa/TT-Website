@@ -16,6 +16,7 @@ export const CELL_REF = /^[A-J](?:[1-9]|[1-3][0-9]|40)$/;
 export const QUALIFIED_REF = /^(?:[A-Za-z][A-Za-z0-9_]{0,15}!)?[A-J](?:[1-9]|[1-3][0-9]|40)$/;
 const MAX_TOKENS = 400;
 const MAX_RANGE_CELLS = 400;
+const MAX_TEXT_LENGTH = 2000;
 const MAX_DEPTH = 60;
 const FUNCTIONS = new Set(['SUM', 'ABS', 'MIN', 'MAX', 'ROUND', 'SUMIF', 'COUNTIF', 'IF', 'IFERROR', 'VLOOKUP', 'INDEX', 'MATCH']);
 
@@ -332,7 +333,12 @@ function evaluateNode(node, env, sheet) {
         case '-': return toNumber(a) - toNumber(b);
         case '*': return toNumber(a) * toNumber(b);
         case '/': { const d = toNumber(b); if (d === 0) throw new Error('#DIV/0!'); return toNumber(a) / d; }
-        case '&': return toText(a) + toText(b);
+        case '&': {
+          // Bound text growth: repeated doubling would otherwise exhaust memory during grading.
+          const joined = toText(a) + toText(b);
+          if (joined.length > MAX_TEXT_LENGTH) throw new Error('#VALUE!');
+          return joined;
+        }
         case '=': return equalValues(a, b);
         case '<>': return !equalValues(a, b);
         case '<': return compareValues(a, b) < 0;

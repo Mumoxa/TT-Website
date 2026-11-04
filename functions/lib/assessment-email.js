@@ -4,7 +4,11 @@
      RESEND_API_KEY          secret
      ASSESSMENT_FROM_EMAIL   sender on a domain verified with the provider
      ASSESSMENT_RESULTS_TO   recipient (set in wrangler.toml [vars])
-   Candidate-supplied values are escaped before being placed in HTML. */
+   Candidate-supplied values are escaped before being placed in HTML.
+   v1 results (five MCQs + discrepancy rubric) and battery-v2 results use different breakdowns;
+   each is rendered from its own structure, never from the other's fields. */
+
+import { BATTERY_FORMAT, gradeBattery, isBatteryPayload } from './battery.js';
 
 const MAX_RETRIES = 5;
 const RESEND_URL = 'https://api.resend.com/emails';
@@ -16,14 +20,15 @@ const safeParse = (str, fallback) => {
   try { return JSON.parse(str); } catch { return fallback; }
 };
 
-export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt }) {
-  const name = `${candidate.first_name} ${candidate.surname}`.trim();
-  const flags = result.critical_flags || [];
-  const b = result.breakdown || {};
-  const verdict = flags.length ? 'Review flags' : 'No critical flags';
-  const subject = `[Assessment] ${title} — ${name}: ${result.overall_score}/100`;
+const TABLE_HEAD = `<tr>
+  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">#</th>
+  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Question</th>
+  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Candidate answer</th>
+  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Correct answer</th>
+  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Result</th></tr>`;
 
-  const mcqRows = mcqReview.map((q, i) => `
+function itemRows(mcqReview) {
+  return mcqReview.map((q, i) => `
     <tr>
       <td style="padding:6px;border-bottom:1px solid #ddd">${i + 1}</td>
       <td style="padding:6px;border-bottom:1px solid #ddd">${escapeHtml(q.prompt)}</td>
@@ -31,6 +36,38 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
       <td style="padding:6px;border-bottom:1px solid #ddd">${escapeHtml(q.expected)}</td>
       <td style="padding:6px;border-bottom:1px solid #ddd">${q.correct ? 'Correct' : 'Incorrect'}</td>
     </tr>`).join('');
+}
+
+/* Battery-v2 breakdown: categories and sections, as stored at grading time. */
+function batteryScoringHtml(breakdown) {
+  const c = breakdown.categories || {};
+  const line = (label, x) => (x ? `<li>${escapeHtml(label)}: ${escapeHtml(x.earned)} / ${escapeHtml(x.max)} points (${escapeHtml(x.percent)}%)</li>` : '');
+  const sections = (breakdown.sections || []).map((s) =>
+    `<li>${escapeHtml(s.title)}: ${escapeHtml(s.earned)} / ${escapeHtml(s.max)} (${escapeHtml(s.percent)}%)</li>`).join('');
+  return `<h3 style="margin:20px 0 6px">Scoring</h3>
+  <ul>${line('Knowledge', c.knowledge)}${line('Practical work (workbook and reconciliation)', c.reconciliation)}${sections}</ul>
+  <p>Items correct: ${escapeHtml(breakdown.items_correct ?? 0)} of ${escapeHtml(breakdown.items_total ?? 0)}</p>`;
+}
+
+/* v1 breakdown: discrepancy identification, corrective actions and the corrected balance. */
+function v1ScoringHtml(b) {
+  return `<h3 style="margin:20px 0 6px">Reconciliation scoring</h3>
+  <ul>
+    <li>Discrepancies identified: ${escapeHtml(b.identified ?? 0)} (points ${escapeHtml(b.identification_points ?? 0)})</li>
+    <li>Incorrect selections: ${escapeHtml(b.incorrect_selections ?? 0)}</li>
+    <li>Corrective action points: ${escapeHtml(b.action_points ?? 0)}</li>
+    <li>Corrected balance points: ${escapeHtml(b.balance_points ?? 0)}</li>
+  </ul>`;
+}
+
+export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false }) {
+  const name = `${candidate.first_name} ${candidate.surname}`.trim();
+  const flags = result.critical_flags || [];
+  const b = result.breakdown || {};
+  const verdict = flags.length ? 'Review flags' : 'No critical flags';
+  const subject = `[Assessment] ${title} — ${name}: ${result.overall_score}/100`;
+  const scoring = isBattery || b.categories ? batteryScoringHtml(b) : v1ScoringHtml(b);
+  const reviewTitle = isBattery || b.categories ? 'Item review' : 'Knowledge questions';
 
   const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1d2b3a">
   <h2 style="margin:0 0 4px">${escapeHtml(title)}</h2>
@@ -40,22 +77,9 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
     (knowledge ${escapeHtml(result.knowledge_score)} / 40, reconciliation ${escapeHtml(result.reconciliation_score)} / 60)</p>
   <p><strong>Flags:</strong> ${escapeHtml(verdict)}${flags.length ? ': ' + flags.map(escapeHtml).join('; ') : ''}</p>
   <p><strong>Interpretation:</strong> ${escapeHtml(result.interpretation)}</p>
-  <h3 style="margin:20px 0 6px">Knowledge questions</h3>
-  <table style="border-collapse:collapse;width:100%;font-size:13px">
-    <tr><th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">#</th>
-        <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Question</th>
-        <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Candidate answer</th>
-        <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Correct answer</th>
-        <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Result</th></tr>
-    ${mcqRows}
-  </table>
-  <h3 style="margin:20px 0 6px">Reconciliation scoring</h3>
-  <ul>
-    <li>Discrepancies identified: ${escapeHtml(b.identified ?? 0)} (points ${escapeHtml(b.identification_points ?? 0)})</li>
-    <li>Incorrect selections: ${escapeHtml(b.incorrect_selections ?? 0)}</li>
-    <li>Corrective action points: ${escapeHtml(b.action_points ?? 0)}</li>
-    <li>Corrected balance points: ${escapeHtml(b.balance_points ?? 0)}</li>
-  </ul>
+  <h3 style="margin:20px 0 6px">${reviewTitle}</h3>
+  <table style="border-collapse:collapse;width:100%;font-size:13px">${TABLE_HEAD}${itemRows(mcqReview)}</table>
+  ${scoring}
   <p style="color:#5b6876;font-size:12px">Draft assessment content. Scores are not validated against job performance. Full detail, including the saved workbook, is in the admin platform at /admin/assessments.</p>
   </body></html>`;
 
@@ -90,10 +114,11 @@ export async function sendResultEmail(env, message, fetchImpl = fetch) {
   return response.ok ? { ok: true } : { ok: false, reason: `http_${response.status}` };
 }
 
-/* Loads everything the email needs for one attempt. Candidate answers come from D1. */
+/* Loads everything the email needs for one attempt. Battery items are regraded from the stored
+   answers with the same pure function the API uses, so the email matches the saved result. */
 async function loadResultForEmail(db, attemptId) {
   const row = await db.prepare(
-    'SELECT a.id, a.status, a.mcq_answers_json, c.first_name, c.surname, c.email, d.client_name, d.title, ' +
+    'SELECT a.id, a.status, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, d.client_name, d.title, ' +
     'v.question_payload_json, v.scoring_key_json, r.overall_score, r.knowledge_score, r.reconciliation_score, ' +
     'r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
@@ -103,22 +128,40 @@ async function loadResultForEmail(db, attemptId) {
   const payload = safeParse(row.question_payload_json, {});
   const key = safeParse(row.scoring_key_json, {});
   const chosen = safeParse(row.mcq_answers_json, {});
-  const mcqReview = (payload.questions || []).map((q) => {
-    const chosenId = chosen[q.id] || null;
-    const expectedId = key.mcq?.[q.id] || null;
-    return {
-      prompt: q.prompt,
-      chosen: q.options.find((o) => o.id === chosenId)?.text || 'Not answered',
-      expected: q.options.find((o) => o.id === expectedId)?.text || 'Not available',
-      correct: chosenId !== null && chosenId === expectedId,
-    };
-  });
+  const isBattery = isBatteryPayload(payload);
+
+  let mcqReview;
+  if (isBattery) {
+    const graded = gradeBattery(
+      { payload, key },
+      { mcq: chosen, structured: safeParse(row.structured_answers_json, {}), workbook: safeParse(row.workbook_json, {}) }
+    );
+    mcqReview = graded.items.map((i) => ({
+      prompt: `${i.section}: ${i.prompt}`,
+      chosen: i.given ?? 'Not answered',
+      expected: i.correctAnswer,
+      correct: i.correct === true,
+    }));
+  } else {
+    mcqReview = (payload.questions || []).map((q) => {
+      const chosenId = chosen[q.id] || null;
+      const expectedId = key.mcq?.[q.id] || null;
+      return {
+        prompt: q.prompt,
+        chosen: q.options.find((o) => o.id === chosenId)?.text || 'Not answered',
+        expected: q.options.find((o) => o.id === expectedId)?.text || 'Not available',
+        correct: chosenId !== null && chosenId === expectedId,
+      };
+    });
+  }
+
   return {
     candidate: { first_name: row.first_name, surname: row.surname, email: row.email },
     title: payload._metadata?.title || row.title,
     clientName: payload._metadata?.client_name || row.client_name,
     status: row.status,
     gradedAt: row.graded_at,
+    isBattery,
     result: {
       overall_score: row.overall_score,
       knowledge_score: row.knowledge_score,
