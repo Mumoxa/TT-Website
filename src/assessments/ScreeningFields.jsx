@@ -15,7 +15,6 @@ export default function ScreeningFields({value,onChange}) {
     <p className="tta-form-note">Choose a weekday from tomorrow to 90 days from today.</p>
     <label className="tta-consent"><input type="checkbox" required checked={value.first_day_confirmed} onChange={field('first_day_confirmed')} /><span>I confirm this is the first day I can start.</span></label>
     <label htmlFor="tta-travel">How will you travel to the site?</label>
-    <p className="tta-form-note">A quarry at the back of Durbanville, between Durbanville and Table View, in a remote area.</p>
     <select id="tta-travel" required value={value.travel_mode} onChange={field('travel_mode')}>
       <option value="">Choose travel mode</option><option value="own_vehicle">Own vehicle</option><option value="lift">Lift from someone</option><option value="public_transport">Public transport</option><option value="other">Other</option>
     </select>

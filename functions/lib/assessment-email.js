@@ -6,7 +6,9 @@
      ASSESSMENT_RESULTS_TO   recipient (set in wrangler.toml [vars])
    Candidate-supplied values are escaped before being placed in HTML.
    v1 results (five MCQs + discrepancy rubric) and battery-v2 results use different breakdowns;
-   each is rendered from its own structure, never from the other's fields. */
+   each is rendered from its own structure, never from the other's fields.
+   The HTML is built for email clients: nested tables, inline styles, no scripts, no external
+   images. Colours and type follow the Talent Tree tokens in src/styles.css (DESIGN.md). */
 
 import {publicScreening} from './candidate-privacy.js';
 import {assessmentBrandText} from './assessment-core.js';
@@ -22,74 +24,177 @@ const safeParse = (str, fallback) => {
   try { return JSON.parse(str); } catch { return fallback; }
 };
 
-const TABLE_HEAD = `<tr>
-  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">#</th>
-  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Question</th>
-  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Candidate answer</th>
-  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Correct answer</th>
-  <th align="left" style="padding:6px;border-bottom:2px solid #1d2b3a">Result</th></tr>`;
+/* Design tokens (mirrors src/styles.css). Email clients ignore CSS variables, so values are literal. */
+const C = {
+  inkDeep: '#071f2d', ink: '#0e2a3a', muted: '#4f6b7a', mutedOnDark: '#a9c4d2',
+  paper: '#f4f1ea', paperSoft: '#fbf9f4', accent: '#006da3', accentDeep: '#00567e',
+  accentBright: '#5ab9e8', accentSoft: '#d9eaf3', line: '#d8e0e5', track: '#e6ecf0',
+  warn: '#b3261e', warnSoft: '#fdf0ee',
+};
+const SERIF = "Fraunces,Georgia,'Times New Roman',serif";
+const SANS = "Inter,Arial,Helvetica,sans-serif";
 
-function itemRows(mcqReview) {
-  return mcqReview.map((q, i) => `
-    <tr>
-      <td style="padding:6px;border-bottom:1px solid #ddd">${i + 1}</td>
-      <td style="padding:6px;border-bottom:1px solid #ddd">${escapeHtml(q.prompt)}</td>
-      <td style="padding:6px;border-bottom:1px solid #ddd">${escapeHtml(q.chosen)}</td>
-      <td style="padding:6px;border-bottom:1px solid #ddd">${escapeHtml(q.expected)}</td>
-      <td style="padding:6px;border-bottom:1px solid #ddd">${q.correct ? 'Correct' : 'Incorrect'}</td>
-    </tr>`).join('');
+/* Percentage of a maximum, clamped to 0–100. Used when the breakdown does not supply one. */
+const percentOf = (value, max) => {
+  const n = Number(value), m = Number(max);
+  if (!Number.isFinite(n) || !Number.isFinite(m) || m <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((n / m) * 100)));
+};
+
+/* Horizontal meter built from two table cells, so it renders in clients that drop CSS width. */
+function meter(percent) {
+  const p = Math.max(0, Math.min(100, Number(percent) || 0));
+  const filled = p > 0 ? `<td width="${p}%" style="height:8px;background:${C.accent};font-size:0;line-height:0;">&nbsp;</td>` : '';
+  const empty = p < 100 ? `<td style="height:8px;background:${C.track};font-size:0;line-height:0;">&nbsp;</td>` : '';
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:8px;"><tr>${filled}${empty}</tr></table>`;
 }
 
-/* Battery-v2 breakdown: categories and sections, as stored at grading time. */
+/* Status label. Only fixed strings are passed in, never candidate text. */
+function pill(text, tone = 'ok') {
+  const [background, color] = tone === 'warn' ? [C.warnSoft, C.warn] : [C.accentSoft, C.inkDeep];
+  return `<span style="display:inline-block;padding:4px 9px;background:${background};color:${color};font:700 11px/1.2 ${SANS};letter-spacing:0.6px;text-transform:uppercase;border-radius:2px;">${text}</span>`;
+}
+
+function sectionHeading(text) {
+  return `<h2 style="margin:30px 0 12px;padding-bottom:8px;border-bottom:1px solid ${C.line};font:700 11px/1.4 ${SANS};letter-spacing:1.6px;text-transform:uppercase;color:${C.accentDeep};">${text}</h2>`;
+}
+
+/* One labelled score line with its meter. The label is escaped by the caller when it carries data. */
+function scoreLine(label, percent, detail = '') {
+  return `<div style="margin:0 0 16px;">
+    <div style="font:14px/1.4 ${SANS};color:${C.ink};">${label}<span style="float:right;font:600 14px/1.4 ${SANS};color:${C.inkDeep};font-variant-numeric:tabular-nums;">${detail}${percent}%</span></div>
+    ${meter(percent)}
+  </div>`;
+}
+
+/* Two-column label/value row for candidate and screening details. */
+function detailRow(label, value) {
+  return `<tr>
+    <td width="210" valign="top" style="padding:8px 14px 8px 0;border-bottom:1px solid ${C.line};font:600 13px/1.4 ${SANS};color:${C.muted};">${escapeHtml(label)}</td>
+    <td valign="top" style="padding:8px 0;border-bottom:1px solid ${C.line};font:14px/1.45 ${SANS};color:${C.ink};">${escapeHtml(value)}</td>
+  </tr>`;
+}
+
+/* Headline: the overall score, the two category meters, and the flag status.
+   Stacked on purpose: a side-by-side layout squeezes the meters on phones. */
+function scoreHero(result) {
+  const total = Number(result.overall_score) || 0;
+  const flags = result.critical_flags || [];
+  const flagLine = flags.length
+    ? `<div style="margin-top:16px;">${pill('Review flags', 'warn')}<div style="margin-top:8px;font:13px/1.5 ${SANS};color:${C.warn};">${flags.map(escapeHtml).join('; ')}</div></div>`
+    : `<div style="margin-top:16px;">${pill('No critical flags')}</div>`;
+  return `<div style="font:700 11px/1.2 ${SANS};letter-spacing:1.6px;text-transform:uppercase;color:${C.muted};">Overall score</div>
+    <div style="margin-top:6px;font:500 72px/1 ${SERIF};color:${C.inkDeep};font-variant-numeric:tabular-nums;">${escapeHtml(total)}</div>
+    <div style="margin-top:8px;font:14px/1.4 ${SANS};color:${C.muted};">Total: ${escapeHtml(total)} / 100</div>
+    <div style="margin-top:22px;">
+      ${scoreLine('Knowledge', percentOf(result.knowledge_score, 40), escapeHtml(result.knowledge_score) + ' / 40 · ')}
+      ${scoreLine('Practical reconciliation', percentOf(result.reconciliation_score, 60), escapeHtml(result.reconciliation_score) + ' / 60 · ')}
+    </div>
+    ${flagLine}`;
+}
+
+/* Screening values as readable text. Codes come from the candidate form; anything unexpected
+   is shown as recorded, never guessed. */
+const TRAVEL_LABELS = { own_vehicle: 'Own vehicle', lift: 'Lift from someone', public_transport: 'Public transport', other: 'Other' };
+const YES_NO = { yes: 'Yes', no: 'No' };
+const OPTIONAL_SCREENING = new Set(['travel_description', 'assignment_note']);
+function formatStartDate(iso) {
+  const date = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? String(iso) : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+function screeningValue(key, value) {
+  if (key === 'first_day_confirmed') return value ? 'Yes' : 'No';
+  if (key === 'travel_mode') return TRAVEL_LABELS[value] || value || 'Not recorded';
+  if (key === 'own_transport' || key === 'assignment_available') return YES_NO[value] || 'Not recorded';
+  if (key === 'earliest_start_date') return value ? formatStartDate(value) : 'Not recorded';
+  return value || 'Not recorded';
+}
+
+/* Battery-v2 scoring: category and section meters, using the stored breakdown. */
 function batteryScoringHtml(breakdown) {
   const c = breakdown.categories || {};
-  const line = (label, x) => (x ? `<li>${escapeHtml(label)}: ${escapeHtml(x.earned)} / ${escapeHtml(x.max)} points (${escapeHtml(x.percent)}%)</li>` : '');
-  const sections = (breakdown.sections || []).map((s) =>
-    `<li>${escapeHtml(s.title)}: ${escapeHtml(s.earned)} / ${escapeHtml(s.max)} (${escapeHtml(s.percent)}%)</li>`).join('');
-  return `<h3 style="margin:20px 0 6px">Scoring</h3>
-  <ul>${line('Knowledge', c.knowledge)}${line('Practical work (workbook and reconciliation)', c.reconciliation)}${sections}</ul>
-  <p>Items correct: ${escapeHtml(breakdown.items_correct ?? 0)} of ${escapeHtml(breakdown.items_total ?? 0)}</p>`;
+  const lines = [];
+  lines.push(`<p style="margin:0 0 16px;font:13px/1.5 ${SANS};color:${C.muted};">The overall score adds knowledge (out of 40) and practical work (out of 60). The points below are the raw points each part earned.</p>`);
+  if (c.knowledge) lines.push(scoreLine(escapeHtml(`Knowledge: ${c.knowledge.earned} / ${c.knowledge.max} points`), Number(c.knowledge.percent) || 0));
+  if (c.reconciliation) lines.push(scoreLine(escapeHtml(`Practical work (workbook and reconciliation): ${c.reconciliation.earned} / ${c.reconciliation.max} points`), Number(c.reconciliation.percent) || 0));
+  for (const s of breakdown.sections || []) {
+    lines.push(scoreLine(escapeHtml(`${s.title}: ${s.earned} / ${s.max}`), Number(s.percent) || 0));
+  }
+  return sectionHeading('Scoring')
+    + lines.join('')
+    + `<p style="margin:4px 0 0;font:14px/1.5 ${SANS};color:${C.ink};">Items correct: ${escapeHtml(breakdown.items_correct ?? 0)} of ${escapeHtml(breakdown.items_total ?? 0)}</p>`;
 }
 
 /* v1 breakdown: discrepancy identification, corrective actions and the corrected balance. */
 function v1ScoringHtml(b) {
-  return `<h3 style="margin:20px 0 6px">Reconciliation scoring</h3>
-  <ul>
-    <li>Discrepancies identified: ${escapeHtml(b.identified ?? 0)} (points ${escapeHtml(b.identification_points ?? 0)})</li>
-    <li>Incorrect selections: ${escapeHtml(b.incorrect_selections ?? 0)}</li>
-    <li>Corrective action points: ${escapeHtml(b.action_points ?? 0)}</li>
-    <li>Corrected balance points: ${escapeHtml(b.balance_points ?? 0)}</li>
-  </ul>`;
+  const rows = [
+    ['Discrepancies identified', `${b.identified ?? 0} (points ${b.identification_points ?? 0})`],
+    ['Incorrect selections', String(b.incorrect_selections ?? 0)],
+    ['Corrective action points', String(b.action_points ?? 0)],
+    ['Corrected balance points', String(b.balance_points ?? 0)],
+  ];
+  return sectionHeading('Reconciliation scoring')
+    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows.map(([l, v]) => detailRow(l, v)).join('')}</table>`;
+}
+
+/* Question-by-question review. Each question sits in one full-width block: the status label,
+   then the question, then what was given and what was correct. Nothing is squeezed into a column. */
+function itemReviewHtml(items) {
+  const rows = items.map((q, i) => `<tr>
+      <td valign="top" width="30" style="padding:16px 10px 16px 0;border-bottom:1px solid ${C.line};font:600 13px/1.4 ${SANS};color:${C.muted};font-variant-numeric:tabular-nums;">${i + 1}</td>
+      <td valign="top" style="padding:16px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};">
+        <div>${q.correct ? pill('Correct') : pill('Incorrect', 'warn')}</div>
+        <div style="margin-top:10px;font-weight:600;">${escapeHtml(q.prompt)}</div>
+        <div style="margin-top:8px;font:13px/1.5 ${SANS};color:${C.muted};">Given: ${escapeHtml(q.chosen)}</div>
+        <div style="font:13px/1.5 ${SANS};color:${C.muted};">Correct: ${escapeHtml(q.expected)}</div>
+      </td>
+    </tr>`).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
 }
 
 export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false, screening={}, attemptNumber=1 }) {
   const details=publicScreening(screening);
   const labels={contact_number_masked:'Contact number',id_number_masked:'South African ID number',earliest_start_date:'Earliest start date',first_day_confirmed:'First day confirmed',travel_mode:'Travel mode',travel_description:'Route description',own_transport:'Own transport',assignment_available:'Available for a 2-month assignment',assignment_note:'Availability note'};
-  const screeningRows=Object.entries(details).map(([key,value])=>[labels[key], typeof value==='boolean'?(value?'Yes':'No'):value||'Not recorded']);
-  const screeningHtml='<h3>Screening details</h3><ul>'+screeningRows.map(([label,value])=>'<li>'+escapeHtml(label)+': '+escapeHtml(value)+'</li>').join('')+'</ul>';
+  const screeningRows=Object.entries(details)
+    .filter(([key,value])=>!(OPTIONAL_SCREENING.has(key)&&!value))
+    .map(([key,value])=>[labels[key], screeningValue(key,value)]);
   const name = `${candidate.first_name} ${candidate.surname}`.trim();
   const flags = result.critical_flags || [];
   const b = result.breakdown || {};
   const verdict = flags.length ? 'Review flags' : 'No critical flags';
   const subject = `[Assessment] Attempt ${attemptNumber} — ${title} — ${name}: ${result.overall_score}/100`;
-  const scoring = isBattery || b.categories ? batteryScoringHtml(b) : v1ScoringHtml(b);
-  const reviewTitle = isBattery || b.categories ? 'Item review' : 'Knowledge questions';
+  const batteryStyle = isBattery || Boolean(b.categories);
+  const scoring = batteryStyle ? batteryScoringHtml(b) : v1ScoringHtml(b);
+  const reviewTitle = batteryStyle ? 'Item review' : 'Knowledge questions';
+  const preheader = `${name}: ${result.overall_score} out of 100 (attempt ${attemptNumber}). ${verdict}.`;
 
-  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1d2b3a">
-  <h2 style="margin:0 0 4px">${escapeHtml(title)}</h2>
-  <p style="margin:0 0 16px;color:#5b6876">Client: ${escapeHtml(clientName)} · Attempt status: ${escapeHtml(status)} · Graded: ${escapeHtml(gradedAt)}</p>
-  <p><strong>Attempt ${escapeHtml(attemptNumber)}</strong></p>
-  ${screeningHtml}
-  <p><strong>Candidate:</strong> ${escapeHtml(name)} &lt;${escapeHtml(candidate.email)}&gt;</p>
-  <p style="font-size:18px"><strong>Total: ${escapeHtml(result.overall_score)} / 100</strong>
-    (knowledge ${escapeHtml(result.knowledge_score)} / 40, reconciliation ${escapeHtml(result.reconciliation_score)} / 60)</p>
-  <p><strong>Flags:</strong> ${escapeHtml(verdict)}${flags.length ? ': ' + flags.map(escapeHtml).join('; ') : ''}</p>
-  <p><strong>Interpretation:</strong> ${escapeHtml(result.interpretation)}</p>
-  <h3 style="margin:20px 0 6px">${reviewTitle}</h3>
-  <table style="border-collapse:collapse;width:100%;font-size:13px">${TABLE_HEAD}${itemRows(mcqReview)}</table>
-  ${scoring}
-  <p style="color:#5b6876;font-size:12px">Draft assessment content. Scores are not validated against job performance. Full detail, including the saved workbook, is in the admin platform at /admin/assessments.</p>
-  </body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:${C.paper};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${escapeHtml(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.paper};"><tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+  <tr><td style="background:${C.inkDeep};padding:26px 32px 28px;border-radius:4px 4px 0 0;">
+    <div style="font:500 20px/1 ${SERIF};color:#ffffff;">Talent Tree</div>
+    <div style="margin-top:26px;font:700 11px/1.2 ${SANS};letter-spacing:1.8px;text-transform:uppercase;color:${C.accentBright};">Assessment result · Attempt ${escapeHtml(attemptNumber)}</div>
+    <h1 style="margin:10px 0 8px;font:500 28px/1.2 ${SERIF};color:#ffffff;">${escapeHtml(title)}</h1>
+    <div style="font:14px/1.6 ${SANS};color:${C.mutedOnDark};">${escapeHtml(clientName)} · Status: ${escapeHtml(status)} · Graded ${escapeHtml(gradedAt)}</div>
+  </td></tr>
+  <tr><td style="background:#ffffff;padding:30px 32px 28px;">
+    ${scoreHero(result)}
+    ${sectionHeading('Screening details')}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${detailRow('Candidate', name)}
+      ${detailRow('Email', candidate.email)}
+      ${screeningRows.map(([label, value]) => detailRow(label, value)).join('')}
+    </table>
+    ${scoring}
+    ${sectionHeading(reviewTitle)}
+    ${itemReviewHtml(mcqReview)}
+    <div style="margin-top:26px;padding:16px 18px;background:${C.paperSoft};border-left:3px solid ${C.accent};font:14px/1.6 ${SANS};color:${C.ink};"><strong>Interpretation.</strong> ${escapeHtml(result.interpretation)}</div>
+  </td></tr>
+  <tr><td style="padding:18px 32px 0;font:12px/1.6 ${SANS};color:${C.muted};">Scores are not validated against job performance. The full detail, including the saved workbook, is in the admin platform at /admin/assessments.</td></tr>
+</table></td></tr></table>
+</body></html>`;
 
   const text = [
     `Attempt ${attemptNumber}`,

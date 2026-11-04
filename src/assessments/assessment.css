@@ -112,7 +112,9 @@
 }
 
 .tta-catalog-card > div {min-width:0;}
-.tta-page :is(h1,h2,h3,legend,label,p) {overflow-wrap:anywhere;}
+/* Root cause of the vertical-text defect: `label` was here, so option labels (flex rows)
+   could shrink to one character wide. Labels keep normal word wrapping. */
+.tta-page :is(h1,h2,h3,legend,p) {overflow-wrap:anywhere;}
 
 /* Open assessment welcome, screening and candidate result summaries. */
 .tta-privacy-notice { margin-bottom: 28px; font-size: .9rem; line-height: 1.65; }
