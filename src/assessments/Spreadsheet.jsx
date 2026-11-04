@@ -1,0 +1,172 @@
+import React, { useMemo, useRef, useState } from 'react';
+import './spreadsheet.css';
+import {scenarioWorkingCells,editCell,pasteCells,workbookHistory} from './workbook.js';
+export {scenarioWorkingCells} from './workbook.js';
+import { COLS, ROWS, CELL_REF, calculateCell } from './formulas.js';
+
+/**
+ * Browser spreadsheet MVP: an editable 6 x 20 worksheet with a formula bar,
+ * cell references, arithmetic, SUM/ABS/MIN/MAX, clipboard paste, and arrow/Tab
+ * navigation. Source sheets are view-only. No eval() or remote spreadsheet API.
+ * This is an Excel-LIKE working area, not the Microsoft Excel application.
+ *
+ * The submitted snapshot includes only the working cells. The backend rebuilds
+ * all read-only scenario tables from the private assessment version.
+ */
+// Working copy is prefilled so candidates analyse rather than retype each source row.
+// The official statement and ledger tabs remain read-only and authoritative.
+
+const emptyGrid = () => ({});
+// Battery mode: `source` holds read-only cells shown on the same grid. Edits to those refs are
+// dropped before onChange, so the saved snapshot contains only candidate working cells.
+export function ReconciliationSpreadsheet({ scenario, source = null, cells = emptyGrid(), onChange, readOnly = false }) {
+  const [tab, setTab] = useState('work');
+  const sourceRefs = useMemo(() => new Set(source ? Object.keys(source) : []), [source]);
+  const withoutSource = (map) => Object.fromEntries(Object.entries(map).filter(([ref]) => !sourceRefs.has(ref)));
+  const [selected, setSelected] = useState('A1');
+  const [editing, setEditing] = useState(null);
+  const inputRefs = useRef({});
+  const history = useRef({past:[],present:null,future:[]});
+  const [,renderHistory] = useState(0);
+  const workingCells = useMemo(
+    () => (source ? { ...source, ...withoutSource(cells) } : { ...scenarioWorkingCells(scenario), ...cells }),
+    [scenario, cells, source] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const computed = useMemo(() => {
+    const out = {};
+    for (const col of COLS) for (let i = 1; i <= ROWS; i++) {
+      const ref = col + i;
+      out[ref] = calculateCell(workingCells, ref);
+    }
+    return out;
+  }, [workingCells]);
+
+  function commit(updated) {
+    if(readOnly)return;
+    history.current = workbookHistory({...history.current,present:workingCells},{type:'edit',cells:updated});
+    onChange?.(withoutSource(updated));
+    renderHistory(n=>n+1);
+  }
+  function travel(type) {
+    if(readOnly)return;
+    history.current=workbookHistory({...history.current,present:workingCells},{type});
+    onChange?.(withoutSource(history.current.present));
+    renderHistory(n=>n+1);
+  }
+  function update(ref,value) { if(!readOnly && !sourceRefs.has(ref))commit(editCell(workingCells,ref,value)); }
+
+  function navigate(ref, key) {
+    const col = COLS.indexOf(ref[0]), row = Number(ref.slice(1)) - 1;
+    const delta = key === 'ArrowRight' || key === 'Tab' ? [1, 0] :
+      key === 'ArrowLeft' ? [-1, 0] : key === 'ArrowUp' ? [0, -1] : [0, 1];
+    const newCol = Math.max(0, Math.min(COLS.length - 1, col + delta[0]));
+    const newRow = Math.max(0, Math.min(ROWS - 1, row + delta[1]));
+    const destination = COLS[newCol] + (newRow + 1);
+    setSelected(destination);
+    setEditing(null);
+    requestAnimationFrame(() => inputRefs.current[destination]?.focus());
+  }
+
+  function pasteRange(ref, value) {
+    const rows = value.replace(/\r/g, '').split('\n').filter((r, i, a) => i < a.length - 1 || r);
+    if (rows.length <= 1 && !value.includes('\t')) return false;
+    commit(pasteCells(workingCells,ref,value));
+    return true;
+  }
+
+  const current = String(workingCells[selected] ?? '');
+  return (
+    <section className="tta-sheet" aria-label="Live reconciliation spreadsheet" onKeyDown={e=>{
+      if(!readOnly && (e.ctrlKey||e.metaKey) && ['z','y'].includes(e.key.toLowerCase())) {
+        e.preventDefault();travel(e.key.toLowerCase()==='y'||e.shiftKey?'redo':'undo');
+      }
+    }}>
+      {!source && <div className="tta-sheet-tabs" role="tablist" aria-label="Workbook worksheets">
+        {[
+          ['supplier', 'Supplier statement'],
+          ['ledger', 'Company ledger'],
+          ['work', 'Your working'],
+        ].map(([key, label]) => (
+          <button type="button" role="tab" key={key} aria-selected={tab === key}
+            className={tab === key ? 'tta-sheet-active' : ''} onClick={() => setTab(key)}>{label}</button>
+        ))}
+      </div>}
+      {tab === 'work' || source ? (
+        <>
+          {!readOnly && <div className="tta-sheet-toolbar">
+            <button type="button" disabled={!history.current.past.length} onClick={()=>travel('undo')}>Undo</button>
+            <button type="button" disabled={!history.current.future.length} onClick={()=>travel('redo')}>Redo</button>
+          </div>}
+          <div className="tta-formula-bar">
+            <output className="tta-cell-address" aria-label="Selected cell">{selected}</output>
+            <span aria-hidden="true">fx</span>
+            <input aria-label={'Formula or value for ' + selected} value={current} disabled={readOnly}
+              onChange={(e) => update(selected, e.target.value)} placeholder="Type a value or formula, e.g. =SUM(B2:B8)" />
+          </div>
+          <div className="tta-grid-scroll">
+            <table className="tta-working-grid" aria-label="Editable reconciliation worksheet">
+              <thead><tr><th aria-label="Row" />{COLS.map((col) => <th scope="col" key={col}>{col}</th>)}</tr></thead>
+              <tbody>
+                {Array.from({ length: ROWS }, (_, row) => (
+                  <tr key={row}>
+                    <th scope="row">{row + 1}</th>
+                    {COLS.map((col) => {
+                      const ref = col + (row + 1);
+                      return <td key={ref} className={selected === ref ? 'tta-cell-selected' : ''}>
+                        <input ref={(el) => { inputRefs.current[ref] = el; }}
+                          aria-label={'Cell ' + ref}
+                          value={editing === ref ? String(workingCells[ref] ?? '') : computed[ref]}
+                          disabled={readOnly || sourceRefs.has(ref)}
+                          className={sourceRefs.has(ref) ? 'tta-source-cell' : undefined}
+                          onFocus={() => { setSelected(ref); setEditing(ref); }}
+                          onChange={(e) => update(ref, e.target.value)}
+                          onBlur={() => setEditing((prev) => prev === ref ? null : prev)}
+                          onCopy={e=>{
+                            if(!e.currentTarget.value.slice(e.currentTarget.selectionStart,e.currentTarget.selectionEnd)) {
+                              e.clipboardData.setData('text/plain',String(workingCells[ref]??''));e.preventDefault();
+                            }
+                          }}
+                          onPaste={(e) => {
+                            if (readOnly) return;
+                            const text = e.clipboardData.getData('text/plain');
+                            if (pasteRange(ref, text)) e.preventDefault();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Tab') {
+                              e.preventDefault(); navigate(ref, e.key === 'Tab' && e.shiftKey ? 'ArrowLeft' : e.key);
+                            } else if (['ArrowUp', 'ArrowDown'].includes(e.key) && e.currentTarget.selectionStart === 0) {
+                              e.preventDefault(); navigate(ref, e.key === 'Tab' && e.shiftKey ? 'ArrowLeft' : e.key);
+                            }
+                          }}
+                        />
+                      </td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="tta-sheet-help">{source ? 'Grey cells are read-only source records. Calculate in the empty cells, for example in column B rows 21 to 28.' : null}Live formulas: =A1+B1, =SUM(A1:A8), =ABS(A1-B1), =MIN(A1:B2). You can paste rows or columns from Excel. Undo/redo: Ctrl+Z / Ctrl+Shift+Z. Copy the active cell or selected text with Ctrl+C. Your working cells are saved automatically.</p>
+        </>
+      ) : (
+        <div className="tta-grid-scroll">
+          <table className="tta-source-grid">
+            <thead><tr><th>Reference</th><th>Description</th><th>Amount (R)</th></tr></thead>
+            <tbody>
+              {(tab === 'supplier' ? scenario?.supplier : scenario?.ledger)?.map((item, index) => (
+                <tr key={item.ref + '-' + index}>
+                  <td>{item.ref}</td><td>{item.description || 'Supplier transaction'}</td>
+                  <td>{Number(item.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr><th colSpan={2}>Closing balance</th>
+              <td>{(tab === 'supplier' ? scenario?.supplier : scenario?.ledger)?.reduce((sum, i) => sum + Number(i.amount), 0)
+                .toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr></tfoot>
+          </table>
+          <p className="tta-sheet-help">Source records are read-only. Use the Your working tab to calculate and investigate differences. The working sheet contains a prefilled copy of the source transactions.</p>
+        </div>
+      )}
+    </section>
+  );
+}

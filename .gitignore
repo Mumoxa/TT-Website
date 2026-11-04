@@ -12,3 +12,6 @@ coverage/
 
 # Python skill tooling
 __pycache__/
+
+# Local Claude Code settings (machine-specific, never committed)
+.claude/
