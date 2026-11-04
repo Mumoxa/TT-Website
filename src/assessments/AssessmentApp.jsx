@@ -1,45 +1,58 @@
 import React, { useEffect, useRef, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import './assessment.css';
+import {useAssessmentCatalog} from './catalog-client.js';
 
 /**
  * Assessment UI primitives only — do not expose the route to candidates until
  * the server-side timer, D1, workbook scoring and admin reporting are complete.
  * This imports the same actual 2026 logo and site-wide CSS tokens as the live site.
  */
-export function AssessmentFrame({ children, eyebrow = 'Candidate assessment', client = 'SATURC' }) {
+export function AssessmentFrame({ children, eyebrow = 'Candidate assessment', client = '', title = '', timer }) {
   return (
-    <div className="tta-page">
+    <div className={'tta-page' + (timer ? ' tta-page--runner' : '')}>
       <header className="tta-topbar">
         <div className="tta-shell tta-topbar-inner">
-          <a className="tta-brand" href="/" aria-label="Talent Tree Consulting — homepage">
+          <a className="tta-brand" href="/assessments" aria-label="Talent Tree assessments">
             <img className="tta-logo" src={talentTreeLogo} alt="Talent Tree Consulting" />
-            <span className="tta-brand-copy"><strong>Talent Tree</strong><small>Niche skills · Executive search</small></span>
+            <span>Talent Tree</span>
           </a>
-          <span className="tta-topbar-context">{eyebrow} <span aria-hidden="true">/</span> {client}</span>
+          <div className="tta-topbar-context"><span>{title || eyebrow}</span>{client && <small>{client}</small>}</div>
+          {timer}
         </div>
       </header>
       {children}
-      <footer className="tta-footer">
-        <div className="tta-shell tta-footer-inner">
-          <span>Talent Tree Consulting · Established 2013 · South Africa</span>
-          <a href="mailto:hello@talenttree.co.za">Need assistance?</a>
-        </div>
-      </footer>
     </div>
+  );
+}
+
+function AssessmentPrivacyNotice() {
+  return (
+    <details className="tta-privacy-details">
+              <summary>How your assessment information is used</summary>
+              <p>Talent Tree Consulting collects your name, surname, email address, answers, spreadsheet work and assessment results to assess your suitability for this recruitment assignment. The results may be shared with the hiring client. You can contact your Talent Tree recruiter about access, correction or deletion of your information.</p>
+              <p>Your recruiter must provide the applicable privacy notice and retention information before you start. Do not proceed if that information has not been provided.</p>
+            </details>
   );
 }
 
 const cleanName = (value) => value.trim().replace(/\s+/g, ' ');
 
 export function AssessmentWelcome({
-  client = 'SATURC',
-  assessmentTitle = 'Accounts Payable Competency Assessment',
+  client = '',
+  assessmentTitle = 'Assessment',
   durationMinutes = 10,
+  sectionTitles,
+  itemCount,
+  hasInvitation,
   onStart,
   isStarting = false,
   error = '',
 }) {
+  const catalogue = useAssessmentCatalog(!sectionTitles);
+  const matching = catalogue.assessments.find(item => item.title === assessmentTitle && item.client_name === client);
+  const sections = sectionTitles || matching?.section_titles || ['Technical knowledge', 'Practical reconciliation'];
+  const invited = hasInvitation ?? Boolean(onStart);
   const [firstName, setFirstName] = useState('');
   const [surname, setSurname] = useState('');
   const [email, setEmail] = useState('');
@@ -63,28 +76,32 @@ export function AssessmentWelcome({
       <main className="tta-shell tta-welcome-layout" id="main-content">
         <div className="tta-hero-copy">
           <div className="tta-kicker"><span className="tta-kicker-line" /> Talent Tree skills assessment</div>
-          <h1>Welcome to your <em>assessment.</em></h1>
-          <p className="tta-intro">
-            You have been selected to complete the {assessmentTitle} for <strong>{client}</strong>.
-            This short, practical exercise helps us understand how you work with supplier accounts and reconciliations.
-          </p>
-          <div className="tta-metrics" aria-label="Assessment information">
-            <div><strong>{durationMinutes}:00</strong><span>Minutes</span></div>
-            <div><strong>2</strong><span>Sections</span></div>
-            <div><strong>1</strong><span>Practical workbook</span></div>
-          </div>
+          <h1>{assessmentTitle}</h1>
+          {client && <p className="tta-client">{client}</p>}
+          <p className="tta-intro">A practical assessment of your skills. Read the instructions before you begin.</p>
+          <dl className="tta-metrics">
+            <div><dt>Duration</dt><dd>{durationMinutes} minutes</dd></div>
+            <div><dt>Sections</dt><dd>{sections.length}</dd></div>
+            {(itemCount ?? matching?.item_count) != null && <div><dt>Activities</dt><dd>{itemCount ?? matching.item_count}</dd></div>}
+          </dl>
           <div className="tta-instructions">
+            <h2>What you’ll complete</h2>
+            <ol>{sections.map((title, index) => <li key={index}>{title}</li>)}</ol>
             <h2>Before you begin</h2>
-            <ol>
-              <li>You will answer applied Accounts Payable questions and complete a live spreadsheet reconciliation.</li>
-              <li>The countdown begins only after you select <strong>Start assessment</strong>.</li>
-              <li>Work is saved as you go. When time expires, the assessment closes automatically.</li>
-              <li>Use a laptop or desktop computer where possible. Keep this page open and ensure your connection is stable.</li>
-            </ol>
+            <p>The timer starts only when you press <strong>Start</strong>. It cannot be paused and continues if you reload the page.</p>
+            <p>Your work is saved as you go. When time expires, the assessment closes automatically.</p>
+            <p>A desktop or laptop is recommended for the spreadsheet. Use a stable internet connection.</p>
           </div>
         </div>
+        {!invited ? <aside className="tta-registration tta-invitation-note">
+          <span className="tta-kicker">Invitation required</span>
+          <h2>Ready to begin?</h2>
+          <p role="status">Use the invitation link from your recruiter to begin.</p>
+          <a className="tta-text-link" href="/assessments">View assessments</a>
+          <AssessmentPrivacyNotice />
+        </aside> : (
         <section className="tta-registration" aria-labelledby="tta-register-heading">
-          <div className="tta-card-topline">Candidate registration <span>01 / 02</span></div>
+          <div className="tta-card-topline">Candidate details</div>
           <h2 id="tta-register-heading">Your details</h2>
           <p>Enter the information your Talent Tree recruiter will use to identify your assessment.</p>
           <form onSubmit={handleSubmit}>
@@ -100,11 +117,7 @@ export function AssessmentWelcome({
             <input id="tta-email" name="email" type="email" value={email}
               onChange={(e) => setEmail(e.target.value)} autoComplete="email"
               maxLength={254} required placeholder="you@example.com" />
-            <details className="tta-privacy-details">
-              <summary>How your assessment information is used</summary>
-              <p>Talent Tree Consulting collects your name, surname, email address, answers, spreadsheet work and assessment results to assess your suitability for this recruitment assignment. The results may be shared with the hiring client. You can contact your Talent Tree recruiter about access, correction or deletion of your information.</p>
-              <p>Your recruiter must provide the applicable privacy notice and retention information before you start. Do not proceed if that information has not been provided.</p>
-            </details>
+            <AssessmentPrivacyNotice />
             <label className="tta-consent">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               <span>I understand how my information will be used and confirm that I have received the applicable privacy notice from Talent Tree.</span>
@@ -115,7 +128,7 @@ export function AssessmentWelcome({
             </button>
             <p className="tta-form-note">The timer has not started. You cannot reset it once the assessment begins.</p>
           </form>
-        </section>
+        </section>)}
       </main>
     </AssessmentFrame>
   );
@@ -144,6 +157,15 @@ export function AssessmentTimer({ expiresAt, onExpired }) {
     return () => window.clearInterval(interval);
   }, [expiryMs]);
   const seconds = Math.ceil(remainingMs / 1000);
+  const [announcement, setAnnouncement] = useState('');
+  const lastMinute = useRef(null);
+  useEffect(() => {
+    const minute = Math.ceil(seconds / 60);
+    if (lastMinute.current !== null && minute < lastMinute.current && minute > 0) {
+      setAnnouncement(minute === 1 ? 'One minute remaining. This is the final minute.' : minute + ' minutes remaining.');
+    }
+    lastMinute.current = minute;
+  }, [seconds]);
   const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
   const secs = String(seconds % 60).padStart(2, '0');
   return (
@@ -151,13 +173,15 @@ export function AssessmentTimer({ expiresAt, onExpired }) {
       role="timer" aria-label={'Time remaining: ' + mins + ' minutes and ' + secs + ' seconds'}>
       <span className="tta-timer-label">Time remaining</span>
       <strong aria-hidden="true">{mins}:{secs}</strong>
+      <span className="tta-sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>
     </div>
   );
 }
 
 export function AssessmentRunnerLayout({
-  client = 'SATURC',
+  client = '',
   candidateName,
+  assessmentTitle = 'Assessment',
   sectionLabel,
   sectionNumber = 1,
   totalSections = 2,
@@ -167,13 +191,12 @@ export function AssessmentRunnerLayout({
   children,
 }) {
   return (
-    <AssessmentFrame client={client} eyebrow="Live assessment">
+    <AssessmentFrame client={client} title={assessmentTitle} eyebrow="Live assessment" timer={<AssessmentTimer expiresAt={expiresAt} onExpired={onExpired} />}>
       <main className="tta-shell tta-run-layout" id="main-content">
         <aside className="tta-run-meta" aria-label="Assessment progress">
-          <span className="tta-kicker">Accounts Payable</span>
-          <h1>Competency <em>assessment.</em></h1>
+          <span className="tta-kicker">In progress</span>
+          <h1>{assessmentTitle}</h1>
           <p>{candidateName}</p>
-          <AssessmentTimer expiresAt={expiresAt} onExpired={onExpired} />
           <div className="tta-run-progress">
             <span>{sectionLabel}</span>
             <strong>Section {sectionNumber} of {totalSections}</strong>
@@ -189,7 +212,7 @@ export function AssessmentRunnerLayout({
   );
 }
 
-export function AssessmentComplete({ client = 'SATURC', timedOut = false, candidateName }) {
+export function AssessmentComplete({ client = '', timedOut = false, candidateName }) {
   return (
     <AssessmentFrame client={client} eyebrow="Assessment submitted">
       <main className="tta-shell tta-complete" id="main-content">

@@ -29,7 +29,7 @@ function AdminHeader() {
     <div className="tta-admin-shell tta-admin-head-inner">
       <a href="/" className="tta-admin-brand" aria-label="Talent Tree homepage">
         <img src={talentTreeLogo} alt="Talent Tree Consulting" />
-        <span><strong>Talent Tree</strong><small>Assessment intelligence</small></span>
+        <span><strong>Talent Tree</strong><small>Assessments</small></span>
       </a>
       <span className="tta-admin-private">Private recruitment workspace</span>
     </div>
@@ -255,15 +255,15 @@ function Workspace({ onExpired }) {
         <input aria-label="Search assessment results" placeholder="Search candidate, email or client…"
           value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <div className="tta-admin-table-scroll"><table className="tta-admin-table">
-        <thead><tr><th>Candidate</th><th>Assessment</th><th>Started</th><th>Status</th><th>Overall</th><th>Recon</th><th>Report</th></tr></thead>
+      <div className="tta-admin-table-scroll"><table className="tta-admin-table tta-results-table">
+        <thead><tr><th>Candidate</th><th>Status</th><th>Score</th><th>Started</th><th>Report</th></tr></thead>
         <tbody>{visible.length ? visible.map((a) => <tr key={a.id}>
           <td><strong>{a.first_name} {a.surname}</strong><small>{a.email}</small></td>
-          <td>{a.client_name}<small>{a.title}</small></td>
-          <td>{formattedTime(a.started_at_ms)}</td><td>{a.status}</td>
-          <td>{a.overall_score ?? '—'}</td><td>{a.reconciliation_score ?? '—'}</td>
+          <td><span className="tta-mobile-label" aria-hidden="true">Status</span>{a.status}</td>
+          <td><span className="tta-mobile-label" aria-hidden="true">Score</span>{a.overall_score ?? '—'}</td>
+          <td><span className="tta-mobile-label" aria-hidden="true">Started</span>{formattedTime(a.started_at_ms)}</td>
           <td><button disabled={busy} className="tta-admin-textbutton" onClick={() => openReport(a.id)}>View</button></td>
-        </tr>) : <tr><td colSpan={7}>No candidate attempts found.</td></tr>}</tbody>
+        </tr>) : <tr><td colSpan={5}>No candidate attempts found.</td></tr>}</tbody>
       </table></div>
     </section>}
     {tab === 'invitations' && <section className="tta-admin-panel">

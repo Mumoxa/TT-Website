@@ -24,6 +24,7 @@ const ProfileApp = lazy(() => import('./profile/ProfileApp.jsx'));
 const FinanceApp = lazy(() => import('./profile/finance/FinanceApp.jsx'));
 const DownloadsApp = lazy(() => import('./downloads/DownloadsApp.jsx'));
 // Talent Tree Assessments — lazy modules preserve the marketing site's bundle size.
+const AssessmentCatalog = lazy(() => import('./assessments/AssessmentCatalog.jsx'));
 const CandidateAssessment = lazy(() => import('./assessments/CandidateAssessment.jsx'));
 const AssessmentAdmin = lazy(() => import('./assessments/AssessmentAdmin.jsx'));
 
@@ -601,6 +602,8 @@ function Root() {
   if (path === '/profile/finance') return withFallback(<FinanceApp />);
   if (path === '/profile') return withFallback(<ProfileApp />);
   if (path === '/downloads') return withFallback(<DownloadsApp />);
+  if (path === '/assessments') return withFallback(<AssessmentCatalog />);
+  if (path.startsWith('/assessments/')) return withFallback(<AssessmentCatalog slug={path.slice('/assessments/'.length)} />);
   if (path === '/assessment' || path.startsWith('/assessment/')) return withFallback(<CandidateAssessment />);
   // Must precede existing generic /admin catchall.
   if (path === '/admin/assessments') return withFallback(<AssessmentAdmin />);
