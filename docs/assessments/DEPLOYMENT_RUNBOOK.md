@@ -168,3 +168,11 @@ Real assessment content and marking keys must not be committed to this public re
   - Only one SPF TXT record may exist per name. The `send` name is new, so this is safe.
 - **Local browser tests:** the five Playwright tests in `tests/browser/assessment.spec.mjs` pass against the isolated local Pages project (`CHROMIUM_PATH=/opt/pw-browsers/chromium`).
 - **Not yet done:** Pages secrets (`RESEND_API_KEY`, `ASSESSMENT_FROM_EMAIL`, `ASSESSMENT_ADMIN_KEY`), domain verification, live email send, content approval and publication.
+
+## Post-deploy check (added 2026-11-04)
+
+Run once a Pages URL carries the assessment code (preview or production), before any candidate invitation:
+
+    BASE_URL=https://<host> ASSESSMENT_ADMIN_KEY=<key> scripts/post-deploy-check.sh
+
+It checks that the public invite route reaches D1, the admin key is accepted and refused correctly, and the admin list queries D1. It prints status codes only. It does not check the results email. Send a test results email through the deployed function separately, using a dummy candidate and a recipient you control.
