@@ -150,6 +150,24 @@
   .tta-grid-scroll { max-height: 320px; }
 }
 
+/* Touch and phone layout. Inputs are 16px so iOS does not zoom when a cell is focused,
+   row headers stay visible while the grid scrolls sideways, and rows are large enough to tap. */
+.tta-working-grid td input,
+.tta-formula-bar input { font-size: 16px; }
+.tta-working-grid tbody tr { height: 38px; }
+.tta-working-grid td input { height: 38px; padding: 7px 9px; }
+.tta-working-grid thead th:first-child,
+.tta-working-grid tbody th { position: sticky; left: 0; z-index: 2; background: var(--paper-soft); box-shadow: 1px 0 0 #d8e0e5; }
+.tta-working-grid thead th { position: sticky; top: 0; z-index: 1; }
+.tta-working-grid thead th:first-child { z-index: 3; }
+.tta-scroll-hint { display: none; margin: 0; padding: 8px 13px; font-size: 0.78rem; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--paper-soft); }
+@media (max-width: 560px) {
+  .tta-working-grid { min-width: 860px; }
+  .tta-scroll-hint { display: block; }
+  .tta-sheet-toolbar button { min-height: 44px; }
+  .tta-formula-bar { min-height: 52px; }
+}
+
 .tta-sheet-toolbar {display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--line);}
 .tta-sheet-toolbar button {padding:6px 12px;background:var(--paper-soft);color:var(--ink);border:1px solid var(--line);cursor:pointer;}
 .tta-sheet-toolbar button:disabled {opacity:.5;cursor:default;}

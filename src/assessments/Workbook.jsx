@@ -102,6 +102,7 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
           disabled={!isEditable(activeKey)} onChange={(e) => update(activeKey, e.target.value)}
           placeholder="Type a value or formula, e.g. =SUM(B2:B8) or =VLOOKUP(A2,Ledger!F2:I9,4,FALSE)" />
       </div>
+      <p className="tta-scroll-hint">Swipe sideways to see more columns.</p>
       <div className="tta-grid-scroll">
         <table className={'tta-working-grid' + (editable ? '' : ' tta-grid-readonly')} aria-label={(activeSheet || 'Worksheet') + ' grid'}>
           <thead><tr><th aria-label="Row" />{COLS.map((col) => <th scope="col" key={col}>{col}</th>)}</tr></thead>
