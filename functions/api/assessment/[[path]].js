@@ -65,9 +65,11 @@ async function publicRateLimit(request, db, operation) {
   return changed?.meta?.changes ? null : apiJson({ok:false,message:'Too many requests. Try again in a minute.'},429,{'Retry-After':'60'});
 }
 
-function errorResponse(error) {
+export function errorResponse(error) {
   if(error instanceof ScreeningValidationError)return failure(error.message,400);
   if(error instanceof PrivacyConfigurationError)return failure('Private candidate registration is not configured. Please try again later.',503);
+  // Two simultaneous starts with the same ID number: the ordinal key rejects the second.
+  if (/UNIQUE constraint failed: assessment_identity_attempts/.test(String(error?.message || ''))) return failure('A start for this ID number was just recorded. Refresh the page and check your results before trying again.', 409);
   if (/UNIQUE constraint failed|FOREIGN KEY constraint failed/.test(String(error?.message || ''))) return failure('This invitation is already in use.', 409);
   if (error?.message === 'Request too large.') return failure(error.message,413);
   if (error instanceof AssessmentInputError || error instanceof BatteryError) return failure(error.message,400);
