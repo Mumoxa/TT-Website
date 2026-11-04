@@ -78,8 +78,14 @@ function ResultReport({ report, onBack }) {
       <span className="tta-admin-kicker">Talent Tree | Assessment evidence</span>
       <h1>{report.candidate.first_name} {report.candidate.surname}</h1>
       <p>{report.assessment.title} · {report.assessment.client_name}</p>
+      <p>Attempt {a.attempt_number||1}</p>
       <p className="tta-admin-muted">{report.candidate.email} · {formattedTime(a.started_at_ms)} · {a.status}</p>
     </div>
+    <section className="tta-admin-panel"><h2>Screening details</h2>
+      <dl className="tta-admin-score-breakdown">{[
+        ['Contact number',report.screening?.contact_number_masked],['South African ID number',report.screening?.id_number_masked],['Earliest start date',report.screening?.earliest_start_date],['First day confirmed',report.screening?.first_day_confirmed?'Yes':'No'],['Travel mode',report.screening?.travel_mode?.replace(/_/g,' ')],['Route description',report.screening?.travel_description],['Own transport',report.screening?.own_transport],['Available for a 2-month assignment',report.screening?.assignment_available],['Availability note',report.screening?.assignment_note]
+      ].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Not recorded'}</dd></div>)}</dl>
+    </section>
     <div className="tta-admin-score-row">
       <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
       <div><small>Technical knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
@@ -256,19 +262,20 @@ function Workspace({ onExpired }) {
           value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       <div className="tta-admin-table-scroll"><table className="tta-admin-table tta-results-table">
-        <thead><tr><th>Candidate</th><th>Status</th><th>Score</th><th>Started</th><th>Report</th></tr></thead>
+        <thead><tr><th>Candidate</th><th>Attempt</th><th>Status</th><th>Score</th><th>Started</th><th>Report</th></tr></thead>
         <tbody>{visible.length ? visible.map((a) => <tr key={a.id}>
           <td><strong>{a.first_name} {a.surname}</strong><small>{a.email}</small></td>
+          <td><span className="tta-mobile-label" aria-hidden="true">Attempt</span>{a.attempt_number||1}</td>
           <td><span className="tta-mobile-label" aria-hidden="true">Status</span>{a.status}</td>
           <td><span className="tta-mobile-label" aria-hidden="true">Score</span>{a.overall_score ?? '—'}</td>
           <td><span className="tta-mobile-label" aria-hidden="true">Started</span>{formattedTime(a.started_at_ms)}</td>
           <td><button disabled={busy} className="tta-admin-textbutton" onClick={() => openReport(a.id)}>View</button></td>
-        </tr>) : <tr><td colSpan={5}>No candidate attempts found.</td></tr>}</tbody>
+        </tr>) : <tr><td colSpan={6}>No candidate attempts found.</td></tr>}</tbody>
       </table></div>
     </section>}
     {tab === 'invitations' && <section className="tta-admin-panel">
       <h2>Create candidate invitation</h2>
-      <p>Invitations are individual and valid for seven days by default. A fresh invitation is needed for a retake.</p>
+      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered.</p>
       <form onSubmit={invitation} className="tta-admin-form">
         <label>Published assessment
           <select value={selectedDefinition} onChange={(e) => setSelectedDefinition(e.target.value)} required>
@@ -299,12 +306,12 @@ function Workspace({ onExpired }) {
       <form onSubmit={saveDraft} className="tta-admin-form">
         <label>Assessment package (JSON)
           <textarea value={packageJson} onChange={(e) => {setPackageJson(e.target.value);setDraftVersion('');}}
-            rows={15} placeholder={'{\n  "slug": "saturc-ap",\n  "client_name": "SATURC",\n  "title": "Accounts Payable Competency Assessment",\n  "question_payload": { "questions": [], "scenario": {} },\n  "scoring_key": { "mcq": {}, "discrepancies": [], "actions": {}, "corrected_balance": 0 }\n}'} required />
+            rows={15} placeholder={'{\n  "slug": "ap-clerk-v1",\n  "client_name": "Talent Tree",\n  "title": "Accounts Payable Clerk Assessment",\n  "question_payload": { "questions": [], "scenario": {} },\n  "scoring_key": { "mcq": {}, "discrepancies": [], "actions": {}, "corrected_balance": 0 }\n}'} required />
         </label>
         <button type="submit" disabled={busy || !packageJson.trim()}>Save private draft</button>
       </form>
       {draftVersion && <section className="tta-admin-form" aria-label="Publishing approval">
-        <p>Publishing makes this version available for new candidate invitations. Do not approve synthetic tests as a real SATURC assessment.</p>
+        <p>Publishing makes this version available from its public assessment link. Do not approve synthetic tests as a real Talent Tree assessment.</p>
         <label><input type="checkbox" checked={contentApproved} onChange={e=>setContentApproved(e.target.checked)}/> The client-approved content and private marking key have been reviewed.</label>
         <label><input type="checkbox" checked={privacyApproved} onChange={e=>setPrivacyApproved(e.target.checked)}/> The privacy notice, retention period and employer disclosure have human approval.</label>
         <label>Approval reference<input value={approvalReference} onChange={e=>setApprovalReference(e.target.value)} maxLength={200} placeholder="Internal approval reference; no candidate information"/></label>

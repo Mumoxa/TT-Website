@@ -1,3 +1,4 @@
+import {fillScreening,openDetails} from './helpers/screening.mjs';
 import {test, expect} from '@playwright/test';
 import fs from 'node:fs';
 import {SYNTHETIC} from '../fixtures/synthetic-assessment.mjs';
@@ -18,16 +19,16 @@ async function invite(api, title = metadata[0].title, email = 'design@example.in
   return (await post(api,'admin/invite',{assessment_id:draft.assessment_id,intended_email:email})).invitation_url;
 }
 async function start(page,url,email = 'design@example.invalid') {
-  await page.goto(url);
+  await page.goto(url);await openDetails(page);
   await page.getByLabel('First name',{exact:true}).fill('Demo');
   await page.getByLabel('Surname',{exact:true}).fill('Candidate');
   await page.getByLabel('Email address',{exact:true}).fill(email);
-  await page.getByRole('checkbox').check();
+  await fillScreening(page);
   await page.getByRole('button',{name:'Start assessment',exact:true}).click();
   await expect(page.getByRole('timer')).toBeVisible();
 }
 
-test('catalogue and slug routes render metadata; no-invite welcome has no form',async({page})=>{
+test('catalogue and slug routes render open-start instructions and candidate form',async({page})=>{
   await mockCatalog(page);await page.goto('/assessments');
   await expect(page.getByRole('heading',{level:1,name:'Assessments',exact:true})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Accounts Payable Clerk',exact:true})).toBeVisible();
@@ -35,9 +36,9 @@ test('catalogue and slug routes render metadata; no-invite welcome has no form',
   await page.getByRole('link',{name:'View Accounts Payable Clerk'}).click();
   await expect(page).toHaveURL(/\/assessments\/accounts-payable-clerk$/);
   await expect(page.getByRole('heading',{level:1,name:'Accounts Payable Clerk',exact:true})).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Use the invitation link from your recruiter to begin.');
-  await expect(page.locator('form')).toHaveCount(0);
-  await expect(page.getByText(/executive search|niche skills|established|SATURC/i)).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Try the practice'})).toBeVisible();
+  await openDetails(page);await expect(page.getByLabel('South African ID number',{exact:true})).toBeVisible();
+  await expect(page.getByText(/executive search|niche skills|established/i)).toHaveCount(0);
 });
 
 test('catalogue announces loading, empty and error states',async({page})=>{
@@ -50,10 +51,10 @@ test('catalogue announces loading, empty and error states',async({page})=>{
   await page.reload();await expect(page.getByRole('alert')).toContainText('Assessments could not be loaded.');
 });
 
-test('unknown slug and bare assessment route remain invitation-only',async({page})=>{
+test('unknown slug is unavailable and bare route directs candidates to the catalogue',async({page})=>{
   await mockCatalog(page);await page.goto('/assessments/missing');
   await expect(page.getByRole('heading',{name:'Assessment unavailable',exact:true})).toBeVisible();
-  await page.goto('/assessment');await expect(page.getByRole('status')).toHaveText('Use the invitation link from your recruiter to begin.');
+  await page.goto('/assessment');await expect(page.getByRole('status')).toHaveText('Choose an assessment to begin.');
   await expect(page.locator('form')).toHaveCount(0);
 });
 
@@ -84,7 +85,7 @@ test.describe('brand screenshots at device scale 2',()=>{
     const directory='.wrangler/brand-screenshots';fs.mkdirSync(directory,{recursive:true});
     await page.goto('/assessments');await expect(page.getByRole('heading',{name:'Accounts Payable Clerk',exact:true})).toBeVisible();
     await page.screenshot({path:`${directory}/catalogue-${width}.png`,fullPage:true});
-    await page.getByRole('link',{name:'View Accounts Payable Clerk'}).click();await expect(page.getByRole('status')).toHaveText('Use the invitation link from your recruiter to begin.');
+    await page.getByRole('link',{name:'View Accounts Payable Clerk'}).click();await expect(page.getByRole('button',{name:'Try the practice'})).toBeVisible();
     await page.screenshot({path:`${directory}/welcome-${width}.png`,fullPage:true});
     const email=`design-${width}-${Date.now()}@example.invalid`;
     await start(page,await invite(request,metadata[0].title,email),email);await page.getByRole('button',{name:'Continue to reconciliation'}).click();

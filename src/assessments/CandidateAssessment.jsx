@@ -89,11 +89,12 @@ export default function CandidateAssessment({catalogItem}) {
           setPhase('welcome');
           return;
         }
+        if(catalogItem){if(!cancelled){setClient({...catalogItem,duration_seconds:600});setPhase('welcome');}return;}
         const session = await api('me', undefined, 'GET');
         if (!cancelled) activate(session);
       } catch (e) {
         if (!cancelled) {
-          setError(invitationToken.current ? e.message : 'Your recruiter must provide an individual assessment invitation link.');
+          setError(invitationToken.current ? e.message : '');
           setPhase('welcome');
         }
       }
@@ -156,14 +157,14 @@ export default function CandidateAssessment({catalogItem}) {
 
   async function start(info) {
     if (isStarting) return;
-    if (!invitationToken.current) {
-      setError('The invitation token is missing. Open the individual link supplied by your recruiter.');
+    if (!invitationToken.current && !catalogItem?.slug) {
+      setError('Choose an assessment from the catalogue to begin.');
       return;
     }
     setStarting(true);
     setError('');
     try {
-      const started = await api('start', { ...info, invitation_token: invitationToken.current });
+      const started = await api('start', { ...info, ...(invitationToken.current ? {invitation_token:invitationToken.current} : {assessment_slug:catalogItem.slug}) });
       // Remove the bearer token from the address bar after it has been redeemed.
       window.history.replaceState(null, '', '/assessment');
       invitationToken.current = '';
@@ -201,8 +202,8 @@ export default function CandidateAssessment({catalogItem}) {
       if (dirtyRef.current) await save(true);
       if (dirtyRef.current) throw new Error('Your changes have not been saved. Please retry before the deadline.');
       const result = await api('submit', { ...draftRef.current, attempt_id:attemptRef.current.attempt_id, save_revision: revisionRef.current });
-      attemptRef.current = { ...attemptRef.current, status: result.status };
-      setAttempt((a) => ({ ...a, status: result.status }));
+      attemptRef.current = { ...attemptRef.current, ...result };
+      setAttempt((a) => ({ ...a, ...result }));
       setPhase('complete');
     } catch (e) {
       setError(e.message);
@@ -236,12 +237,12 @@ export default function CandidateAssessment({catalogItem}) {
     return <AssessmentWelcome client={client.client_name} assessmentTitle={client.title}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
       sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count}
-      hasInvitation={Boolean(invitationToken.current)} onStart={start} isStarting={isStarting} error={error} />;
+      hasInvitation={Boolean(invitationToken.current)} onStart={invitationToken.current || catalogItem?.slug ? start : undefined} isStarting={isStarting} error={error} />;
   }
   if (phase === 'complete') {
     return <AssessmentComplete client={client.client_name}
       candidateName={(attempt?.first_name || '') + ' ' + (attempt?.surname || '')}
-      timedOut={attempt?.status === 'timed_out'} />;
+      timedOut={attempt?.status === 'timed_out'} result={attempt?.candidate_result} attemptNumber={attempt?.attempt_number||1} />;
   }
 
   const assessment = attempt.assessment;

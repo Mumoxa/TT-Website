@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import './assessment.css';
 import {useAssessmentCatalog} from './catalog-client.js';
+import ScreeningFields, {emptyScreening} from './ScreeningFields.jsx';
+import {normalizeScreening} from './screening.js';
+import {AssessmentPractice} from './AssessmentPractice.jsx';
 
 /**
  * Assessment UI primitives only — do not expose the route to candidates until
@@ -27,111 +30,69 @@ export function AssessmentFrame({ children, eyebrow = 'Candidate assessment', cl
 }
 
 function AssessmentPrivacyNotice() {
-  return (
-    <details className="tta-privacy-details">
-              <summary>How your assessment information is used</summary>
-              <p>Talent Tree Consulting collects your name, surname, email address, answers, spreadsheet work and assessment results to assess your suitability for this recruitment assignment. The results may be shared with the hiring client. You can contact your Talent Tree recruiter about access, correction or deletion of your information.</p>
-              <p>Your recruiter must provide the applicable privacy notice and retention information before you start. Do not proceed if that information has not been provided.</p>
-            </details>
-  );
+  return <section className="tta-privacy-notice" aria-labelledby="tta-privacy-heading">
+    <h2 id="tta-privacy-heading">Before you start</h2>
+    <p>Talent Tree Consulting collects your first name, surname, email address, contact number, South African ID number, earliest available start date, travel and availability details. We use them to assess your practical accounting skills for this assignment and to arrange your start if you are selected.</p>
+    <p>Recruiters at Talent Tree see these details. We retain your assessment results and attempt history. Your ID number is used to link your attempts and is masked in reports.</p>
+    <p>You can ask us to see, correct or delete your information at <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
+    <p>Ticking the box below means you agree to this processing.</p>
+  </section>;
 }
-
-const cleanName = (value) => value.trim().replace(/\s+/g, ' ');
-
-export function AssessmentWelcome({
-  client = '',
-  assessmentTitle = 'Assessment',
-  durationMinutes = 10,
-  sectionTitles,
-  itemCount,
-  hasInvitation,
-  onStart,
-  isStarting = false,
-  error = '',
-}) {
-  const catalogue = useAssessmentCatalog(!sectionTitles);
-  const matching = catalogue.assessments.find(item => item.title === assessmentTitle && item.client_name === client);
-  const sections = sectionTitles || matching?.section_titles || ['Technical knowledge', 'Practical reconciliation'];
-  const invited = hasInvitation ?? Boolean(onStart);
-  const [firstName, setFirstName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [email, setEmail] = useState('');
-  const [consent, setConsent] = useState(false);
-  const canStart = Boolean(
-    onStart && !isStarting && cleanName(firstName).length >= 2 &&
-    cleanName(surname).length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && consent
-  );
+const cleanName = value => value.trim().replace(/\s+/g, ' ');
+export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error=''}) {
+  const catalogue=useAssessmentCatalog(!sectionTitles);
+  const matching=catalogue.assessments.find(item=>item.title===assessmentTitle && item.client_name===client);
+  const sections=sectionTitles || matching?.section_titles || ['Technical knowledge','Practical reconciliation'];
+  const [view,setView]=useState('welcome');
+  const [firstName,setFirstName]=useState(''),[surname,setSurname]=useState(''),[email,setEmail]=useState('');
+  const [consent,setConsent]=useState(false),[screening,setScreening]=useState(emptyScreening),[validation,setValidation]=useState('');
+  const canStart=Boolean(onStart && !isStarting && cleanName(firstName).length>=2 && cleanName(surname).length>=2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && consent);
   function handleSubmit(event) {
-    event.preventDefault();
-    if (!canStart) return;
-    onStart({
-      first_name: cleanName(firstName),
-      surname: cleanName(surname),
-      email: email.trim().toLowerCase(),
-      consent_acknowledged: true,
-    });
+    event.preventDefault();if(!canStart)return;
+    try {const normalized=normalizeScreening(screening);setValidation('');onStart({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true});}
+    catch(e){setValidation(e.message);}
   }
-  return (
-    <AssessmentFrame client={client}>
-      <main className="tta-shell tta-welcome-layout" id="main-content">
-        <div className="tta-hero-copy">
-          <div className="tta-kicker"><span className="tta-kicker-line" /> Talent Tree skills assessment</div>
-          <h1>{assessmentTitle}</h1>
-          {client && <p className="tta-client">{client}</p>}
-          <p className="tta-intro">A practical assessment of your skills. Read the instructions before you begin.</p>
-          <dl className="tta-metrics">
-            <div><dt>Duration</dt><dd>{durationMinutes} minutes</dd></div>
-            <div><dt>Sections</dt><dd>{sections.length}</dd></div>
-            {(itemCount ?? matching?.item_count) != null && <div><dt>Activities</dt><dd>{itemCount ?? matching.item_count}</dd></div>}
-          </dl>
-          <div className="tta-instructions">
-            <h2>What you’ll complete</h2>
-            <ol>{sections.map((title, index) => <li key={index}>{title}</li>)}</ol>
-            <h2>Before you begin</h2>
-            <p>The timer starts only when you press <strong>Start</strong>. It cannot be paused and continues if you reload the page.</p>
-            <p>Your work is saved as you go. When time expires, the assessment closes automatically.</p>
-            <p>A desktop or laptop is recommended for the spreadsheet. Use a stable internet connection.</p>
-          </div>
-        </div>
-        {!invited ? <aside className="tta-registration tta-invitation-note">
-          <span className="tta-kicker">Invitation required</span>
-          <h2>Ready to begin?</h2>
-          <p role="status">Use the invitation link from your recruiter to begin.</p>
-          <a className="tta-text-link" href="/assessments">View assessments</a>
-          <AssessmentPrivacyNotice />
-        </aside> : (
-        <section className="tta-registration" aria-labelledby="tta-register-heading">
-          <div className="tta-card-topline">Candidate details</div>
-          <h2 id="tta-register-heading">Your details</h2>
-          <p>Enter the information your Talent Tree recruiter will use to identify your assessment.</p>
+  if(view==='practice')return <AssessmentFrame><AssessmentPractice onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
+  return <AssessmentFrame client={client}>
+    <main className="tta-shell tta-welcome-layout" id="main-content">
+      <div className="tta-hero-copy">
+        <div className="tta-kicker"><span className="tta-kicker-line"/> Talent Tree skills assessment</div>
+        <h1>{assessmentTitle}</h1>
+        <p className="tta-intro">A practical assessment of your skills. Read the instructions before you begin.</p>
+        <dl className="tta-metrics"><div><dt>Duration</dt><dd>{durationMinutes} minutes</dd></div><div><dt>Sections</dt><dd>{sections.length}</dd></div>{(itemCount??matching?.item_count)!=null && <div><dt>Activities</dt><dd>{itemCount??matching.item_count}</dd></div>}</dl>
+        <section className="tta-instructions"><h2>What to expect</h2>
+          <p>10 minutes, timed. The timer starts only when you press Start and continues if you reload.</p>
+          <p>Two parts: accounting questions (single and multiple choice) and a practical workbook where you calculate with formulas, for example =SUM(B2:B5) or =VLOOKUP(...).</p>
+          <p>Answers save automatically. You cannot pause or restart. Repeat attempts are recorded separately and numbered.</p>
+          <p>You will see your results when you submit. The Talent Tree recruiter will contact you about next steps.</p>
+          <p>What to have ready: a desktop or laptop, a stable connection, and your ID number. No documents need uploading.</p>
+          <ol>{sections.map((title,index)=><li key={index}>{title}</li>)}</ol>
+        </section>
+      </div>
+      <section className="tta-registration" aria-label={view==='form'?'Candidate details':'Before starting'}>
+        <AssessmentPrivacyNotice/>
+        {!onStart ? <><p role="status">Choose an assessment to begin.</p><a className="tta-text-link" href="/assessments">View assessments</a></> : view==='welcome' ? <>
+          <h2>Try the formats first</h2><p>Three public practice items give immediate feedback. Practice is not scored or saved, and the timer stays off.</p>
+          <button className="tta-submit" onClick={()=>setView('practice')}>Try the practice <span aria-hidden="true">→</span></button>
+          <button className="tta-text-link tta-practice-link" onClick={()=>setView('form')}>Continue to details</button>
+          {error && <p className="tta-error" role="alert">{error}</p>}
+        </> : <>
+          <div className="tta-card-topline">Candidate details</div><h2>Your details</h2>
+          <button className="tta-text-link tta-practice-link" type="button" onClick={()=>setView('practice')}>Try the practice</button>
           <form onSubmit={handleSubmit}>
-            <label htmlFor="tta-first-name">First name</label>
-            <input id="tta-first-name" name="first_name" value={firstName}
-              onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name"
-              maxLength={100} required placeholder="Your first name" />
-            <label htmlFor="tta-last-name">Surname</label>
-            <input id="tta-last-name" name="surname" value={surname}
-              onChange={(e) => setSurname(e.target.value)} autoComplete="family-name"
-              maxLength={100} required placeholder="Your surname" />
-            <label htmlFor="tta-email">Email address</label>
-            <input id="tta-email" name="email" type="email" value={email}
-              onChange={(e) => setEmail(e.target.value)} autoComplete="email"
-              maxLength={254} required placeholder="you@example.com" />
-            <AssessmentPrivacyNotice />
-            <label className="tta-consent">
-              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-              <span>I understand how my information will be used and confirm that I have received the applicable privacy notice from Talent Tree.</span>
-            </label>
-            {error && <p className="tta-error" role="alert">{error}</p>}
-            <button className="tta-submit" type="submit" disabled={!canStart}>
-              {isStarting ? 'Starting assessment…' : 'Start assessment'} <span aria-hidden="true">↗</span>
-            </button>
+            <label htmlFor="tta-first-name">First name</label><input id="tta-first-name" value={firstName} onChange={e=>setFirstName(e.target.value)} autoComplete="given-name" maxLength={100} required/>
+            <label htmlFor="tta-last-name">Surname</label><input id="tta-last-name" value={surname} onChange={e=>setSurname(e.target.value)} autoComplete="family-name" maxLength={100} required/>
+            <label htmlFor="tta-email">Email address</label><input id="tta-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" maxLength={254} required/>
+            <ScreeningFields value={screening} onChange={setScreening}/>
+            <label className="tta-consent"><input type="checkbox" checked={consent} required onChange={e=>setConsent(e.target.checked)}/><span>I agree to this processing.</span></label>
+            {(validation||error) && <p className="tta-error" role="alert">{validation||error}</p>}
+            <button className="tta-submit" type="submit" disabled={!canStart}>{isStarting?'Starting assessment…':'Start assessment'} <span aria-hidden="true">↗</span></button>
             <p className="tta-form-note">The timer has not started. You cannot reset it once the assessment begins.</p>
           </form>
-        </section>)}
-      </main>
-    </AssessmentFrame>
-  );
+        </>}
+      </section>
+    </main>
+  </AssessmentFrame>;
 }
 
 /** Display-only clock. The backend MUST reject updates after expiresAt. */
@@ -212,7 +173,7 @@ export function AssessmentRunnerLayout({
   );
 }
 
-export function AssessmentComplete({ client = '', timedOut = false, candidateName }) {
+export function AssessmentComplete({ client = '', timedOut = false, candidateName, result, attemptNumber=1 }) {
   return (
     <AssessmentFrame client={client} eyebrow="Assessment submitted">
       <main className="tta-shell tta-complete" id="main-content">
@@ -222,6 +183,11 @@ export function AssessmentComplete({ client = '', timedOut = false, candidateNam
           {timedOut ? 'saved work' : 'assessment'} has been submitted.
           Talent Tree will review your results as part of the recruitment process.
         </p>
+        {result ? <section className="tta-candidate-results" aria-label="Your assessment results">
+          <h2>Your assessment results</h2><p>Attempt {attemptNumber}</p><p className="tta-result-overall">{result.overall_score} <span>/ 100</span></p>
+          {result.sections.map((section,index)=><article key={index}><h3>{section.title} <span>{section.percentage}%</span></h3><p>{section.feedback}</p></article>)}
+          <p className="tta-result-caveat">{result.caveat}</p>
+        </section> : <p role="status">Your results are being prepared. Reload this page to check again.</p>}
         <p className="tta-complete-note">You may now close this window. Your recruiter will contact you regarding next steps.</p>
       </main>
     </AssessmentFrame>

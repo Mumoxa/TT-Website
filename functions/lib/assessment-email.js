@@ -8,6 +8,8 @@
    v1 results (five MCQs + discrepancy rubric) and battery-v2 results use different breakdowns;
    each is rendered from its own structure, never from the other's fields. */
 
+import {publicScreening} from './candidate-privacy.js';
+import {assessmentBrandText} from './assessment-core.js';
 import { BATTERY_FORMAT, gradeBattery, isBatteryPayload } from './battery.js';
 
 const MAX_RETRIES = 5;
@@ -60,18 +62,24 @@ function v1ScoringHtml(b) {
   </ul>`;
 }
 
-export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false }) {
+export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false, screening={}, attemptNumber=1 }) {
+  const details=publicScreening(screening);
+  const labels={contact_number_masked:'Contact number',id_number_masked:'South African ID number',earliest_start_date:'Earliest start date',first_day_confirmed:'First day confirmed',travel_mode:'Travel mode',travel_description:'Route description',own_transport:'Own transport',assignment_available:'Available for a 2-month assignment',assignment_note:'Availability note'};
+  const screeningRows=Object.entries(details).map(([key,value])=>[labels[key], typeof value==='boolean'?(value?'Yes':'No'):value||'Not recorded']);
+  const screeningHtml='<h3>Screening details</h3><ul>'+screeningRows.map(([label,value])=>'<li>'+escapeHtml(label)+': '+escapeHtml(value)+'</li>').join('')+'</ul>';
   const name = `${candidate.first_name} ${candidate.surname}`.trim();
   const flags = result.critical_flags || [];
   const b = result.breakdown || {};
   const verdict = flags.length ? 'Review flags' : 'No critical flags';
-  const subject = `[Assessment] ${title} — ${name}: ${result.overall_score}/100`;
+  const subject = `[Assessment] Attempt ${attemptNumber} — ${title} — ${name}: ${result.overall_score}/100`;
   const scoring = isBattery || b.categories ? batteryScoringHtml(b) : v1ScoringHtml(b);
   const reviewTitle = isBattery || b.categories ? 'Item review' : 'Knowledge questions';
 
   const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1d2b3a">
   <h2 style="margin:0 0 4px">${escapeHtml(title)}</h2>
   <p style="margin:0 0 16px;color:#5b6876">Client: ${escapeHtml(clientName)} · Attempt status: ${escapeHtml(status)} · Graded: ${escapeHtml(gradedAt)}</p>
+  <p><strong>Attempt ${escapeHtml(attemptNumber)}</strong></p>
+  ${screeningHtml}
   <p><strong>Candidate:</strong> ${escapeHtml(name)} &lt;${escapeHtml(candidate.email)}&gt;</p>
   <p style="font-size:18px"><strong>Total: ${escapeHtml(result.overall_score)} / 100</strong>
     (knowledge ${escapeHtml(result.knowledge_score)} / 40, reconciliation ${escapeHtml(result.reconciliation_score)} / 60)</p>
@@ -84,6 +92,9 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
   </body></html>`;
 
   const text = [
+    `Attempt ${attemptNumber}`,
+    'Screening details',
+    ...screeningRows.map(([label,value])=>`${label}: ${value}`),
     `${title} — ${name} <${candidate.email}>`,
     `Client: ${clientName} · Status: ${status} · Graded: ${gradedAt}`,
     `Total: ${result.overall_score}/100 (knowledge ${result.knowledge_score}/40, reconciliation ${result.reconciliation_score}/60)`,
@@ -93,7 +104,7 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
     ...mcqReview.map((q, i) => `${i + 1}. ${q.prompt}\n   Candidate: ${q.chosen}\n   Correct: ${q.expected} — ${q.correct ? 'Correct' : 'Incorrect'}`),
   ].join('\n');
 
-  return { subject, html, text };
+  return {subject:assessmentBrandText(subject),html:assessmentBrandText(html),text:assessmentBrandText(text)};
 }
 
 export async function sendResultEmail(env, message, fetchImpl = fetch) {
@@ -118,7 +129,7 @@ export async function sendResultEmail(env, message, fetchImpl = fetch) {
    answers with the same pure function the API uses, so the email matches the saved result. */
 async function loadResultForEmail(db, attemptId) {
   const row = await db.prepare(
-    'SELECT a.id, a.status, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, d.client_name, d.title, ' +
+    'SELECT a.id, a.status, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
     'v.question_payload_json, v.scoring_key_json, r.overall_score, r.knowledge_score, r.reconciliation_score, ' +
     'r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
@@ -156,6 +167,8 @@ async function loadResultForEmail(db, attemptId) {
   }
 
   return {
+    screening:row,
+    attemptNumber:row.attempt_number,
     candidate: { first_name: row.first_name, surname: row.surname, email: row.email },
     title: payload._metadata?.title || row.title,
     clientName: payload._metadata?.client_name || row.client_name,

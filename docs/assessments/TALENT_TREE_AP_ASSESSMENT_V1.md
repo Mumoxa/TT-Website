@@ -1,8 +1,10 @@
 # Talent Tree | Accounts Payable Assessment Platform — V1 build contract
 
-Status: **PLANNING / NOT PRODUCTION READY**  
-Target: **https://talenttree.co.za/assessment**  
-First client: **SATURC**, Accounts Payable / Creditors Clerk  
+Historical document. Current open-start behavior and retained-results policy: [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md).
+
+Status: **PLANNING / NOT PRODUCTION READY**
+Target: **https://talenttree.co.za/assessment**
+Brand: **Talent Tree**; client withheld. Accounts Payable / Creditors Clerk
 Time limit: **600 seconds, enforced by the server**
 
 ## 1. Source-of-truth repositories and boundaries
@@ -25,7 +27,7 @@ Time limit: **600 seconds, enforced by the server**
 
 Reuse the **actual logo** already imported in \`src/main.jsx\`:
 \`import talentTreeLogo from '../Talent Tree Logo 2026 (1).png';\`.
-Reuse the image itself at all assessment breakpoints; do not invent, replace, restyle or redraw the logo. No unrelated Talent Tree logo from web image search. SATURC is displayed as client text unless an approved client logo asset is supplied.
+Reuse the image itself at all assessment breakpoints; do not invent, replace, restyle or redraw the logo. No unrelated Talent Tree logo from web image search. Talent Tree is displayed as client text unless an approved client logo asset is supplied.
 
 Never hardcode a competing palette. Import \`src/styles.css\` and use the actual site CSS tokens:
 
@@ -47,7 +49,7 @@ Brand checklist: welcome, timed assessment, expiry/complete and admin report all
 
 ## 3. Candidate experience
 
-1. Visit /assessment (or invited /assessment?invite=...); client title "SATURC | Accounts Payable Competency Assessment".
+1. Visit /assessment (or invited /assessment?invite=...); client title "Talent Tree | Accounts Payable Competency Assessment".
 2. Welcome explains: **10 minutes**, 5 scenario questions + practical spreadsheet reconciliation, autosave, timer begins only upon pressing Start, irreversible expiry. Recommend desktop/laptop for workbook; do not block accessible alternative input.
 3. Enter **first name, surname and email address**; display concise POPIA-compatible purpose, reviewer, retention and contact notice. An email alone is *not verified identity*. For a controlled first cohort, use a per-candidate invitation capability token; never assume a name/email pair proves identity.
 4. Candidate presses Start. Server creates or resumes ONE attempt tied to token, returns server \`started_at\` and \`expires_at\`, plus answer-free question payload. Timer starts at this committed moment, not at initial page load or registration.
