@@ -31,10 +31,10 @@ async function api(path, payload, method = 'POST') {
 }
 const inviteFromUrl = () => new URLSearchParams(window.location.search).get('invite') || '';
 
-export default function CandidateAssessment() {
+export default function CandidateAssessment({catalogItem}) {
   const invitationToken = useRef(inviteFromUrl());
   const [phase, setPhase] = useState('loading');
-  const [client, setClient] = useState({ client_name: 'SATURC', title: 'Accounts Payable Competency Assessment', duration_seconds: 600 });
+  const [client, setClient] = useState({ client_name: catalogItem?.client_name || '', title: catalogItem?.title || 'Assessment', duration_seconds: 600 });
   const [attempt, setAttempt] = useState(null);
   const [draft, setDraft] = useState(blankAnswers);
   const [section, setSection] = useState('questions');
@@ -229,12 +229,14 @@ export default function CandidateAssessment() {
   }, [attempt?.expires_at_ms, attempt?.server_now_ms]);
 
   if (phase === 'loading') {
-    return <AssessmentFrame client="SATURC"><main className="tta-shell tta-loading" role="status">Opening assessment…</main></AssessmentFrame>;
+    return <AssessmentFrame><main className="tta-shell tta-loading" role="status">Opening assessment…</main></AssessmentFrame>;
   }
   if (phase === 'welcome') {
+    const welcomeItem = catalogItem?.title === client.title && catalogItem?.client_name === client.client_name ? catalogItem : null;
     return <AssessmentWelcome client={client.client_name} assessmentTitle={client.title}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
-      onStart={start} isStarting={isStarting} error={error} />;
+      sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count}
+      hasInvitation={Boolean(invitationToken.current)} onStart={start} isStarting={isStarting} error={error} />;
   }
   if (phase === 'complete') {
     return <AssessmentComplete client={client.client_name}
@@ -245,7 +247,7 @@ export default function CandidateAssessment() {
   const assessment = attempt.assessment;
   if (assessment.format === 'battery-v2') {
     return (
-      <AssessmentRunnerLayout client={client.client_name}
+      <AssessmentRunnerLayout client={client.client_name} assessmentTitle={client.title}
         candidateName={attempt.first_name + ' ' + attempt.surname}
         sectionLabel="Assessment battery"
         sectionNumber={1}
@@ -270,7 +272,7 @@ export default function CandidateAssessment() {
   const chosen = draft.structured.discrepancies || [];
 
   return (
-    <AssessmentRunnerLayout client={client.client_name}
+    <AssessmentRunnerLayout client={client.client_name} assessmentTitle={client.title}
       candidateName={attempt.first_name + ' ' + attempt.surname}
       sectionLabel={section === 'questions' ? 'Technical knowledge' : 'Practical reconciliation'}
       sectionNumber={section === 'questions' ? 1 : 2}

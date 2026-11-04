@@ -8,6 +8,7 @@
  * IMPORTANT: Answer keys exist only inside PRIVATE D1 assessment_versions.
  * The public GitHub repository must not contain real candidate test keys.
  */
+import { assessmentCatalog } from '../../lib/assessment-catalog.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
 import {
   AssessmentInputError, apiJson, failure, requestJson, sameOrigin, normalizeIdentity, newToken, tokenHash,
@@ -445,6 +446,7 @@ export async function onRequest(context) {
       if (limited) return limited;
     }
 
+    if (operation === 'catalog' && request.method === 'GET') return await assessmentCatalog(db);
     if (operation === 'invite' && request.method === 'GET') return await inviteMeta(request, db);
     if (operation === 'start' && write) return await startAttempt(request, db);
 

@@ -93,3 +93,46 @@
   .tta-admin-evidence tr {break-inside:avoid;}
   .tta-admin-report .tta-sheet {display:none;}
 }
+
+/* Brand-aligned recruiter surfaces; requests, authentication and reports are unchanged. */
+.tta-admin-topbar {background:var(--paper-soft);color:var(--ink);border-color:var(--line);}
+.tta-admin-brand {color:var(--ink);}
+.tta-admin-brand small,.tta-admin-private {color:var(--muted);}
+.tta-admin-brand img {width:62px;height:62px;}
+.tta-admin-head-inner {min-height:96px;}
+.tta-admin-login {border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:var(--radius);}
+.tta-admin-panel {border-radius:var(--radius);}
+.tta-admin-report,.tta-admin-table,.tta-admin-evidence {font-family:var(--sans);}
+.tta-admin-report :is(h1,h2,h3) {font-family:var(--serif);}
+.tta-admin-table th,.tta-admin-table td {border:1px solid var(--line);line-height:1.5;vertical-align:top;}
+.tta-admin-table td small {overflow-wrap:anywhere;}
+.tta-results-table {min-width:0;}
+.tta-results-table th:first-child {width:32%;}
+.tta-admin-table .tta-admin-textbutton {min-height:40px;padding:8px;}
+.tta-admin-error,.tta-admin-flags span {background:var(--accent-soft);color:var(--ink);border-color:var(--accent);}
+.tta-admin-json {background:var(--paper);color:var(--ink);}
+.tta-admin-page :is(a,button,input,select,summary,textarea):focus-visible {outline:3px solid var(--accent);outline-offset:3px;}
+.tta-mobile-label {display:none;}
+@media (max-width:560px) {
+ .tta-admin-page {--gutter:16px;}
+ .tta-admin-main {padding-top:28px;}
+ .tta-admin-login {margin:32px 16px;}
+ .tta-admin-nav button {padding:12px 10px;}
+ .tta-results-table,.tta-results-table tbody {display:block;}
+ .tta-results-table thead {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+ .tta-results-table tr {display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line-strong);padding:16px 0;gap:12px;}
+ .tta-results-table td {display:block;padding:0;border:0;}
+ .tta-results-table td:first-child,.tta-results-table td:nth-child(4) {grid-column:1/-1;}
+ .tta-results-table td:last-child {grid-column:1/-1;}
+ .tta-mobile-label {display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px;}
+}
+@media print {
+ .tta-admin-report {color:var(--ink);font-family:var(--sans);}
+ .tta-admin-report-heading {break-after:avoid;}
+ .tta-admin-panel h2 {break-after:avoid;}
+ .tta-admin-table thead {display:table-header-group;}
+ .tta-admin-table tr {break-inside:avoid;}
+ .tta-admin-table th {background:var(--accent-soft);}
+}
+
+.tta-admin-page :is(h1,h2,h3,td,dd,code) {overflow-wrap:anywhere;}
