@@ -1,3 +1,4 @@
+import {screeningFixture} from './helpers/screening-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { onRequest } from '../functions/api/assessment/[[path]].js';
@@ -12,7 +13,7 @@ async function setup() {
   const now = new Date().toISOString();
   db.sqlite.prepare('INSERT INTO assessment_definitions VALUES (?,?,?,?,600,?,?,?,?)').run('definition','synthetic','Demo','Synthetic test','version','published',now,now);
   db.sqlite.prepare('INSERT INTO assessment_versions VALUES (?,?,?,?,?,?,?,?)').run('version','definition','v1',JSON.stringify(SYNTHETIC.question_payload),JSON.stringify(SYNTHETIC.scoring_key),'v1',now,now);
-  const env = { ASSESSMENT_DB: db, ADMIN_KEY: 'synthetic-local-key', ASSESSMENT_ADMIN_KEY: 'independent-assessment-key' };
+  const env = { ASSESSMENT_ID_HASH_KEY:'synthetic-key-with-at-least32-characters-for-tests', ASSESSMENT_PII_KEY:btoa('0'.repeat(32)), ASSESSMENT_DB: db, ADMIN_KEY: 'synthetic-local-key', ASSESSMENT_ADMIN_KEY: 'independent-assessment-key' };
   async function call(path, body, cookie, extra = {}) {
     const headers = { Origin: origin, 'CF-Connecting-IP': '192.0.2.1', ...extra };
     if (cookie) headers.Cookie = cookie;
@@ -26,7 +27,7 @@ async function setup() {
   }
   async function start(char='a') {
     const token = await invite(char);
-    const result = await call('start',{invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true});
+    const result = await call('start',{...screeningFixture(char.charCodeAt(0)),invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true,...screeningFixture()});
     assert.equal(result.status,200,JSON.stringify(result.data));return result;
   }
   return {db,env,call,invite,start};
@@ -48,7 +49,7 @@ test('real SQL start, autosave and refresh preserve exactly 600 seconds and priv
 });
 
 test('concurrent duplicate starts create only one candidate and attempt',async()=>{
- const t=await setup();const token=await t.invite();const body={invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true};
+ const t=await setup();const token=await t.invite();const body={invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true,...screeningFixture()};
  const outcomes=await Promise.all([t.call('start',body),t.call('start',body)]);
  assert.equal(outcomes.filter(r=>r.status===200).length,1);
  assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM candidates').get().n,1);
@@ -149,7 +150,7 @@ test('an old tab cannot save its answers under a different candidate cookie',asy
 test('revoking an invitation while Start is in flight cannot create an attempt',async()=>{
  const t=await setup();const token=await t.invite();const batch=t.db.batch;
  t.db.batch=async statements=>{t.db.sqlite.exec("UPDATE invitations SET status='revoked'");return batch(statements);};
- const result=await t.call('start',{invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true});
+ const result=await t.call('start',{invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true,...screeningFixture()});
  assert.notEqual(result.status,200);assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM attempts').get().n,0);
 });
 

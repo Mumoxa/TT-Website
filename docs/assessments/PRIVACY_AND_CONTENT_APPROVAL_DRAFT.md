@@ -1,4 +1,6 @@
-# SATURC assessment: private content and privacy approval draft
+# Talent Tree assessment: private content and privacy approval draft
+
+Historical document. Current open-start behavior and retained-results policy: [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md).
 
 Status: DRAFT FOR HUMAN REVIEW. No client, employer or legal approval is asserted.
 No real questions, marking key, candidate details or invitation tokens are included.
@@ -24,14 +26,14 @@ Pilot the complete ten-minute exercise with experienced AP staff. Provisional sc
 is 40 technical + 60 reconciliation, not a validated selection threshold.
 
 Synthetic fixtures in tests are deliberately public test material. They must never
-become the real SATURC assessment or be represented as approved content.
+become the real Talent Tree assessment or be represented as approved content.
 
 ## Proposed candidate wording — requires human approval
 
 “Talent Tree Consulting will use your first name, surname, email address, assessment
 responses, spreadsheet workings, timing and assessment result to evaluate this
 recruitment assignment. Authorised Talent Tree reviewers will review the result.
-Any disclosure to SATURC, the lawful basis and the recipients must be explained in
+Any disclosure to Talent Tree, the lawful basis and the recipients must be explained in
 the assignment-specific privacy notice supplied by your recruiter before you start.
 Your entered details are self-declared and do not verify your identity. This short
 work sample is one piece of screening evidence and does not establish full AP

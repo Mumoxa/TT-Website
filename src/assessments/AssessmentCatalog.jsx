@@ -1,12 +1,11 @@
 import React from 'react';
-import {AssessmentFrame, AssessmentWelcome} from './AssessmentApp.jsx';
+import {AssessmentFrame} from './AssessmentApp.jsx';
 import CandidateAssessment from './CandidateAssessment.jsx';
 import {useAssessmentCatalog} from './catalog-client.js';
 
 export default function AssessmentCatalog({slug = ''}) {
   const {status, assessments} = useAssessmentCatalog();
   const selected = assessments.find(item => item.slug === slug);
-  const invited = Boolean(new URLSearchParams(window.location.search).get('invite'));
 
   if (status !== 'ready') return <AssessmentFrame>
     <main className="tta-shell tta-catalog">
@@ -22,18 +21,14 @@ export default function AssessmentCatalog({slug = ''}) {
       <h1>Assessment unavailable</h1><p role="status">This assessment is not open right now.</p>
       <a className="tta-text-link" href="/assessments">View assessments</a>
     </main></AssessmentFrame>;
-    // Reuse the existing invitation validation, form and Start call.
-    if (invited) return <CandidateAssessment catalogItem={selected} />;
-    return <AssessmentWelcome client={selected.client_name} assessmentTitle={selected.title}
-      durationMinutes={selected.duration_minutes} sectionTitles={selected.section_titles}
-      itemCount={selected.item_count} hasInvitation={false} />;
+    return <CandidateAssessment catalogItem={selected} />;
   }
 
   return <AssessmentFrame>
     <main className="tta-shell tta-catalog" id="main-content">
       <div className="tta-kicker">Talent Tree</div>
       <h1>Assessments</h1>
-      <p className="tta-intro">Each assessment is opened from an invitation link sent by your recruiter.</p>
+      <p className="tta-intro">Choose an assessment to read the instructions, try practice and start.</p>
       {assessments.length ? <div className="tta-catalog-list">
         {assessments.map(item => <article className="tta-catalog-card" key={item.slug}>
           <div><p className="tta-kicker">{item.client_name}</p><h2>{item.title}</h2>

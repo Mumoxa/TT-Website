@@ -1,5 +1,7 @@
 # Assessment brand redesign handoff — 4 November 2026
 
+Historical document. Current open-start behavior and retained-results policy: [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md).
+
 Branch: `feature/assessment-brand-redesign`, based on `main` commit `51b06c6`.
 Prepared for pull-request integration. The PR and Git history record the commit and merge status. No direct deployment or Cloudflare settings change was performed.
 

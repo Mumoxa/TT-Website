@@ -1,5 +1,7 @@
 # AP assessment delivery evidence — 2026-11-03
 
+Historical document. Current open-start behavior and retained-results policy: [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md).
+
 Status: verified locally; remote preview and production launch remain blocked.
 
 ## Completed and checked
@@ -24,7 +26,7 @@ Cloudflare `wrangler whoami` still reports unauthenticated after retry. The acti
 
 No preview URL exists from this work. Effective Pages configuration, current preview schema, Access policies, remote secrets and impact on other preview deployments are unverified. Do not push yet: Git auto-deploy could affect a shared preview before that impact is known. The local feature commit may be reviewed safely.
 
-The approved SATURC questions/marking key are absent. Synthetic fixtures were used only locally. Private authoring is ready; real content, privacy/disclosure/retention wording and an AP expert pilot need human approval. Automated deletion is not implemented. Browser print PDF and the bounded 6×20 Excel-like grid are the supported capabilities; no Microsoft Excel equivalence is claimed.
+The approved Talent Tree questions/marking key are absent. Synthetic fixtures were used only locally. Private authoring is ready; real content, privacy/disclosure/retention wording and an AP expert pilot need human approval. Automated deletion is not implemented. Browser print PDF and the bounded 6×20 Excel-like grid are the supported capabilities; no Microsoft Excel equivalence is claimed.
 
 Production launch steps and safe preview gates: DEPLOYMENT_RUNBOOK.md. Approval draft: PRIVACY_AND_CONTENT_APPROVAL_DRAFT.md. Production assessment migration, main merge/deployment and real invitations require explicit final approval. Existing offers DB/R2 and tallo-db must remain untouched.
 

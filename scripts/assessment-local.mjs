@@ -20,6 +20,10 @@ migrations_dir = "${root}/migrations/assessments"
 `);
 const vars=path.join(sandbox,'.dev.vars');
 if(!fs.existsSync(vars))fs.writeFileSync(vars,'ASSESSMENT_ADMIN_KEY='+crypto.randomBytes(32).toString('hex')+'\n',{mode:0o600,flag:'wx'});
+let privateVars=fs.readFileSync(vars,'utf8');
+for(const [name,value] of [['ASSESSMENT_ID_HASH_KEY',crypto.randomBytes(32).toString('hex')],['ASSESSMENT_PII_KEY',crypto.randomBytes(32).toString('base64')]]) {
+ if(!new RegExp('^'+name+'=','m').test(privateVars)){privateVars+='\n'+name+'='+value+'\n';fs.writeFileSync(vars,privateVars,{mode:0o600});}
+}
 const functions=path.join(sandbox,'functions');
 if(!fs.existsSync(functions))fs.symlinkSync(path.join(root,'functions'),functions,'dir');
 const mode=process.argv[2];

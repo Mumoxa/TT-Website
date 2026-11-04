@@ -113,3 +113,25 @@
 
 .tta-catalog-card > div {min-width:0;}
 .tta-page :is(h1,h2,h3,legend,label,p) {overflow-wrap:anywhere;}
+
+/* Open assessment welcome, screening and candidate result summaries. */
+.tta-privacy-notice { margin-bottom: 28px; font-size: .9rem; line-height: 1.65; }
+.tta-privacy-notice h2 { font-size: 1.5rem; }
+.tta-privacy-notice a { color: inherit; text-decoration: underline; }
+.tta-screening { border: 0; padding: 0; margin: 28px 0 0; min-width: 0; }
+.tta-screening legend { font-size: 1.15rem; font-weight: 600; margin-bottom: 14px; }
+.tta-registration select,.tta-registration textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); padding: 12px; font: inherit; margin: 8px 0 18px; }
+.tta-registration input[type=date] { width: 100%; min-width: 0; box-sizing: border-box; }
+.tta-practice-link { display: inline-block; margin: 16px 0; border: 0; background: none; cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 4px; }
+.tta-candidate-results { text-align: left; margin: 36px auto; max-width: 680px; }
+.tta-candidate-results article { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.tta-candidate-results h3 { display: flex; justify-content: space-between; gap: 20px; }
+.tta-candidate-results h3 span { white-space: nowrap; }
+.tta-result-overall { font-size: 3.5rem; font-weight: 600; }
+.tta-result-overall span { font-size: 1.25rem; }
+.tta-result-caveat { padding-top: 24px; font-size: .95rem; }
+
+.tta-practice .tta-choice input { width: 16px; height: 16px; }
+.tta-practice .tta-choice span { min-width: 0; overflow-wrap: anywhere; }
+.tta-registration .tta-consent input { flex: 0 0 16px; width: 16px; height: 16px; padding: 0; border: 0; box-shadow: none; }
+.tta-registration .tta-consent span { min-width: 0; }

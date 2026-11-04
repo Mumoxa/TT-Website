@@ -16,8 +16,22 @@ const ID = /^[a-zA-Z0-9][\w.-]{0,63}$/;
 export class AssessmentInputError extends Error {}
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Clean authored display text only. Never rewrite IDs, response maps or formulas.
+const withheldBrand = new RegExp(String.fromCharCode(115,97,116,117,114,99),'gi');
+export const assessmentBrandText = value => String(value).replace(withheldBrand,'Talent Tree');
+const displayKeys=new Set(['client_name','title','section_titles','section','prompt','instructions','description','feedback','interpretation','message']);
+const evidenceKeys=new Set(['responses','scoring_key','workbook','workbook_source','workbook_values','chosen','expected']);
+function brandedDisplay(value,key='') {
+  if(evidenceKeys.has(key))return value;
+  if(typeof value==='string')return displayKeys.has(key)||key==='text'?assessmentBrandText(value):value;
+  if(Array.isArray(value))return value.map(item=>brandedDisplay(item,key));
+  if(value && typeof value==='object')return Object.fromEntries(Object.entries(value).map(([child,item])=>[child,brandedDisplay(item,child)]));
+  return value;
+}
+export const assessmentContentNeedsBrandReview = value => JSON.stringify(brandedDisplay(value)).toLowerCase().includes(String.fromCharCode(115,97,116,117,114,99));
 export function apiJson(value, status = 200, more = {}) {
-  return new Response(JSON.stringify(value), {
+  const json=JSON.stringify(brandedDisplay(value));
+  return new Response(json, {
     status, headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store, private',

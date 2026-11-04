@@ -1,5 +1,7 @@
 # Talent Tree AP assessment — preview and launch runbook
 
+Historical document. Current open-start behavior and retained-results policy: [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md).
+
 Status: local implementation and synthetic browser validation completed on the
 feature branch. Remote Cloudflare settings, existing preview impact and preview
 schema are NOT verified from this machine. No remote writes, production migration,

@@ -8,10 +8,14 @@
  * IMPORTANT: Answer keys exist only inside PRIVATE D1 assessment_versions.
  * The public GitHub repository must not contain real candidate test keys.
  */
+import {normalizeScreening, ScreeningValidationError} from '../../../src/assessments/screening.js';
+import {identityHash,encryptId,maskId,publicScreening,PrivacyConfigurationError} from '../../lib/candidate-privacy.js';
+import {assertPracticeIsolation} from '../../lib/practice-isolation.js';
+import {candidateResult} from '../../lib/candidate-results.js';
 import { assessmentCatalog } from '../../lib/assessment-catalog.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
 import {
-  AssessmentInputError, apiJson, failure, requestJson, sameOrigin, normalizeIdentity, newToken, tokenHash,
+  AssessmentInputError, apiJson, assessmentContentNeedsBrandReview, failure, requestJson, sameOrigin, normalizeIdentity, newToken, tokenHash,
   isToken, id, nowIso, cookieHeader, getCookie, publicAssessment,
   cleanSubmission, cleanWorkbook, scoreAssessment, validateAssessmentPackage,
 } from '../../lib/assessment-core.js';
@@ -62,6 +66,8 @@ async function publicRateLimit(request, db, operation) {
 }
 
 function errorResponse(error) {
+  if(error instanceof ScreeningValidationError)return failure(error.message,400);
+  if(error instanceof PrivacyConfigurationError)return failure('Private candidate registration is not configured. Please try again later.',503);
   if (/UNIQUE constraint failed|FOREIGN KEY constraint failed/.test(String(error?.message || ''))) return failure('This invitation is already in use.', 409);
   if (error?.message === 'Request too large.') return failure(error.message,413);
   if (error instanceof AssessmentInputError || error instanceof BatteryError) return failure(error.message,400);
@@ -78,7 +84,7 @@ async function candidateAttempt(request, db) {
   if (!sessionToken) return null;
   const hash = await tokenHash(sessionToken);
   return db.prepare(
-    'SELECT ' + PUBLIC_KEYS + ', c.first_name, c.surname, c.email, d.title, d.client_name, d.duration_seconds, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
+    'SELECT ' + PUBLIC_KEYS + ', c.first_name, c.surname, c.email, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.title, d.client_name, d.duration_seconds, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id ' +
     'JOIN assessment_definitions d ON d.id=a.definition_id ' +
     'JOIN assessment_versions v ON v.id=a.version_id ' +
@@ -89,7 +95,7 @@ async function candidateAttempt(request, db) {
 function attemptView(a) {
   const version = { question_payload_json: a.question_payload_json };
   return {
-    attempt_id: a.id, status: a.status,
+    attempt_id: a.id, status: a.status, attempt_number:a.attempt_number||1,
     first_name: a.first_name, surname: a.surname,
     client_name: safeParse(a.question_payload_json,{})._metadata?.client_name || a.client_name, title: safeParse(a.question_payload_json,{})._metadata?.title || a.title,
     started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms,
@@ -182,44 +188,50 @@ async function saveProgress(db, a, data, submit = false) {
   return apiJson({ ok: true, ...(submit ? {status:'completed'} : {}), save_revision: expectedRevision + 1, saved_at_ms: now, server_now_ms: Date.now() });
 }
 
-async function startAttempt(request, db) {
-  const data = await requestJson(request);
-  const identity = normalizeIdentity(data);
-  const inviteToken = data.invitation_token;
-  if (!isToken(inviteToken)) return failure('An individual invitation link is required.', 400);
-  const hash = await tokenHash(inviteToken);
-  const invited = await db.prepare(
-    'SELECT i.*, d.client_name, d.title, d.status AS assessment_status, d.duration_seconds, d.current_version_id ' +
-    'FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.token_sha256=?'
-  ).bind(hash).first();
-  if (!invited || invited.status !== 'issued' || Date.parse(invited.expires_at) <= Date.now() ||
-      invited.assessment_status !== 'published' || !invited.current_version_id) {
-    return failure('This invitation is unavailable or has expired. Contact your recruiter.', 403);
+async function startAttempt(request, db, env) {
+  const data=await requestJson(request);
+  const identity=normalizeIdentity(data);
+  const screening=normalizeScreening(data);
+  const open=typeof data.assessment_slug==='string' && /^[a-z0-9-]{3,60}$/.test(data.assessment_slug);
+  let invited;
+  if(open){
+    const definition=await db.prepare("SELECT id AS definition_id,client_name,title,status AS assessment_status,duration_seconds,current_version_id FROM assessment_definitions WHERE slug=? AND status='published' AND current_version_id IS NOT NULL").bind(data.assessment_slug).first();
+    if(!definition)return failure('This assessment is not open right now.',404);
+    invited={...definition,id:id()};
+  }else{
+    if(!isToken(data.invitation_token))return failure('Choose an assessment link to begin.',400);
+    invited=await db.prepare('SELECT i.*,d.client_name,d.title,d.status AS assessment_status,d.duration_seconds,d.current_version_id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.token_sha256=?').bind(await tokenHash(data.invitation_token)).first();
+    if(!invited||invited.status!=='issued'||Date.parse(invited.expires_at)<=Date.now()||invited.assessment_status!=='published'||!invited.current_version_id)return failure('This invitation is unavailable or has expired. Contact your recruiter.',403);
+    if(invited.intended_email&&invited.intended_email.toLowerCase()!==identity.email)return failure('Please use the email address associated with your invitation.',403);
   }
-  if (invited.intended_email && invited.intended_email.toLowerCase() !== identity.email) {
-    return failure('Please use the email address associated with your invitation.', 403);
-  }
-  const start = newAttemptTimes(Date.now(), 600);
-  const candidateId = id(), attemptId = id(), sessionToken = newToken(), sessionHash = await tokenHash(sessionToken);
-  const at = nowIso();
-  // D1 batch runs as a transaction. A simultaneous second start hits the
-  // UNIQUE invitation_id constraint and rolls back rather than creating two attempts.
-  await db.batch([
-    db.prepare("INSERT INTO candidates (id, first_name, surname, email, privacy_notice_version, consent_recorded_at, created_at) SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT i.id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.status='issued' AND i.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND d.status='published' AND d.current_version_id=?)")
-      .bind(candidateId, identity.first_name, identity.surname, identity.email, 'assessment-v1', at, at,invited.id,invited.current_version_id),
-    db.prepare('INSERT INTO attempts (id, invitation_id, candidate_id, definition_id, version_id, session_token_sha256, status, started_at_ms, expires_at_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(attemptId, invited.id, candidateId, invited.definition_id, invited.current_version_id,
-        sessionHash, 'active', start.started_at_ms, start.expires_at_ms, at, at),
-    db.prepare('UPDATE invitations SET status=?, redeemed_at=? WHERE id=? AND status=?')
-      .bind('redeemed', at, invited.id, 'issued'),
-  ]);
-  const a = await db.prepare(
-    'SELECT ' + PUBLIC_KEYS + ', c.first_name, c.surname, c.email, d.title, d.client_name, d.duration_seconds, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
-    'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
-    'JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?'
-  ).bind(attemptId).first();
-  await audit(db, 'candidate', candidateId, attemptId, 'assessment.started');
-  return apiJson({ ok: true, ...attemptView(a) }, 200, { 'Set-Cookie': cookieHeader(request, sessionToken) });
+  const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
+  const payload=safeParse(version?.question_payload_json,{});
+  if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
+  // Check the public projection before creating a timed attempt; never alias opaque IDs.
+  if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
+  const hash=await identityHash(env,invited.definition_id,screening.id_number);
+  const ciphertext=await encryptId(env,screening.id_number);
+  const start=newAttemptTimes(Date.now(),600);
+  const candidateId=id(),attemptId=id(),sessionToken=newToken(),sessionHash=await tokenHash(sessionToken),at=nowIso();
+  const operations=[];
+  if(open)operations.push(db.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,redeemed_at,created_at) VALUES (?,?,?,'redeemed',?,?,?,?)").bind(invited.id,invited.definition_id,await tokenHash(newToken()),at,new Date(start.expires_at_ms).toISOString(),at,at));
+  const columns='id,first_name,surname,email,privacy_notice_version,consent_recorded_at,created_at,contact_number,id_number_encrypted,id_number_masked,earliest_start_date,first_day_confirmed,travel_mode,travel_description,own_transport,assignment_available,assignment_note';
+  const values=[candidateId,identity.first_name,identity.surname,identity.email,'open-assessment-retained-results-v2',at,at,screening.contact_number,ciphertext,maskId(screening.id_number),screening.earliest_start_date,1,screening.travel_mode,screening.travel_description,screening.own_transport,screening.assignment_available,screening.assignment_note];
+  const condition=open?"EXISTS (SELECT id FROM assessment_definitions WHERE id=? AND status='published' AND current_version_id=?)":"EXISTS (SELECT i.id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.status='issued' AND i.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND d.status='published' AND d.current_version_id=?)";
+  operations.push(db.prepare('INSERT INTO candidates ('+columns+') SELECT '+values.map(()=>'?').join(',')+' WHERE '+condition).bind(...values,open?invited.definition_id:invited.id,invited.current_version_id));
+  // Allocate the next ordinal atomically with the new candidate and attempt graph.
+  operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash));
+  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(attemptId,invited.id,candidateId,invited.definition_id,invited.current_version_id,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at));
+  if(!open)operations.push(db.prepare("UPDATE invitations SET status='redeemed',redeemed_at=? WHERE id=? AND status='issued'").bind(at,invited.id));
+  await db.batch(operations);
+  const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
+  await audit(db,'candidate',candidateId,attemptId,'assessment.started');
+  return apiJson({ok:true,...attemptView(a)},200,{'Set-Cookie':cookieHeader(request,sessionToken)});
+}
+
+async function completionResponse(db,attemptId,status) {
+  const row=await db.prepare('SELECT a.id,a.started_at_ms,a.expires_at_ms,c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.client_name,d.title,r.overall_score,r.knowledge_score,r.reconciliation_score,r.breakdown_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id LEFT JOIN results r ON r.attempt_id=a.id WHERE a.id=?').bind(attemptId).first();
+  return apiJson({ok:true,attempt_id:attemptId,status,attempt_number:row?.attempt_number||1,first_name:row?.first_name||'',surname:row?.surname||'',client_name:row?.client_name||'Talent Tree',title:row?.title||'Assessment',started_at_ms:row?.started_at_ms,expires_at_ms:row?.expires_at_ms,server_now_ms:Date.now(),candidate_result:candidateResult(row)});
 }
 
 async function inviteMeta(request, db) {
@@ -287,6 +299,8 @@ async function adminPublish(request,db) {
   const version=await db.prepare('SELECT * FROM assessment_versions WHERE id=?').bind(typeof data.version_id==='string'?data.version_id:'').first();
   if(!version)return failure('Assessment draft not found.',404);
   validateAssessmentPackage({question_payload:JSON.parse(version.question_payload_json),scoring_key:JSON.parse(version.scoring_key_json)});
+  if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment identifiers or workbook sources need a branding review before publishing.',400);
+  if(isBatteryPayload(JSON.parse(version.question_payload_json))){try{assertPracticeIsolation(JSON.parse(version.question_payload_json),JSON.parse(version.scoring_key_json));}catch{return failure('Practice content overlaps this assessment. Review practice before publishing.',400);}}
   const at=nowIso();
   const metadata=JSON.parse(version.question_payload_json)._metadata||{};
   await db.batch([
@@ -335,7 +349,7 @@ async function adminList(db) {
   const [defs, attempts] = await db.batch([
     db.prepare("SELECT d.id,d.slug,d.client_name,d.title,d.status,d.duration_seconds,d.updated_at, (SELECT v.id FROM assessment_versions v WHERE v.definition_id=d.id ORDER BY v.created_at DESC,v.version_label DESC LIMIT 1) AS latest_version_id FROM assessment_definitions d ORDER BY d.updated_at DESC LIMIT 100"),
     db.prepare(
-      'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, c.first_name, c.surname, c.email, ' +
+      'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, c.first_name, c.surname, c.email, c.earliest_start_date, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
       'd.client_name, d.title, r.overall_score, r.knowledge_score, r.reconciliation_score, r.critical_flags_json ' +
       'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
       'LEFT JOIN results r ON r.attempt_id=a.id ORDER BY a.started_at_ms DESC LIMIT 100'
@@ -363,8 +377,9 @@ async function batteryReport(db, a, attemptId) {
     reconciliation_review: null,
     workbook_save_history: resultRows(saves),
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
+    screening: publicScreening(a),
     assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format, sheets: payloadObj.workbook?.sheets || null },
-    attempt: { id: a.id, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
+    attempt: { id: a.id, attempt_number:a.attempt_number||1, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
     responses: answers,
     question_review: graded.items.map((i) => ({
       id: i.id, section: i.section, category: i.category, prompt: i.prompt, chosen: i.given ?? 'Not answered',
@@ -381,8 +396,8 @@ async function batteryReport(db, a, attemptId) {
 async function adminReport(db, attemptId) {
   if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
   const a = await db.prepare(
-    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, ' +
-    'a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, ' +
+    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
+    'a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number, c.id_number_masked, c.earliest_start_date, c.first_day_confirmed, c.travel_mode, c.travel_description, c.own_transport, c.assignment_available, c.assignment_note, ' +
     'd.client_name, d.title, v.version_label, v.question_payload_json, v.scoring_key_json, ' +
     'r.overall_score, r.knowledge_score, r.reconciliation_score, r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id ' +
@@ -410,8 +425,9 @@ async function adminReport(db, attemptId) {
     reconciliation_review:{expected_discrepancies:rubric.discrepancies,expected_actions:rubric.actions,expected_balance:rubric.corrected_balance},
     workbook_save_history: resultRows(saves),
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
+    screening: publicScreening(a),
     assessment: { client_name: safeParse(a.question_payload_json,{})._metadata?.client_name || a.client_name, title: safeParse(a.question_payload_json,{})._metadata?.title || a.title, version: a.version_label, scenario: safeParse(a.question_payload_json, {}).scenario },
-    attempt: { id: a.id, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
+    attempt: { id: a.id, attempt_number:a.attempt_number||1, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
     responses: { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}), workbook: safeParse(a.workbook_json, {}) },
     question_review: safeParse(a.question_payload_json, {}).questions?.map((q) => {
       const chosenId = safeParse(a.mcq_answers_json, {})[q.id] || null;
@@ -448,7 +464,7 @@ export async function onRequest(context) {
 
     if (operation === 'catalog' && request.method === 'GET') return await assessmentCatalog(db);
     if (operation === 'invite' && request.method === 'GET') return await inviteMeta(request, db);
-    if (operation === 'start' && write) return await startAttempt(request, db);
+    if (operation === 'start' && write) return await startAttempt(request, db, env);
 
     if (operation === 'admin/login' && write) return await assessmentLogin(request,env);
     if (segments[0] === 'admin') {
@@ -483,14 +499,18 @@ export async function onRequest(context) {
     const status = await closeAttempt(db, attempt, Date.now(), null);
     if (status !== 'active') scheduleNotifications(context, env, db);
     if (operation === 'me' && request.method === 'GET') {
+      if(status!=='active')return await completionResponse(db,attempt.id,status);
       return apiJson({ ok: true, ...attemptView({ ...await candidateAttempt(request,db), status }) });
     }
     if (!write) return failure('Method not allowed.', 405);
-    if (status !== 'active') return operation === 'submit' ? apiJson({ok:true,status,server_now_ms:Date.now()}) : failure('Your assessment has closed. Your saved answers have been retained.', 409);
+    if (status !== 'active') return operation === 'submit' ? await completionResponse(db,attempt.id,status) : failure('Your assessment has closed. Your saved answers have been retained.', 409);
 
     const data = await requestJson(request);
     const response = await saveProgress(db, attempt, data, operation === 'submit');
-    if (operation === 'submit') scheduleNotifications(context, env, db);
+    if (operation === 'submit') {
+      scheduleNotifications(context, env, db);
+      if(response.status===200){const receipt=await response.json();return await completionResponse(db,attempt.id,receipt.status);}
+    }
     return response;
   } catch (error) {
     return errorResponse(error);
