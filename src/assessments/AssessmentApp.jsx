@@ -226,29 +226,55 @@ export function AssessmentRunnerLayout({
 }
 
 export function AssessmentComplete({ client = '', timedOut = false, candidateName, result, attemptNumber=1 }) {
+  const sections = result?.sections || [];
   return (
     <AssessmentFrame client={client} eyebrow="Assessment submitted">
-      <main className="tta-complete" id="main-content">
-        <p className="ca-eyebrow">Submission received</p>
-        <h1>{timedOut ? 'Your time has expired.' : 'Assessment complete.'}</h1>
-        <p>{candidateName ? candidateName + ', your ' : 'Your '}
-          {timedOut ? 'saved work' : 'assessment'} has been submitted.
-          Talent Tree will review your results as part of the recruitment process.
-        </p>
-        {result ? <section className="ca-result" aria-label="Your assessment results">
-          <h2>Your assessment results</h2>
-          <p>Attempt {attemptNumber}</p>
-          <div className="ca-score-block"><p className="ca-score-label">Overall score</p><p className="ca-score"><strong>{result.overall_score}</strong> <span>/ 100</span></p></div>
-          <ul className="ca-result-sections">
-            {result.sections.map((section,index)=><li key={index}>
-              <div className="ca-result-head"><h3>{section.title}</h3><strong>{section.percentage}%</strong></div>
-              <progress className="ca-meter" max="100" value={section.percentage} aria-label={section.title + ' score'} />
-              <p>{section.feedback}</p>
-            </li>)}
-          </ul>
-          <p className="ca-result-caveat">{result.caveat}</p>
-        </section> : <p role="status">Your results are being prepared. Reload this page to check again.</p>}
-        <p className="tta-complete-note">You may now close this window. Your recruiter will contact you regarding next steps.</p>
+      <main className="ca-complete" id="main-content">
+        <div className="ca-shell ca-complete-grid">
+          <header className="ca-complete-head ca-enter">
+            <p className="ca-eyebrow">Submission received</p>
+            <h1>{timedOut ? 'Your time has expired.' : 'Assessment complete.'}</h1>
+            <p className="ca-lead">{candidateName ? candidateName + ', your ' : 'Your '}
+              {timedOut ? 'saved work' : 'assessment'} has been submitted. Talent Tree will review your results as part of the recruitment process.
+            </p>
+            <ul className="ca-complete-meta">
+              <li>Attempt {attemptNumber}</li>
+              <li>{client || 'Talent Tree'}</li>
+            </ul>
+          </header>
+
+          {result ? (
+            <section className="ca-result-card" aria-labelledby="ca-results-heading">
+              <div className="ca-result-hero">
+                <p className="ca-score-label">Overall score</p>
+                <p className="ca-score"><strong>{result.overall_score}</strong> <span>/ 100</span></p>
+              </div>
+              <h2 id="ca-results-heading">Your assessment results</h2>
+              <ul className="ca-result-sections">
+                {sections.map((section, index) => {
+                  const percent = Math.max(0, Math.min(100, Number(section.percentage) || 0));
+                  return (
+                    <li key={index}>
+                      <div className="ca-result-head"><h3>{section.title}</h3><strong>{percent}%</strong></div>
+                      <div className="ca-bar" role="img" aria-label={section.title + ': ' + percent + ' percent'}><span style={{ width: percent + '%' }} /></div>
+                      <p>{section.feedback}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="ca-result-caveat">{result.caveat}</p>
+            </section>
+          ) : (
+            <p role="status" className="ca-state">Your results are being prepared. Reload this page to check again.</p>
+          )}
+
+          <aside className="ca-complete-side" aria-label="Next steps">
+            <h2>What happens next</h2>
+            <p>Your recruiter will contact you regarding next steps. You may now close this window.</p>
+            <p>Need to try again? Open the assessment from the catalogue and start a new attempt. Each attempt is recorded and numbered.</p>
+            <a className="ca-btn ca-btn--quiet ca-btn--block" href="/assessments">Back to assessments</a>
+          </aside>
+        </div>
       </main>
     </AssessmentFrame>
   );
