@@ -21,7 +21,7 @@ async function publishBattery(api){
    database accumulates test definitions, and the public catalogue returns at most 100 of them. */
 async function mockCatalog(page,slug){
  const sections=SYNTHETIC_BATTERY.sections;
- await page.route('**/api/assessment/catalog',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{slug,title:'Accounts Payable Clerk Assessment',client_name:'Talent Tree',duration_minutes:10,section_titles:sections.map(x=>x.title),item_count:sections.reduce((n,x)=>n+x.items.length,0)}])}));
+ await page.route('**/api/assessment/catalog*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{slug,title:'Accounts Payable Clerk Assessment',client_name:'Talent Tree',duration_minutes:10,section_titles:sections.map(x=>x.title),item_count:sections.reduce((n,x)=>n+x.items.length,0)}])}));
 }
 
 /* Runs inside the page. Returns the defects found on the current screen. */
@@ -85,7 +85,7 @@ for(const width of [390,1280]){
   test('candidate landing page',async({page})=>{
    // Production publishes one assessment. The local database holds many test definitions, so the
    // catalogue is served as production has it, which keeps the blank-band measurement honest.
-   await page.route('**/api/assessment/catalog',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{slug:'ap-clerk-v1',title:'Accounts Payable Clerk Assessment',client_name:'Talent Tree',duration_minutes:10,section_titles:['1. Debits, credits and ledger mechanics','2. Invoices, VAT and accruals','3. Supplier statement reconciliation','4. Payment controls and fraud prevention','5. Aged creditors and month-end accruals'],item_count:23}])}));
+   await page.route('**/api/assessment/catalog*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{slug:'ap-clerk-v1',title:'Accounts Payable Clerk Assessment',client_name:'Talent Tree',duration_minutes:10,section_titles:['1. Debits, credits and ledger mechanics','2. Invoices, VAT and accruals','3. Supplier statement reconciliation','4. Payment controls and fraud prevention','5. Aged creditors and month-end accruals'],item_count:23}])}));
    await page.goto(base+'/assessments',{waitUntil:'networkidle'});
    await expectClean(page,'candidate landing',width);
   });

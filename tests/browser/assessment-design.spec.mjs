@@ -6,7 +6,7 @@ import {SYNTHETIC} from '../fixtures/synthetic-assessment.mjs';
 const base = 'http://127.0.0.1:8790';
 const metadata = [{slug:'accounts-payable-clerk',title:'Accounts Payable Clerk',client_name:'Example client',duration_minutes:10,section_titles:['Technical knowledge','Practical reconciliation'],item_count:6}];
 const key = () => fs.readFileSync('.wrangler/assessment-sandbox/.dev.vars','utf8').match(/^ASSESSMENT_ADMIN_KEY=(.+)$/m)[1];
-const mockCatalog = page => page.route('**/api/assessment/catalog', route => route.fulfill({json:metadata}));
+const mockCatalog = page => page.route('**/api/assessment/catalog*', route => route.fulfill({json:metadata}));
 async function post(api,path,data) {
   const response = await api.post(base+'/api/assessment/'+path,{headers:{Origin:base,'x-tt-assessment-admin':'1'},data});
   expect(response.status(),await response.text()).toBe(200);
@@ -42,12 +42,14 @@ test('catalogue and slug routes render open-start instructions and candidate for
 });
 
 test('catalogue announces loading, empty and error states',async({page})=>{
-  let release;
-  await page.route('**/api/assessment/catalog',async route=>{await new Promise(resolve=>{release=resolve;});await route.fulfill({json:[]});});
-  await page.goto('/assessments');await expect(page.getByRole('status')).toHaveText('Loading assessments…');
+  let release,requestStarted;
+  const gate=new Promise(resolve=>{release=resolve;});
+  const started=new Promise(resolve=>{requestStarted=resolve;});
+  await page.route('**/api/assessment/catalog*',async route=>{requestStarted();await gate;await route.fulfill({json:[]});});
+  await page.goto('/assessments');await started;await expect(page.getByRole('status')).toHaveText('Loading assessments…');
   release();await expect(page.getByRole('status')).toHaveText('No assessments are open right now.');
-  await page.unroute('**/api/assessment/catalog');
-  await page.route('**/api/assessment/catalog',route=>route.fulfill({status:503,json:{}}));
+  await page.unroute('**/api/assessment/catalog*');
+  await page.route('**/api/assessment/catalog*',route=>route.fulfill({status:503,json:{}}));
   await page.reload();await expect(page.getByRole('alert')).toContainText('Assessments could not be loaded.');
 });
 
@@ -109,13 +111,13 @@ test.describe('brand screenshots at device scale 2',()=>{
 
 test('long published titles and client names wrap within the mobile catalogue',async({page})=>{
   await page.setViewportSize({width:390,height:900});
-  await page.route('**/api/assessment/catalog',route=>route.fulfill({json:[{...metadata[0],title:'A'.repeat(160),client_name:'B'.repeat(120)}]}));
+  await page.route('**/api/assessment/catalog*',route=>route.fulfill({json:[{...metadata[0],title:'A'.repeat(160),client_name:'B'.repeat(120)}]}));
   await page.goto('/assessments');await expect(page.getByRole('link',{name:'View '+'A'.repeat(160)})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test('invitation metadata stays authoritative when the slug describes another assessment',async({page,request})=>{
-  await page.route('**/api/assessment/catalog',route=>route.fulfill({json:[{...metadata[0],section_titles:['Unrelated published section'],item_count:99}]}));
+  await page.route('**/api/assessment/catalog*',route=>route.fulfill({json:[{...metadata[0],section_titles:['Unrelated published section'],item_count:99}]}));
   const invitation=await invite(request,'Invited assessment');
   await page.goto(invitation.replace('/assessment?','/assessments/accounts-payable-clerk?'));
   await expect(page.getByRole('heading',{level:1,name:'Invited assessment',exact:true})).toBeVisible();

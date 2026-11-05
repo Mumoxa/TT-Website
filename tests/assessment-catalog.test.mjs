@@ -32,3 +32,17 @@ test('legacy extra metadata cannot impersonate battery sections or leak nested d
  assert.doesNotMatch(body,/PRIVATE_CATALOG_CANARY|answers/);
  assert.deepEqual(JSON.parse(body)[0].section_titles,['Technical knowledge','Practical reconciliation']);
 });
+
+test('exact slug lookup finds a published assessment beyond the 100-item listing limit',async()=>{
+ const db=database();
+ for(let i=0;i<105;i++) seed(db,{id:'bulk'+String(i).padStart(3,'0'),payload:{questions:Array(5).fill({}),scenario:{}}});
+ seed(db,{id:'zzz-target',payload:{questions:Array(5).fill({}),scenario:{}}});
+ const bySlug=slug=>onRequest({env:{ASSESSMENT_DB:db},request:new Request('https://example.invalid/api/assessment/catalog?slug='+slug)});
+ const listing=await (await get(db)).json();
+ assert.equal(listing.length,100);
+ assert.ok(!listing.some(item=>item.slug==='zzz-target'),'target is beyond the listing limit');
+ const exact=await (await bySlug('zzz-target')).json();
+ assert.deepEqual(exact.map(item=>item.slug),['zzz-target']);
+ assert.deepEqual(await (await bySlug('unknown-slug')).json(),[]);
+ assert.deepEqual(await (await bySlug("x'%20OR%201=1")).json().then(j=>j.length),100);
+});

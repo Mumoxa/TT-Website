@@ -351,7 +351,7 @@ function Landing({ status, assessments }) {
 }
 
 export default function AssessmentCatalog({slug = ''}) {
-  const {status, assessments} = useAssessmentCatalog();
+  const {status, assessments} = useAssessmentCatalog(true, slug);
   const selected = assessments.find(item => item.slug === slug);
 
   if (slug) {

@@ -470,7 +470,7 @@ export async function onRequest(context) {
       if (limited) return limited;
     }
 
-    if (operation === 'catalog' && request.method === 'GET') return await assessmentCatalog(db);
+    if (operation === 'catalog' && request.method === 'GET') return await assessmentCatalog(db, new URL(request.url).searchParams.get('slug'));
     if (operation === 'invite' && request.method === 'GET') return await inviteMeta(request, db);
     if (operation === 'start' && write) return await startAttempt(request, db, env);
 
