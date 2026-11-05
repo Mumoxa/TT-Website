@@ -51,6 +51,11 @@ async function audit(db, actorType, actorId, attemptId, eventType) {
   } catch { /* audit failures should not destroy a completed assessment */ }
 }
 
+// Retry throttling for the start route is switched off while the assessment is being tested,
+// so a candidate can retry the same ID repeatedly. Set to true to restore the per-source limit
+// of 30 starts per minute. Invitation probing and admin sign-in stay limited either way.
+export const START_THROTTLE_ENABLED = false;
+
 // Persistent per-source throttling across isolates. No raw IP or token is retained.
 async function publicRateLimit(request, db, operation) {
   const source = request.headers.get('CF-Connecting-IP') || 'local';
@@ -459,7 +464,8 @@ export async function onRequest(context) {
   if (write && !sameOrigin(request)) return failure('Cross-site request blocked.', 403);
   try {
     const db = env.ASSESSMENT_DB;
-    if (['invite','start','admin/login'].includes(operation)) {
+    const throttled = START_THROTTLE_ENABLED ? ['invite','start','admin/login'] : ['invite','admin/login'];
+    if (throttled.includes(operation)) {
       const limited = await publicRateLimit(request,db,operation);
       if (limited) return limited;
     }
