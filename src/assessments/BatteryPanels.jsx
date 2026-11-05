@@ -21,10 +21,19 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
   const texts = draft.structured?.text || {};
   const multis = draft.structured?.multi || {};
   const [focusRequest, setFocusRequest] = useState(null);
+  // On narrow screens the workbook sits below the questions. After a jump, offer a way straight back.
+  const [returnTo, setReturnTo] = useState(null);
   const jumpToWorkbook = () => document.getElementById('tta-workbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const goToCell = (item, number) => { setReturnTo({ id: item.id, number }); setFocusRequest({ key: item.ref, nonce: Date.now() + Math.random() }); };
+  const backToQuestion = () => {
+    const el = returnTo && document.getElementById('q-' + returnTo.id);
+    setReturnTo(null);
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('button, input')?.focus({ preventScroll: true }); }
+  };
 
   return (
     <div className="tta-battery">
+      <div className="tta-battery-questions">
       {assessment.instructions && <p className="tta-scenario-instructions">{assessment.instructions}</p>}
       <div className="tta-battery-jump">
         <button type="button" className="tta-jump" onClick={jumpToWorkbook}>Go to the workbook</button>
@@ -36,7 +45,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             const number = `${sIndex + 1}.${iIndex + 1}`;
             if (item.type === 'single') {
               return (
-                <fieldset key={item.id} className="tta-question">
+                <fieldset key={item.id} id={'q-' + item.id} className="tta-question">
                   <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
                   {item.options.map((option) => (
@@ -52,7 +61,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             if (item.type === 'multi') {
               const chosen = multis[item.id] || [];
               return (
-                <fieldset key={item.id} className="tta-question">
+                <fieldset key={item.id} id={'q-' + item.id} className="tta-question">
                   <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
                   <p className="tta-sheet-help">Select all that apply.</p>
@@ -72,7 +81,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             }
             if (item.type === 'text') {
               return (
-                <div key={item.id} className="tta-question">
+                <div key={item.id} id={'q-' + item.id} className="tta-question">
                   <label htmlFor={'t-' + item.id}><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</label>
                   {instructionsFor(item)}
                   <input id={'t-' + item.id} type="text" maxLength={200} value={texts[item.id] || ''}
@@ -82,24 +91,26 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             }
             // cell: the answer lives in the workbook. The link takes the candidate straight to that cell.
             return (
-              <div key={item.id} className="tta-question tta-cell-item">
+              <div key={item.id} id={'q-' + item.id} className="tta-question tta-cell-item">
                 <p><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</p>
                 {instructionsFor(item)}
                 <div className="tta-cell-ask">
                   <p className="tta-sheet-help">Answer in cell <strong>{item.ref}</strong>. Current value: <output aria-label={'Current value of ' + item.ref}>{fmt(calculateCell(merged, item.ref))}</output></p>
-                  <button type="button" className="tta-cell-link" onClick={() => setFocusRequest({ key: item.ref, nonce: Date.now() + Math.random() })}>Go to cell {item.ref}</button>
+                  <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Go to cell {item.ref}</button>
                 </div>
               </div>
             );
           })}
         </section>
       ))}
-      <section className="tta-battery-section" id="tta-workbook" aria-label="Shared workbook">
+      </div>
+      <section className="tta-battery-section tta-battery-workbook" id="tta-workbook" aria-label="Shared workbook">
         <h2>Workbook</h2>
         <Workbook sheets={assessment.workbook?.sheets || null} source={source} cells={draft.workbook || {}}
           focusRequest={focusRequest}
           onChange={(workbook) => patchDraft((old) => ({ ...old, workbook }))} />
       </section>
+      {returnTo && <button type="button" className="tta-return" onClick={backToQuestion}>Back to question {returnTo.number}</button>}
     </div>
   );
 }
