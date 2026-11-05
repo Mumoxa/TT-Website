@@ -202,9 +202,11 @@ export function AssessmentRunnerLayout({
   expiresAt,
   onExpired,
   saveStatus = 'Saving automatically',
+  progress: activityProgress = null,
   children,
 }) {
-  const progress = Math.min(100, Math.max(0, sectionNumber / totalSections * 100));
+  const sectionPercent = Math.min(100, Math.max(0, sectionNumber / totalSections * 100));
+  const activityPercent = activityProgress && activityProgress.total ? Math.round(activityProgress.answered / activityProgress.total * 100) : 0;
   return (
     <AssessmentFrame client={client} title={assessmentTitle} eyebrow="Live assessment" timer={<AssessmentTimer expiresAt={expiresAt} onExpired={onExpired} />}>
       <main className="ca-runner" id="main-content">
@@ -212,11 +214,19 @@ export function AssessmentRunnerLayout({
           <p className="ca-eyebrow">In progress</p>
           <h1>{assessmentTitle}</h1>
           <p className="ca-candidate">{candidateName}</p>
-          <div className="ca-progress">
-            <span>{sectionLabel}</span>
-            <strong>Section {sectionNumber} of {totalSections}</strong>
-            <div className="ca-progress-track" aria-hidden="true"><div style={{ width: progress + '%' }} /></div>
-          </div>
+          {activityProgress ? (
+            <div className="ca-progress">
+              <span>{activityProgress.sections} sections · {activityProgress.total} activities</span>
+              <strong>Answered {activityProgress.answered} of {activityProgress.total}</strong>
+              <div className="ca-progress-track" aria-hidden="true"><div style={{ width: activityPercent + '%' }} /></div>
+            </div>
+          ) : (
+            <div className="ca-progress">
+              <span>{sectionLabel}</span>
+              <strong>Section {sectionNumber} of {totalSections}</strong>
+              <div className="ca-progress-track" aria-hidden="true"><div style={{ width: sectionPercent + '%' }} /></div>
+            </div>
+          )}
           <p className="ca-save" role="status">{saveStatus}</p>
         </aside>
         <section className="ca-runner-main" aria-label={sectionLabel}>{children}</section>
