@@ -1,7 +1,7 @@
 # Assessment product handoff — source of truth and status
 
 Audience: any AI assistant or maintainer who picks up the candidate assessment.
-Last updated: 2026-11-05, from checks made on that date. Each claim below is labelled with its evidence:
+Last updated: 2026-11-05 (after v4 and the 20-minute limit), from checks made on that date. Each claim below is labelled with its evidence:
 **Verified** (checked on 2026-11-05 against code, the live site or the admin API), **Implemented** (in code, not re-checked today),
 **Needs verification**, **Unknown**, or **Decision needed** (an owner decision is outstanding).
 
@@ -22,7 +22,7 @@ This repository is **public**. Do not commit live question wording, answer optio
   - `https://talenttree.co.za/assessments`: catalogue.
   - `https://talenttree.co.za/assessments/ap-clerk-v1`: welcome page for the live assessment.
 - Live assessment: slug `ap-clerk-v1`, title "Accounts Payable Clerk Assessment", client "Talent Tree".
-- Shape (verified against the live catalogue on 2026-11-05): 5 sections, 23 items, 10-minute limit enforced by the server.
+- Shape (verified against the live catalogue on 2026-11-05, after v4): 6 sections, 23 items, 20-minute limit enforced by the server (`DEFAULT_ASSESSMENT_SECONDS` in `functions/lib/assessment-deadlines.js`).
 - No invitation is needed. Anyone with the link can start. The practice mode writes no records.
 - Scoring: two categories, knowledge (weight 40) and reconciliation (weight 60), giving an overall score out of 100. Marking runs on the server. Formulas are re-evaluated on the server and client-reported values are never trusted.
 
@@ -36,7 +36,7 @@ These are decisions the owner has made. Do not change them without the owner.
 4. **Start throttling is off** (`START_THROTTLE_ENABLED = false` in `functions/api/assessment/[[path]].js`, verified). Rate limits remain on invitation creation and admin login.
 5. **Candidates see percentages only**: an overall percentage, percentages by section, and feedback text. They see no pass or fail, no answer keys, no item review and no marking detail.
 6. **Candidate fields**: first name, surname, email, contact number, South African ID number (checksum-validated, stored encrypted, masked in reports), earliest first day (a weekday from tomorrow, within 90 days), travel mode and description, own transport, two-month availability, and a privacy acknowledgement. The assessment front end gives `hello@talenttree.co.za` as the contact.
-7. **Timer.** The 10-minute limit starts when the server commits the start. Refresh, reload and duplicate tabs do not extend it. Work saved before expiry is kept.
+7. **Timer.** The 20-minute limit (raised from 10 on 2026-11-05 by owner approval) starts when the server commits the start. Refresh, reload and duplicate tabs do not extend it. Work saved before expiry is kept.
 8. **Candidate-visible instructions** may point to where to look (tabs, rows, cells). They must not reveal or hint at the answer. Every live item has instructions (verified 2026-11-05).
 9. **Live content stays out of the repository.** Question wording, options, answers and the marking key live only in the protected database (see section 3).
 
@@ -44,7 +44,7 @@ These are decisions the owner has made. Do not change them without the owner.
 
 | Kind of truth | Where it lives | Notes |
 |---|---|---|
-| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v3` (verified). |
+| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v4` (verified 2026-11-05). |
 | Candidate and recruiter behaviour | `functions/api/assessment/[[path]].js`, `functions/lib/*.js`, `src/assessments/*` | The code is the behaviour. |
 | Battery format and grading | `functions/lib/battery.js` (format `battery-v2`) | `gradeBattery` grades on the server. |
 | Current policy | `docs/assessments/OPEN_START_HANDOFF.md` | Partly superseded; see section 9. |
@@ -62,7 +62,9 @@ These are decisions the owner has made. Do not change them without the owner.
 | Live content: instructions on all 23 items, including the c5 instruction | Implemented and live (v3) | Admin readback, 2026-11-05. Catalogue returns HTTP 200 with 23 items and 5 sections. |
 | Question 3.6 (c5) renders on the live site | Verified | A test attempt on 2026-11-05 showed four options, none selected, instructions present and no horizontal overflow at 1280px or 390px. |
 | Reference codes such as INV-2214 stay on one line | Implemented and live (PR #43, merged as `0676194`) | Live asset check, and the live screenshot of question 3.6. |
-| Formula engine accepts `$` absolute references (`$A$2:$A$7`) | Implemented on branch `claude/beautiful-noether-lc8u7p`, not deployed | Before this, `$` references returned `#FORMULA!` on the live site. Unit test added. |
+| Live content v4 | Implemented and live; verified | Published 2026-11-05 on owner instruction ("approve all recommendations"). Changes from v3: m2 wording fixed (literal reading of v3 scored a correct method as wrong); m1 helper instruction corrected; diagnostic labels removed from the c4 options, Ledger D3/D6 and the c6 prompt; c4 states PMT-5530 left the bank once; b1, d3 and e2 replaced by section 6 "Group companies" (g1–g3). The admin key was unavailable, so the rows were written to D1 in the same form the admin draft and publish routes write, with both audit events. Verification: stored lengths matched the validated file; a live start (TEST Review, test@example.com, not submitted) returned a 1,200,000 ms window and a candidate payload byte-identical to the validated package, with no key fields. |
+| 20-minute limit | Implemented and live (PR #45) | Live catalogue shows 20 minutes; live start returned 1,200,000 ms. |
+| Formula engine accepts `$` absolute references (`$A$2:$A$7`) | Implemented and live (PR #45) | Before this, `$` references returned `#FORMULA!`. Unit test added. |
 | Unit tests | Implemented; 312 passing on the branch before the merge | `npm test`. Re-run before any change. |
 | Browser tests | Partly verified | 11 of 11 pass in Chromium (battery, workbook and layout suites), run against a local harness on 2026-11-05. Firefox and WebKit have not been run since the last full cross-engine run, which predates later changes. |
 | Candidate flow end to end on production | Partly verified | Earlier live runs covered the welcome, form, timer, autosave, submit and results. A full run after the latest changes has not been repeated. |
@@ -120,7 +122,7 @@ Schema changes: apply migrations to the named assessment database only, after a 
 5. **Admin key strength.** The admin key set during setup is short and easy to guess. Recommendation: replace it with a long random value, store it in a password manager, and confirm which of `ASSESSMENT_ADMIN_KEY` and `ADMIN_KEY` is set and remove the unused one. **Decision needed.**
 6. **Test records on production.** Verification runs left test attempts behind. Recommendation: the owner decides whether to keep or remove them. A future change could add a documented "test" flag or an audited admin delete. Do not remove them with an ad-hoc statement.
 7. **Pass threshold still present in code.** `gradeBattery` computes a `passed` flag against `pass_percent` (default 75), and the scoring keys carry that field. The flag is not written to the results table and no candidate or recruiter view reads it (verified 2026-11-05). Recommendation: remove the field, or document it as unused, so that nobody later shows a pass or fail.
-8. **Time for the battery.** The original battery note says 21 items is a lot for 10 minutes. The live battery now has 23 items. Recommendation: pilot the full exercise with experienced accounts payable staff before relying on the time limit or the scores.
+8. **Time for the battery.** Raised to 20 minutes on 2026-11-05. Section 6 (group companies) content was written without a finance SME review. Recommendation: have a finance SME review g1–g3, and pilot the full exercise with experienced accounts payable staff before relying on the time limit or the scores.
 9. **Scoring validity.** Nothing shows that the score predicts job performance. Recommendation: pilot, review the score distribution, and only then discuss cut-offs.
 10. **Browser and device coverage.** Firefox and WebKit were not run after the latest changes. No physical-device or screen-reader testing has been done. Recommendation: run the full cross-browser suite and a short manual accessibility check before the next material change.
 11. **Result email.** Live delivery is unverified. Recommendation: send one result email to a test address the owner controls, and check the content and the attempt numbering.

@@ -70,7 +70,7 @@ export function AssessmentFrame({ children, eyebrow = 'Candidate assessment', cl
 
 function AssessmentPrivacyNotice() {
   return <section className="ca-privacy" aria-labelledby="tta-privacy-heading">
-    <h2 id="tta-privacy-heading">Before you start</h2>
+    <h2 id="tta-privacy-heading">How we use your information</h2>
     <p>Talent Tree Consulting collects your first name, surname, email address, contact number, South African ID number, earliest available start date, travel and availability details. We use them to assess your practical accounting skills for this assignment and to arrange your start if you are selected.</p>
     <p>Recruiters at Talent Tree see these details. We retain your assessment results and attempt history. Your ID number is used to link your attempts and is masked in reports.</p>
     <p>You can ask us to see, correct or delete your information at <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
@@ -96,40 +96,33 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
   if(view==='practice')return <AssessmentFrame><AssessmentPractice onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
   return <AssessmentFrame client={client}>
     <main className="ca-welcome" id="main-content">
-      <div className="ca-enter">
-        <p className="ca-eyebrow">Talent Tree skills assessment</p>
+      <div className="ca-welcome-intro">
         <h1>{assessmentTitle}</h1>
-        <p className="ca-lead">A practical assessment of your skills. Read the instructions before you begin.</p>
         <dl className="ca-facts">
-          <div><dt>Duration</dt><dd>{durationMinutes} minutes</dd></div>
+          <div><dt>Time</dt><dd>{durationMinutes} min</dd></div>
           <div><dt>Sections</dt><dd>{sections.length}</dd></div>
-          {activities!=null && <div><dt>Activities</dt><dd>{activities}</dd></div>}
+          {activities!=null && <div><dt>Questions</dt><dd>{activities}</dd></div>}
         </dl>
-        <section className="ca-panel" aria-labelledby="ca-expect-heading">
+        <section aria-labelledby="ca-expect-heading">
           <h2 id="ca-expect-heading">What to expect</h2>
           <ul className="ca-checklist">
-            <li>{durationMinutes} minutes, timed. The timer starts only when you press Start and keeps running if you reload.</li>
-            <li>Accounting questions and a live workbook. In the workbook you calculate with formulas, for example =SUM(B2:B5) or =VLOOKUP(...).</li>
-            <li>Answers save automatically. You cannot pause or restart. Repeat attempts are recorded separately and numbered.</li>
-            <li>You see your results when you submit. The Talent Tree recruiter contacts you about next steps.</li>
-            <li>Have ready: a desktop or laptop, a stable connection and your ID number. No documents need uploading.</li>
+            <li>The timer starts when you press Start. It keeps running if you reload or close the page.</li>
+            <li>Choose answers, and use the workbook for calculations. Formulas such as =SUM(B2:B5) work.</li>
+            <li>Answers save automatically. You see your results when you submit.</li>
+            <li>Use a laptop or desktop and have your ID number ready.</li>
           </ul>
-        </section>
-        <section className="ca-panel" aria-labelledby="ca-sections-heading">
-          <h2 id="ca-sections-heading">Sections</h2>
-          <ol className="ca-sections">{sections.map((title,index)=><li key={index}>{title}</li>)}</ol>
         </section>
       </div>
       <section className="tta-registration ca-registration ca-panel" aria-label={view==='form'?'Candidate details':'Before starting'}>
-        <AssessmentPrivacyNotice/>
         {!onStart ? <><p role="status">Choose an assessment to begin.</p><a className="ca-link" href="/assessments">View assessments <span aria-hidden="true">→</span></a></> : view==='welcome' ? <>
-          <h2>Try the formats first</h2>
-          <p>Three public practice items give immediate feedback. Practice is not scored or saved, and the timer stays off.</p>
-          <button className="ca-btn ca-btn--primary ca-btn--block" type="button" onClick={()=>setView('practice')}>Try the practice <span className="ca-arrow" aria-hidden="true">→</span></button>
-          <button className="ca-btn ca-btn--quiet ca-btn--block tta-practice-link" type="button" onClick={()=>setView('form')}>Continue to details</button>
+          <div className="ca-welcome-actions">
+            <button className="ca-btn ca-btn--primary" type="button" onClick={()=>setView('form')}>Continue to details</button>
+            <button className="ca-btn ca-btn--quiet" type="button" onClick={()=>setView('practice')}>Try the practice</button>
+          </div>
+          <p className="tta-form-note">Practice has three untimed questions. It is not scored or saved.</p>
+          <AssessmentPrivacyNotice/>
           {error && <p className="tta-error" role="alert">{error}</p>}
         </> : <>
-          <p className="ca-eyebrow">Candidate details</p>
           <h2>Your details</h2>
           <button className="ca-link tta-practice-link" type="button" onClick={()=>setView('practice')}>Try the practice</button>
           <form onSubmit={handleSubmit}>
@@ -137,6 +130,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
             <label htmlFor="tta-last-name">Surname</label><input id="tta-last-name" value={surname} onChange={e=>setSurname(e.target.value)} autoComplete="family-name" maxLength={100} required/>
             <label htmlFor="tta-email">Email address</label><input id="tta-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" maxLength={254} required/>
             <ScreeningFields value={screening} onChange={setScreening}/>
+            <AssessmentPrivacyNotice/>
             <label className="tta-consent"><input type="checkbox" checked={consent} required onChange={e=>setConsent(e.target.checked)}/><span>I agree to this processing.</span></label>
             {(validation||error) && <p className="tta-error" role="alert">{validation||error}</p>}
             <button className="ca-btn ca-btn--primary ca-btn--block" type="submit" disabled={!canStart}>{isStarting?'Starting assessment…':'Start assessment'} <span className="ca-arrow" aria-hidden="true">↗</span></button>
@@ -211,8 +205,7 @@ export function AssessmentRunnerLayout({
     <AssessmentFrame client={client} title={assessmentTitle} eyebrow="Live assessment" timer={<AssessmentTimer expiresAt={expiresAt} onExpired={onExpired} />}>
       <main className="ca-runner" id="main-content">
         <aside className="ca-runner-side" aria-label="Assessment progress">
-          <p className="ca-eyebrow">In progress</p>
-          <h1>{assessmentTitle}</h1>
+          <h1 className="tta-sr-only">{assessmentTitle}</h1>
           <p className="ca-candidate">{candidateName}</p>
           {activityProgress ? (
             <div className="ca-progress">
