@@ -15,7 +15,7 @@ async function setup() {
  return {db,env,call,fields};
 }
 test('open link starts without a token and stores screened identity privately',async()=>{
- const t=await setup(),a=await t.call('start',t.fields);assert.equal(a.status,200,JSON.stringify(a.data));assert.equal(a.data.expires_at_ms-a.data.started_at_ms,600000);
+ const t=await setup(),a=await t.call('start',t.fields);assert.equal(a.status,200,JSON.stringify(a.data));assert.equal(a.data.expires_at_ms-a.data.started_at_ms,1200000);
  const candidate=t.db.sqlite.prepare('SELECT * FROM candidates').get();assert.equal(candidate.contact_number,'+27210000000');assert.equal(candidate.id_number_encrypted.includes(t.fields.id_number),false);assert.equal(candidate.first_day_confirmed,1);
  assert.equal(t.db.sqlite.prepare('SELECT status FROM invitations').get().status,'redeemed');assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM assessment_identity_attempts').get().n,1);
  assert.doesNotMatch(JSON.stringify(a.data),new RegExp(t.fields.id_number));assert.equal(JSON.stringify(a.data).includes(candidate.contact_number),false);

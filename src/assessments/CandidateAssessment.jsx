@@ -1,3 +1,4 @@
+import { DEFAULT_ASSESSMENT_SECONDS } from '../../functions/lib/assessment-deadlines.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AssessmentWelcome, AssessmentRunnerLayout, AssessmentComplete, AssessmentFrame,
@@ -43,7 +44,7 @@ const inviteFromUrl = () => new URLSearchParams(window.location.search).get('inv
 export default function CandidateAssessment({catalogItem}) {
   const invitationToken = useRef(inviteFromUrl());
   const [phase, setPhase] = useState('loading');
-  const [client, setClient] = useState({ client_name: catalogItem?.client_name || '', title: catalogItem?.title || 'Assessment', duration_seconds: 600 });
+  const [client, setClient] = useState({ client_name: catalogItem?.client_name || '', title: catalogItem?.title || 'Assessment', duration_seconds: DEFAULT_ASSESSMENT_SECONDS });
   const [attempt, setAttempt] = useState(null);
   const [draft, setDraft] = useState(blankAnswers);
   const [section, setSection] = useState('questions');
@@ -75,7 +76,7 @@ export default function CandidateAssessment({catalogItem}) {
     dirtyRef.current = false;
     setDraft(state);
     setAttempt(data);
-    setClient({ client_name: data.client_name, title: data.title, duration_seconds: 600 });
+    setClient({ client_name: data.client_name, title: data.title, duration_seconds: DEFAULT_ASSESSMENT_SECONDS });
     setPhase(data.status === 'active' ? 'active' : 'complete');
     setSaveStatus('All changes saved');
   }, []);
@@ -98,7 +99,7 @@ export default function CandidateAssessment({catalogItem}) {
           setPhase('welcome');
           return;
         }
-        if(catalogItem){if(!cancelled){setClient({...catalogItem,duration_seconds:600});setPhase('welcome');}return;}
+        if(catalogItem){if(!cancelled){setClient({...catalogItem,duration_seconds:DEFAULT_ASSESSMENT_SECONDS});setPhase('welcome');}return;}
         const session = await api('me', undefined, 'GET');
         if (!cancelled) activate(session);
       } catch (e) {

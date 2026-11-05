@@ -37,7 +37,8 @@ const RULES = [
   ['ws', /\s+/y],
   ['str', /"((?:[^"]|"")*)"/y],
   ['num', /(?:\d+(?:\.\d+)?|\.\d+)/y],
-  ['ref', /(?:([A-Za-z][A-Za-z0-9_]{0,15})!)?([A-J](?:40|[1-3][0-9]|[1-9]))(?![A-Za-z0-9_!(.])/y],
+  // Absolute markers ($A$1, A$1, $A1) are accepted and ignored: there is no fill-down, so they change nothing.
+  ['ref', /(?:([A-Za-z][A-Za-z0-9_]{0,15})!)?\$?([A-J])\$?(40|[1-3][0-9]|[1-9])(?![A-Za-z0-9_!(.])/y],
   ['name', /[A-Za-z][A-Za-z0-9.]*/y],
   ['op', /<>|<=|>=|[-+*/&(),:<>=]/y],
 ];
@@ -56,7 +57,7 @@ function tokenize(source) {
       if (kind === 'ws') break;
       if (kind === 'str') tokens.push({ t: 'str', v: m[1].replace(/""/g, '"') });
       else if (kind === 'num') tokens.push({ t: 'num', v: Number(m[0]) });
-      else if (kind === 'ref') tokens.push({ t: 'ref', sheet: m[1] || '', cell: m[2].toUpperCase() });
+      else if (kind === 'ref') tokens.push({ t: 'ref', sheet: m[1] || '', cell: (m[2] + m[3]).toUpperCase() });
       else if (kind === 'name') tokens.push({ t: 'name', v: m[0].toUpperCase() });
       else tokens.push({ t: 'op', v: m[0] });
       break;

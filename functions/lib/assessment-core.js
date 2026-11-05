@@ -3,7 +3,7 @@
  * Production question payloads + correct answers are PRIVATE D1 records.
  * Never commit or ship a live answer key in this public repository.
  */
-import { canPersistAttempt, expiryForStart } from './assessment-deadlines.js';
+import { canPersistAttempt, expiryForStart, DEFAULT_ASSESSMENT_SECONDS } from './assessment-deadlines.js';
 import { BATTERY_FORMAT, cleanBatterySubmission, cleanBatteryWorkbook, isBatteryPayload, publicBattery, validateBattery } from './battery.js';
 import { CELL_REF } from '../../src/assessments/formulas.js';
 
@@ -281,6 +281,6 @@ export function scoreAssessment(questions, scoringKey, submission) {
 export function canAcceptWrite(attempt, when = Date.now()) {
   return canPersistAttempt(attempt, when);
 }
-export function newAttemptTimes(now = Date.now(), seconds = 600) {
+export function newAttemptTimes(now = Date.now(), seconds = DEFAULT_ASSESSMENT_SECONDS) {
   return { started_at_ms: now, expires_at_ms: expiryForStart(now, seconds) };
 }

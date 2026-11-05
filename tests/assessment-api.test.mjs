@@ -34,9 +34,9 @@ async function setup() {
 }
 const answers = (revision=0,attempt_id) => ({attempt_id,save_revision:revision,mcq:{q1:'a'},structured:{},workbook:{C2:'=SUM(B2:B3)'}});
 
-test('real SQL start, autosave and refresh preserve exactly 600 seconds and private isolation', async () => {
+test('real SQL start, autosave and refresh preserve exactly 1200 seconds and private isolation', async () => {
   const t=await setup(); const a=await t.start();
-  assert.equal(a.data.expires_at_ms-a.data.started_at_ms,600000);
+  assert.equal(a.data.expires_at_ms-a.data.started_at_ms,1200000);
   assert.equal((await t.call('save',answers(0,a.data.attempt_id),a.cookie)).status,200);
   const recovered=await t.call('me',undefined,a.cookie);
   assert.equal(recovered.data.responses.workbook.C2,'=SUM(B2:B3)');
@@ -125,16 +125,16 @@ test('private draft survives editing and cannot issue invitations before explici
  assert.equal((await t.call('admin/invite',{assessment_id:draft.data.assessment_id,intended_email:'demo@example.invalid'},admin,headers)).status,200);
 });
 
-test('the SQL write boundary accepts 599999ms and rejects 600000ms and 600001ms',async()=>{
+test('the SQL write boundary accepts 1199999ms and rejects 1200000ms and 1200001ms',async()=>{
  const realNow=Date.now;
  try {
-  for(const elapsed of [599999,600000,600001]){
+  for(const elapsed of [1199999,1200000,1200001]){
    const t=await setup();const a=await t.start();const instant=a.data.started_at_ms+elapsed;
    Date.now=()=>instant;
    t.db.sqlite.function('strftime',{varargs:true},(format)=>format==='%s'?String(Math.floor(instant/1000)):'00.'+String(instant%1000).padStart(3,'0'));
    const result=await t.call('save',answers(0,a.data.attempt_id),a.cookie);
-   assert.equal(result.status,elapsed===599999?200:409,'elapsed '+elapsed);
-   assert.equal(t.db.sqlite.prepare('SELECT save_revision FROM attempts').get().save_revision,elapsed===599999?1:0);
+   assert.equal(result.status,elapsed===1199999?200:409,'elapsed '+elapsed);
+   assert.equal(t.db.sqlite.prepare('SELECT save_revision FROM attempts').get().save_revision,elapsed===1199999?1:0);
    Date.now=realNow;
   }
  }finally{Date.now=realNow;}

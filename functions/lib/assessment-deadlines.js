@@ -2,7 +2,8 @@
  * Server-side source of truth. Never use a client-submitted timestamp for saves.
  * These helpers do not depend on the browser or expose assessment answers.
  */
-export const DEFAULT_ASSESSMENT_SECONDS = 600;
+// 20 minutes. Raised from 10 on 2026-11-05: 23 items with a workbook did not fit in 10 minutes.
+export const DEFAULT_ASSESSMENT_SECONDS = 1200;
 
 export function expiryForStart(startedAtMs, seconds = DEFAULT_ASSESSMENT_SECONDS) {
   if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 0) throw new TypeError('Invalid start timestamp');

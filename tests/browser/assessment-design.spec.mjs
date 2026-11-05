@@ -74,9 +74,9 @@ test('timer live announcements change at minute boundaries only',async({page,req
   const offset=snapshot.server_now_ms-await page.evaluate(()=>Date.now());
   await page.route(/\/api\/assessment\/me\?/,async route=>route.fulfill({json:{...snapshot,server_now_ms:await page.evaluate(()=>Date.now())+offset}}));
   const live=page.getByRole('timer').locator('[aria-live=polite]');await expect(live).toBeEmpty();
-  await page.clock.fastForward(60000);await expect(live).toHaveText('9 minutes remaining.');
-  await page.clock.fastForward(1000);await expect(live).toHaveText('9 minutes remaining.');
-  await page.clock.fastForward(8*60000);await expect(live).toHaveText('One minute remaining. This is the final minute.');
+  await page.clock.fastForward(60000);await expect(live).toHaveText('19 minutes remaining.');
+  await page.clock.fastForward(1000);await expect(live).toHaveText('19 minutes remaining.');
+  await page.clock.fastForward(18*60000);await expect(live).toHaveText('One minute remaining. This is the final minute.');
   await page.clock.fastForward(5000);await expect(live).toHaveText('One minute remaining. This is the final minute.');
 });
 
