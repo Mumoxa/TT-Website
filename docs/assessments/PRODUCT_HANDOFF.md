@@ -44,7 +44,7 @@ These are decisions the owner has made. Do not change them without the owner.
 
 | Kind of truth | Where it lives | Notes |
 |---|---|---|
-| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v11` (verified 2026-11-05). |
+| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v12` (verified 2026-11-05). |
 | Candidate and recruiter behaviour | `functions/api/assessment/[[path]].js`, `functions/lib/*.js`, `src/assessments/*` | The code is the behaviour. |
 | Battery format and grading | `functions/lib/battery.js` (format `battery-v2`) | `gradeBattery` grades on the server. |
 | Current policy | `docs/assessments/OPEN_START_HANDOFF.md` | Partly superseded; see section 9. |
@@ -62,6 +62,8 @@ These are decisions the owner has made. Do not change them without the owner.
 | Live content: instructions on all 23 items, including the c5 instruction | Implemented and live (v3) | Admin readback, 2026-11-05. Catalogue returns HTTP 200 with 23 items and 5 sections. |
 | Question 3.6 (c5) renders on the live site | Verified | A test attempt on 2026-11-05 showed four options, none selected, instructions present and no horizontal overflow at 1280px or 390px. |
 | Reference codes such as INV-2214 stay on one line | Implemented and live (PR #43, merged as `0676194`) | Live asset check, and the live screenshot of question 3.6. |
+| Answer box examples by format | Implemented and live (PR #59) | Cell tasks may set `format: "rand"` (example "For example R12 500.00") or `"count"` ("A whole number, for example 4", numeric keypad). No effect on marking. |
+| Live content v12 (follow-ups, formats) | Implemented and live; verified | Published 2026-11-05. Section 5 follow-ups name Karee Packaging; the "does it reconcile" choice (m2) moved to the end of section 5 (after the corrected balance); 6.3 names a supplier not used elsewhere (Highveld Office Supplies); rand and count formats set. Keys and points unchanged. The v11-to-v12 change set was checked to reproduce the validated file. Live browser check (TEST Review, not submitted) confirmed order, wording and box examples. Ten TEST Review attempts now exist on production. |
 | Start dialog: timer starts only on OK | Implemented and live (PR #57); verified | Live browser check 2026-11-05: dialog shown, no `/start` request and no timer before OK, Back closes it, OK starts a 20-minute timer. Catalogue and invitation metadata now include the battery `instructions` text (no questions or keys). |
 | Live content v11 (supplier named) | Implemented and live; verified | Published 2026-11-05. The reconciliation supplier is named "Karee Packaging (Pty) Ltd" (fictional) in 5.1, 5.2, 5.4, 5.8 and the two document titles; the aged listing is titled "(other suppliers)". Marking unchanged from v10. Verified in a live browser run (TEST Review, not submitted). Nine TEST Review attempts now exist on production. |
 | Documents display instead of the spreadsheet | Implemented and live (PR #55) | `workbook.display: "documents"` shows the listed read-only ranges as plain tables and hides the grid; answers go in the box under each task. Marking reads typed amounts with `parseAmount` (R 26 050, R26,050.00 and 26050,00 all count). Practice item 3 asks for a typed total. Grid mode remains the default for other batteries. |
