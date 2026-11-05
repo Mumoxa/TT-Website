@@ -4,14 +4,17 @@
    single default sheet, where keys are plain ('B21'), matching the battery format.
    onChange receives only candidate cells on writable sheets, so the saved snapshot can never
    contain source data. The server enforces the same rule. */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import './spreadsheet.css';
 import { calculateCell, COLS, ROWS, QUALIFIED_REF, splitRef } from './formulas.js';
 import { editCell, pasteKeys, workbookHistory } from './workbook.js';
 
 const keyFor = (sheet, cell) => (sheet ? sheet + '!' + cell : cell);
 
-export function Workbook({ sheets = null, source = {}, cells = {}, onChange, readOnly = false }) {
+// Numbers align right. Cell height is measured from the rendered text, so a cell shows its whole value.
+const isNumeric = (text) => String(text ?? '').trim() !== '' && Number.isFinite(Number(text));
+
+export function Workbook({ sheets = null, source = {}, cells = {}, onChange, readOnly = false, focusRequest = null }) {
   const tabs = sheets && sheets.length ? sheets : [{ name: '', writable: true }];
   const sourceKeys = useMemo(() => new Set(Object.keys(source)), [source]);
   const writableSheet = (name) => !readOnly && (tabs.find((t) => t.name === name)?.writable ?? false);
@@ -21,6 +24,29 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
   const inputRefs = useRef({});
   const history = useRef({ past: [], present: null, future: [] });
   const [, renderHistory] = useState(0);
+  // A focus request (from a question's "Go to cell" link) selects the cell, switches to its tab and focuses it.
+  const pendingFocus = useRef(null);
+  useEffect(() => {
+    if (!focusRequest) return;
+    const { sheet, cell } = splitRef(focusRequest.key);
+    const target = tabs.find((t) => t.name === (sheet || ''));
+    if (!target) return;
+    pendingFocus.current = keyFor(target.name, cell);
+    setActive(target.name);
+    setSelected(pendingFocus.current);
+    setEditing(null);
+  }, [focusRequest?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+  // After every render, each cell grows to fit its wrapped text. Measured, not estimated, so narrow columns are handled.
+  useLayoutEffect(() => {
+    for (const el of Object.values(inputRefs.current)) {
+      if (el && el.tagName === 'TEXTAREA') { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+    }
+  });
+  useEffect(() => {
+    const key = pendingFocus.current;
+    const el = key && inputRefs.current[key];
+    if (el) { pendingFocus.current = null; el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center' }); }
+  });
 
   // Candidate cells only, without any source keys, so an edit can never write source data.
   const candidateOnly = (map) => Object.fromEntries(Object.entries(map).filter(([k]) => !sourceKeys.has(k)));
@@ -115,9 +141,11 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
                   const key = keyFor(active, cell);
                   const locked = !isEditable(key);
                   return <td key={key} className={(selected === key ? 'tta-cell-selected ' : '') + (sourceKeys.has(key) ? 'tta-source-cell' : '')}>
-                    <input ref={(el) => { inputRefs.current[key] = el; }}
+                    <textarea ref={(el) => { inputRefs.current[key] = el; }}
+                      rows={1}
+                      className={'tta-cell-input' + (isNumeric(computed[key]) ? ' tta-cell-num' : '')}
                       aria-label={(active ? active + ' cell ' : 'Cell ') + cell}
-                      value={editing === key ? String(merged[key] ?? '') : computed[key] ?? ''}
+                      value={editing === key ? String(merged[key] ?? '') : String(computed[key] ?? '')}
                       disabled={locked}
                       onFocus={() => { setSelected(key); setEditing(key); }}
                       onChange={(e) => update(key, e.target.value)}
@@ -129,7 +157,7 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
                         else if (e.key === 'ArrowUp' && e.currentTarget.selectionStart === 0) { e.preventDefault(); move(key, 0, -1); }
                         else if (e.key === 'ArrowDown' && e.currentTarget.selectionStart === 0) { e.preventDefault(); move(key, 0, 1); }
                       }}
-                    />
+                    ></textarea>
                   </td>;
                 })}
               </tr>

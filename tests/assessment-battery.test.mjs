@@ -149,3 +149,17 @@ test('a formula on the read-only tab is never accepted as a candidate answer', (
   const g = gradeBattery({ payload: v.question_payload, key: v.scoring_key }, { mcq: {}, structured: {}, workbook: { 'Working!B2': '=SUM(Supplier!B2:B4)' } });
   assert.equal(g.items.find((i) => i.id === 'p2').correct, true);
 });
+
+test('item instructions are optional, bounded to text, and shown to candidates only when present', () => {
+ const withText = pkg();
+ withText.question_payload.sections[0].items[0].instructions = '  Choose the option that matches the statement.  ';
+ const valid = validateBattery(withText);
+ const shown = publicBattery(valid.question_payload).sections[0].items[0];
+ assert.equal(shown.instructions, 'Choose the option that matches the statement.');
+ const tooLong = pkg(); tooLong.question_payload.sections[0].items[0].instructions = 'x'.repeat(601);
+ assert.throws(() => validateBattery(tooLong), BatteryError);
+ const notText = pkg(); notText.question_payload.sections[0].items[0].instructions = 42;
+ assert.throws(() => validateBattery(notText), BatteryError);
+ const plain = validateBattery(pkg());
+ assert.equal('instructions' in publicBattery(plain.question_payload).sections[0].items[0], false);
+});
