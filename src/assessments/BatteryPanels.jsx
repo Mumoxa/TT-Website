@@ -5,9 +5,14 @@
 import React, { useMemo, useState } from 'react';
 import { Workbook } from './Workbook.jsx';
 import { calculateCell } from './formulas.js';
+import { splitReferences } from './reference-text.js';
 
 const fmt = (value) => (value === '' || value === undefined ? '—' : value);
-const instructionsFor = (item) => (item.instructions ? <p className="tta-item-instructions">{item.instructions}</p> : null);
+// Reference codes (INV-2214 and similar) stay on one line; all other text renders as before.
+const keepReferences = (text) => splitReferences(text).map((part, i) => (part.isRef
+  ? <span key={i} className="tta-ref">{part.text}</span>
+  : <React.Fragment key={i}>{part.text}</React.Fragment>));
+const instructionsFor = (item) => (item.instructions ? <p className="tta-item-instructions">{keepReferences(item.instructions)}</p> : null);
 
 export function BatteryPanels({ assessment, draft, patchDraft }) {
   const source = assessment.workbook?.source || {};
@@ -32,7 +37,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             if (item.type === 'single') {
               return (
                 <fieldset key={item.id} className="tta-question">
-                  <legend><span className="tta-qnum">{number}</span> {item.prompt}</legend>
+                  <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
                   {item.options.map((option) => (
                     <label className={'tta-choice' + (singles[item.id] === option.id ? ' tta-choice-selected' : '')} key={option.id}>
@@ -48,7 +53,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
               const chosen = multis[item.id] || [];
               return (
                 <fieldset key={item.id} className="tta-question">
-                  <legend><span className="tta-qnum">{number}</span> {item.prompt}</legend>
+                  <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
                   <p className="tta-sheet-help">Select all that apply.</p>
                   {item.options.map((option) => (
@@ -68,7 +73,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             if (item.type === 'text') {
               return (
                 <div key={item.id} className="tta-question">
-                  <label htmlFor={'t-' + item.id}><span className="tta-qnum">{number}</span> {item.prompt}</label>
+                  <label htmlFor={'t-' + item.id}><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</label>
                   {instructionsFor(item)}
                   <input id={'t-' + item.id} type="text" maxLength={200} value={texts[item.id] || ''}
                     onChange={(e) => patchDraft((old) => ({ ...old, structured: { ...old.structured, text: { ...(old.structured?.text || {}), [item.id]: e.target.value } } }))} />
@@ -78,7 +83,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             // cell: the answer lives in the workbook. The link takes the candidate straight to that cell.
             return (
               <div key={item.id} className="tta-question tta-cell-item">
-                <p><span className="tta-qnum">{number}</span> {item.prompt}</p>
+                <p><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</p>
                 {instructionsFor(item)}
                 <div className="tta-cell-ask">
                   <p className="tta-sheet-help">Answer in cell <strong>{item.ref}</strong>. Current value: <output aria-label={'Current value of ' + item.ref}>{fmt(calculateCell(merged, item.ref))}</output></p>
