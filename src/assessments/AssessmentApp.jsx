@@ -3,6 +3,7 @@ import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import './assessment.css';
 import './candidate-ui.css';
 import {useAssessmentCatalog} from './catalog-client.js';
+import { InstructionText } from './InstructionText.jsx';
 import ScreeningFields, {emptyScreening} from './ScreeningFields.jsx';
 import {normalizeScreening} from './screening.js';
 import {AssessmentPractice} from './AssessmentPractice.jsx';
@@ -87,7 +88,7 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
     <div className="ca-modal-backdrop" onKeyDown={(e) => { if (e.key === 'Escape' && !isStarting) onCancel(); }}>
       <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
         <h2 id="ca-brief-title">Before the timer starts</h2>
-        <p id="ca-brief-text">{instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`}</p>
+        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`} /></div>
         <p className="ca-modal-note">The {durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset.</p>
         <div className="ca-modal-actions">
           <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>

@@ -164,13 +164,44 @@ test('item instructions are optional, bounded to text, and shown to candidates o
  assert.equal('instructions' in publicBattery(plain.question_payload).sections[0].items[0], false);
 });
 
-test('typed amounts are read the way they appear on South African documents', async () => {
+test('typed amounts are read in every common format, so formatting never costs marks', async () => {
   const { parseAmount } = await import('../functions/lib/battery.js');
-  for (const [text, n] of [['26050', 26050], ['26,050.00', 26050], ['R26 050', 26050], ['R 26 050,00', 26050], ['r26050', 26050],
-    ['1500,00', 1500], ['1500,5', 1500.5], ['-3 200', -3200], ['-R3 200', -3200], ['R-3200', -3200], ['26 050', 26050]]) {
-    assert.equal(parseAmount(text), n, text);
+  const same = {
+    26050: ['26050', '26 050', '26,050', '26.050', "26'050", '26’050', '26 050', '26 050',
+      '26050.00', '26050,00', '26 050.00', '26 050,00', '26,050.00', '26.050,00', "26'050.00", "26'050,00",
+      'R26050', 'R 26050', 'r26 050', 'R26,050.00', 'R26.050,00', 'R 26 050,00', 'R26 050,-', 'R26 050.-', '26050.-',
+      '26050 R', '26 050,00 R', '26050 rand', '26 050 Rand', 'ZAR 26 050', 'zar26050.00', '26050.', 'R 26 050.0'],
+    1500: ['1500', '1 500', '1,500', '1.500', '1500,00', '1500.00', 'R1 500,00', 'R1,500.00', 'R1.500,00', 'R 1500', '1500 rand'],
+    6535: ['6535', '6 535', '6,535.00', '6.535,00', 'R6 535', "R6'535.00"],
+    21430: ['21430', '21 430', 'R21,430', '21.430,00'],
+    1234567.89: ['1 234 567.89', '1,234,567.89', '1.234.567,89', "1'234'567.89", 'R1 234 567,89'],
+    1500.5: ['1500,5', '1500.5', '1 500,50', 'R1,500.50'],
+    0.5: ['0,5', '0.50', ',5', '.5'],
+    '-3200': ['-3200', '-3 200', '−3 200', '-R3 200', 'R-3200', 'R -3 200', '(3 200)', '(R3 200,00)', '3 200-'],
+    1: ['1', ' 1 ', 'one', 'One', 'ONE.'],
+    4: ['4', 'four'],
+    0: ['0', 'zero', 'R0,00'],
+  };
+  for (const [expected, inputs] of Object.entries(same)) {
+    for (const text of inputs) assert.equal(parseAmount(text), Number(expected), JSON.stringify(text));
   }
-  for (const text of ['1.234,56', '12,34,5', 'R', 'AGREES', '', '#VALUE!']) assert.equal(parseAmount(text), null, text);
+  for (const text of ['', 'R', 'rand', 'AGREES', '#VALUE!', 'abc', '12a', '1,23,4', '1.2.3,4', '26 050 apples', 'twenty one', '--5', '1..5'])
+    assert.equal(parseAmount(text), null, JSON.stringify(text));
+});
+
+test('grading accepts typed amounts in any format but keeps formula results strict', () => {
+  const payload = { format: 'battery-v2', instructions: 'Synthetic grading check for amount formats.',
+    sections: [{ id: 's', title: 'Sec', items: [
+      { id: 'k1', type: 'single', category: 'knowledge', points: 1, prompt: 'Synthetic knowledge prompt', options: [{ id: 'o1', text: 'A' }, { id: 'o2', text: 'B' }] },
+      { id: 'r1', type: 'cell', category: 'reconciliation', points: 1, ref: 'W!B1', prompt: 'Synthetic amount prompt' },
+      { id: 'r2', type: 'cell', category: 'reconciliation', points: 1, ref: 'W!B2', prompt: 'Synthetic formula prompt' },
+    ] }],
+    workbook: { sheets: [{ name: 'Src', writable: false }, { name: 'W', writable: true }], source: { 'Src!A1': '1', 'Src!A2': '0.125' } } };
+  const key = { items: { k1: { answer: 'o1' }, r1: { answer: 26050, tolerance: 0.005 }, r2: { answer: 1.125, tolerance: 0.005 } } };
+  for (const typed of ['R26.050,00', '26 050', "R26'050.00", '26050 rand']) {
+    const g = gradeBattery({ payload, key }, { mcq: {}, structured: { text: {}, multi: {} }, workbook: { 'W!B1': typed, 'W!B2': '=Src!A1+Src!A2' } });
+    assert.deepEqual(g.items.filter((i) => i.type === 'cell').map((i) => i.correct), [true, true], typed);
+  }
 });
 
 test('documents display is validated and passed to the candidate without keys', async () => {
