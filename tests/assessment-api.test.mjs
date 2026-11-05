@@ -172,3 +172,16 @@ test('editing existing draft metadata round-trips without changing the published
  assert.equal(loaded.data.package.title,'Updated synthetic assessment');assert.equal(loaded.data.package.client_name,'Updated demo');
  assert.equal(t.db.sqlite.prepare('SELECT title FROM assessment_definitions').get().title,'Synthetic test');
 });
+
+test('a candidate can retry the same ID repeatedly while start throttling is switched off', async () => {
+ const t=await setup();const now=new Date().toISOString();const statuses=[];
+ for(let i=0;i<35;i++){
+  const hex=i.toString(16).padStart(2,'0');const token=hex.repeat(32);
+  t.db.sqlite.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,created_at) VALUES (?,?,?,'issued',?,?,?)")
+   .run('retry-'+i,'definition',await tokenHash(token),now,new Date(Date.now()+86400000).toISOString(),now);
+  const result=await t.call('start',{...screeningFixture(),invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true});
+  statuses.push(result.status);
+ }
+ assert.ok(statuses.every(s=>s===200),JSON.stringify(statuses));
+ assert.equal(t.db.sqlite.prepare('SELECT max(attempt_number) n FROM assessment_identity_attempts').get().n,35);
+});
