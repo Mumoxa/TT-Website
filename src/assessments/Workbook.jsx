@@ -45,7 +45,10 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
   useEffect(() => {
     const key = pendingFocus.current;
     const el = key && inputRefs.current[key];
-    if (el) { pendingFocus.current = null; el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center' }); }
+    if (el) { pendingFocus.current = null; el.focus({ preventScroll: true }); // Side-by-side layout: the workbook is already on screen, so move as little as possible.
+      // Stacked layout: bring the cell to the middle of the screen.
+      const sideBySide = typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1100px)').matches;
+      el.scrollIntoView(sideBySide ? { block: 'nearest', inline: 'nearest' } : { block: 'center', inline: 'nearest' }); }
   });
 
   // Candidate cells only, without any source keys, so an edit can never write source data.
@@ -113,7 +116,7 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
           <button type="button" role="tab" key={t.name || 'default'} aria-selected={active === t.name}
             className={active === t.name ? 'tta-sheet-active' : ''}
             onClick={() => { setActive(t.name); setSelected(keyFor(t.name, 'A1')); setEditing(null); }}>
-            {t.name || 'Worksheet'}{!t.writable && t.name ? ' (read-only)' : ''}
+            {t.name || 'Worksheet'}{!t.writable && t.name ? <span className="tta-tab-lock"><span className="tta-sr-only"> (read-only)</span><span aria-hidden="true">read-only</span></span> : null}
           </button>
         ))}
       </div>
@@ -166,9 +169,8 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
         </table>
       </div>
       <p className="tta-sheet-help">
-        {tabs.some((t) => !t.writable) ? 'Grey cells and read-only tabs hold source records and cannot be edited. ' : ''}
-        Formulas: arithmetic, SUM, MIN, MAX, ABS, ROUND, SUMIF, COUNTIF, IF, IFERROR, VLOOKUP, INDEX and MATCH. Reference another tab as Name!A1.
-        Undo: Ctrl+Z. Working cells are saved automatically.
+        {tabs.some((t) => !t.writable) ? 'Grey cells are source records and cannot be edited. ' : ''}
+        Formulas: SUM, ROUND, SUMIF, COUNTIF, IF, IFERROR, VLOOKUP, INDEX, MATCH and more. Refer to another tab as Ledger!A1.
       </p>
     </section>
   );
