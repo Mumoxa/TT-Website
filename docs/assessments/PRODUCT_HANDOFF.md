@@ -1,7 +1,7 @@
 # Assessment product handoff — source of truth and status
 
 Audience: any AI assistant or maintainer who picks up the candidate assessment.
-Last updated: 2026-11-05 (after v4 and the 20-minute limit), from checks made on that date. Each claim below is labelled with its evidence:
+Last updated: 2026-11-05 (after v5, the 20-minute limit and the side-by-side workbook), from checks made on that date. Each claim below is labelled with its evidence:
 **Verified** (checked on 2026-11-05 against code, the live site or the admin API), **Implemented** (in code, not re-checked today),
 **Needs verification**, **Unknown**, or **Decision needed** (an owner decision is outstanding).
 
@@ -44,7 +44,7 @@ These are decisions the owner has made. Do not change them without the owner.
 
 | Kind of truth | Where it lives | Notes |
 |---|---|---|
-| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v4` (verified 2026-11-05). |
+| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v5` (verified 2026-11-05). |
 | Candidate and recruiter behaviour | `functions/api/assessment/[[path]].js`, `functions/lib/*.js`, `src/assessments/*` | The code is the behaviour. |
 | Battery format and grading | `functions/lib/battery.js` (format `battery-v2`) | `gradeBattery` grades on the server. |
 | Current policy | `docs/assessments/OPEN_START_HANDOFF.md` | Partly superseded; see section 9. |
@@ -62,6 +62,7 @@ These are decisions the owner has made. Do not change them without the owner.
 | Live content: instructions on all 23 items, including the c5 instruction | Implemented and live (v3) | Admin readback, 2026-11-05. Catalogue returns HTTP 200 with 23 items and 5 sections. |
 | Question 3.6 (c5) renders on the live site | Verified | A test attempt on 2026-11-05 showed four options, none selected, instructions present and no horizontal overflow at 1280px or 390px. |
 | Reference codes such as INV-2214 stay on one line | Implemented and live (PR #43, merged as `0676194`) | Live asset check, and the live screenshot of question 3.6. |
+| Live content v5 (order only) | Implemented and live; verified | Published 2026-11-05 on owner instruction. Same items, answer key and workbook as v4 (checked in D1). Knowledge sections first (1 to 4), then the two workbook sections (5 statement reconciliation; 6 aged creditors, accruals and VAT). The VAT cell item moved into section 6. A live start (TEST Review, not submitted) returned 1,200,000 ms and a payload byte-identical to the validated package. |
 | Live content v4 | Implemented and live; verified | Published 2026-11-05 on owner instruction ("approve all recommendations"). Changes from v3: m2 wording fixed (literal reading of v3 scored a correct method as wrong); m1 helper instruction corrected; diagnostic labels removed from the c4 options, Ledger D3/D6 and the c6 prompt; c4 states PMT-5530 left the bank once; b1, d3 and e2 replaced by section 6 "Group companies" (g1–g3). The admin key was unavailable, so the rows were written to D1 in the same form the admin draft and publish routes write, with both audit events. Verification: stored lengths matched the validated file; a live start (TEST Review, test@example.com, not submitted) returned a 1,200,000 ms window and a candidate payload byte-identical to the validated package, with no key fields. |
 | 20-minute limit | Implemented and live (PR #45) | Live catalogue shows 20 minutes; live start returned 1,200,000 ms. |
 | Formula engine accepts `$` absolute references (`$A$2:$A$7`) | Implemented and live (PR #45) | Before this, `$` references returned `#FORMULA!`. Unit test added. |
