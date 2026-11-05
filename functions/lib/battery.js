@@ -12,14 +12,15 @@
    Answer keys are only in scoring_key_json (never returned to the candidate). */
 
 import { calculateCell, CELL_REF, QUALIFIED_REF, splitRef } from '../../src/assessments/formulas.js';
+import { scoreNote } from './assessment-review.js';
 
 export const BATTERY_FORMAT = 'battery-v2';
 // Stored as results.scoring_version. Family-neutral, because the same engine grades every
 // battery (payable, receivable or any later one); the assessment slug identifies the family.
 export const BATTERY_ENGINE = 'battery-v2';
 export const CATEGORY_WEIGHT = { knowledge: 40, reconciliation: 60 };
-// ref: a document reference (a single code such as GRN-319). note: a short written handoff, which a
-// trained reviewer marks against a rubric and which is never auto-scored.
+// ref: a document reference (a single code such as GRN-319). note: a short written handoff, scored
+// by the server from evidence markers in its key, on the same zero-or-full rule as any other field.
 const ITEM_TYPES = new Set(['single', 'multi', 'text', 'cell', 'ref', 'note']);
 // Cognitive demand. Only used for reporting and item-analysis targets; it never changes a score.
 const LEVELS = new Set(['foundation', 'core', 'stretch']);
@@ -225,19 +226,28 @@ export function validateBattery(pkg) {
         // A document code is matched as normalised text. Only the formatting rule can vary.
         if (typeof k.answer !== 'string' || !k.answer.trim() || k.answer.length > 60) bad(`Reference answer for ${item.id} is invalid.`);
       } else if (item.type === 'note') {
-        // A written handoff: a reviewer marks it against 2-point anchors. Never auto-scored, so it
-        // carries no answer here and its points must equal the rubric total.
-        if (k.answer !== undefined) bad(`A note item is marked by a reviewer and must not carry an answer (${item.id}).`);
-        if (!Array.isArray(k.rubric) || k.rubric.length < 1 || k.rubric.length > 8) bad(`Note rubric for ${item.id} needs 1–8 criteria.`);
-        let rubricTotal = 0;
-        for (const criterion of k.rubric) {
-          if (!isObj(criterion) || typeof criterion.id !== 'string' || !ID.test(criterion.id)) bad('Invalid note criterion.');
+        // A written handoff: scored from evidence markers, all or nothing per criterion, so it needs
+        // no answer. Each criterion is worth two points and the criteria must add up to the item.
+        if (k.answer !== undefined) bad(`A note item is scored from its criteria and must not carry an answer (${item.id}).`);
+        if (!Array.isArray(k.criteria) || k.criteria.length < 1 || k.criteria.length > 8) bad(`Note criteria for ${item.id} must be 1–8 entries.`);
+        const criterionIds = new Set();
+        for (const criterion of k.criteria) {
+          if (!isObj(criterion) || typeof criterion.id !== 'string' || !ID.test(criterion.id) || criterionIds.has(criterion.id)) bad('Invalid note criterion.');
+          criterionIds.add(criterion.id);
           if (typeof criterion.label !== 'string' || criterion.label.trim().length < 3 || criterion.label.length > 160) bad('Invalid note criterion label.');
-          if (!Array.isArray(criterion.anchors) || criterion.anchors.length !== 3) bad('Each note criterion needs 0, 1 and 2 point anchors.');
-          if (criterion.anchors.some((a) => typeof a !== 'string' || a.length > 400)) bad('Invalid note anchor.');
-          rubricTotal += 2;
+          // Every marker must be a plain phrase. An empty or overlong marker would match everything
+          // or nothing, so it is a build error rather than a silent mis-score.
+          const markers = [criterion.all, criterion.any, criterion.none];
+          if (!markers.some((list) => Array.isArray(list) && list.length)) bad(`Note criterion ${criterion.id} needs at least one marker.`);
+          for (const list of markers) {
+            if (list === undefined) continue;
+            if (!Array.isArray(list) || list.length > 24) bad(`Invalid marker list for ${criterion.id}.`);
+            for (const term of list) {
+              if (typeof term !== 'string' || term.trim().length < 2 || term.length > 60) bad(`Invalid marker for ${criterion.id}.`);
+            }
+          }
         }
-        if (rubricTotal !== item.points) bad(`Note ${item.id} is worth ${item.points} points but its rubric totals ${rubricTotal}.`);
+        if (k.criteria.length * 2 !== item.points) bad(`Note ${item.id} is worth ${item.points} points but has ${k.criteria.length} criteria at 2 points each.`);
       } else if (item.type === 'cell') {
         if (!QUALIFIED_REF.test(item.ref)) bad(`Invalid cell reference for ${item.id}.`);
         const { sheet: itemSheet } = splitRef(item.ref);
@@ -442,10 +452,15 @@ function gradeItem(item, key, answers, merged) {
     correct = parsed !== null && refKey(parsed) === refKey(key.answer);
     correctText = key.answer;
   } else if (item.type === 'note') {
-    // Reviewer-marked. It earns nothing automatically and is never counted as correct or blank-scored.
+    // Scored by the server from the item's evidence markers. Never keyed on exact wording, so a
+    // candidate is credited for what they said rather than how they said it.
     givenText = given.text ?? null;
-    correctText = 'Marked by a reviewer against the published rubric';
-    return { correct: null, givenText, correctText, unsafeHit: false, pending_review: true };
+    const note = scoreNote(key, givenText);
+    return {
+      correct: note.blank ? null : note.earned === note.max,
+      givenText, correctText: 'Scored on published evidence markers',
+      unsafeHit: false, note,
+    };
   } else {
     const shown = calculateCell(merged, item.ref);
     givenText = shown === '' ? null : shown;
@@ -478,7 +493,7 @@ export function gradeBattery(version, answers) {
   const items = [];
 
   for (const section of payload.sections) {
-    const row = { id: section.id, title: section.title, earned: 0, max: 0, pending: 0 };
+    const row = { id: section.id, title: section.title, earned: 0, max: 0 };
     for (const item of section.items) {
       const k = key.items[item.id];
       const given = {
@@ -487,46 +502,43 @@ export function gradeBattery(version, answers) {
         text: answers.structured?.text?.[item.id],
       };
       const g = gradeItem(item, k, given, merged);
-      const awarded = g.correct ? item.points : 0;
+      // A written handoff earns its criteria independently: two points per criterion, all or nothing
+      // within that criterion. Every other field is all or nothing across its whole value.
+      const awarded = g.note ? g.note.earned : (g.correct ? item.points : 0);
       if (g.unsafeHit) flags.push(`Unsafe choice selected in ${section.title}`);
       totals[item.category].earned += awarded;
       totals[item.category].max += item.points;
       row.earned += awarded;
       row.max += item.points;
-      if (g.pending_review) row.pending += item.points;
       items.push({
         id: item.id, section: section.title, category: item.category, type: item.type, prompt: item.prompt,
         level: item.level || null,
         given: g.givenText, correctAnswer: g.correctText,
-        correct: g.pending_review ? null : (g.givenText === null ? null : g.correct),
+        // A note keeps the per-criterion evidence so a recruiter can see why it scored what it did.
+        correct: g.givenText === null ? null : (g.note ? g.note.earned === g.note.max : g.correct),
         awarded, points: item.points, ref: item.type === 'cell' ? item.ref : undefined,
-        pending_review: g.pending_review === true || undefined,
+        ...(g.note ? { note: g.note } : {}),
       });
     }
     // A declared section cap is the component weight, and the authored points must already add up to
     // it (enforced by validateBattery). The composite is therefore a plain sum of points.
     if (Number.isInteger(section.cap)) {
       row.cap = section.cap;
-      row.auto_max = row.max - row.pending;
-      row.pending = row.pending;
+      row.auto_max = row.max;
     }
     sectionRows.push(row);
   }
 
-  // Reviewer-marked points are a separate, pending component. They never enter the auto-scored
-  // composite, and the total is only final once a reviewer has marked them.
-  const pendingPoints = items.filter((i) => i.pending_review).reduce((total, i) => total + i.points, 0);
-  const pendingItemIds = items.filter((i) => i.pending_review).map((i) => i.id);
   const pct = (e, m) => (m ? Math.round((e / m) * 1000) / 10 : 0);
 
   // With declared caps the composite is a plain sum of points across the components; without them it
-  // keeps the historic 40/60 category weighting. Reviewer-marked points are excluded from the
-  // automatic total and reported separately as pending.
+  // keeps the historic 40/60 category weighting. Every item is scored by the server, so the total is
+  // final on submission.
   const capped = sectionRows.some((s) => Number.isInteger(s.cap));
   let autoEarned, autoMax;
   if (capped) {
     autoEarned = sectionRows.reduce((total, s) => total + s.earned, 0);
-    autoMax = sectionRows.reduce((total, s) => total + s.max - s.pending, 0);
+    autoMax = sectionRows.reduce((total, s) => total + s.max, 0);
   } else {
     const k = totals.knowledge, r = totals.reconciliation;
     if (k.max <= 0 || r.max <= 0) bad('Both categories must carry points.');
@@ -544,8 +556,6 @@ export function gradeBattery(version, answers) {
     engine: BATTERY_ENGINE,
     overall_score: overall,
     auto_scored_max: autoMax,
-    pending_review_points: pendingPoints,
-    pending_review_items: pendingItemIds,
     knowledge_score: knowledgeScore,
     reconciliation_score: reconciliationScore,
     passed: exactPercent >= passPercent,
@@ -565,8 +575,8 @@ export function gradeBattery(version, answers) {
       }, {}),
     },
     critical_flags: [...new Set(flags)],
-    interpretation: `Auto-scored ${overall}/${autoMax}`
-      + (pendingPoints ? `; ${pendingPoints} points from the written handoff await reviewer marking. ` : '. ')
+    interpretation: `Scored ${overall}/${autoMax}`
+      + '. '
       + 'This is short practical screening evidence for the tested items only; it does not establish job performance.',
     items,
     workbook_values: Object.fromEntries(Object.keys(merged).map((ref) => [ref, calculateCell(merged, ref)])),

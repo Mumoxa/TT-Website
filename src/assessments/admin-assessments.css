@@ -137,7 +137,7 @@
 
 .tta-admin-page :is(h1,h2,h3,td,dd,code) {overflow-wrap:anywhere;}
 
-/* Reviewer marking of the written handoff. Sharp corners and hairlines, same language as the report. */
+/* Handoff evidence, marking inputs and the decision panel. Sharp corners, hairlines. */
 .tta-handoff-text { margin: 0 0 18px; padding: 14px 16px; background: var(--paper); border-left: 3px solid var(--accent); border-radius: var(--radius); }
 .tta-handoff-text h3 { margin: 0 0 8px; font: 600 0.82rem/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .tta-handoff-note { margin: 0; white-space: pre-wrap; font: 400 0.95rem/1.65 var(--sans); color: var(--ink); }
@@ -151,3 +151,15 @@
 .tta-anchor strong { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 4px; border-radius: 50%; background: var(--accent-soft); color: var(--ink-deep); font-size: 0.75rem; }
 .tta-admin-mark-total { margin: 0; font: 600 0.95rem/1.4 var(--sans); color: var(--ink-deep); }
 @media print { .tta-marking-form { display: none; } }
+
+/* Handoff evidence: the automatic mark, and the marker behind each criterion. */
+.tta-handoff-evidence { margin: 0 0 16px; padding: 14px 16px; background: var(--paper-soft); border: 1px solid var(--line); border-radius: var(--radius); }
+.tta-criteria-list { margin: 10px 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.tta-criteria-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font: 400 0.92rem/1.5 var(--sans); color: var(--muted); }
+.tta-criteria-list li.is-earned { color: var(--ink); }
+.tta-criteria-mark { min-width: 34px; padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: var(--radius); font: 600 0.78rem/1.5 var(--sans); text-align: center; font-variant-numeric: tabular-nums; }
+.tta-criteria-list li.is-earned .tta-criteria-mark { border-color: var(--accent); background: var(--accent-soft); color: var(--ink-deep); }
+.tta-criteria-label { font-weight: 600; }
+.tta-handoff-evidence details { margin-top: 8px; }
+.tta-handoff-evidence summary { cursor: pointer; font: 600 0.8rem/1.6 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.tta-handoff-evidence .tta-handoff-note { margin-top: 8px; padding: 10px 12px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); }

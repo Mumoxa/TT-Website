@@ -1,6 +1,6 @@
 # Accounts Receivable assessment — duplicate of the payable assessment
 
-Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; not published, not piloted, not validated.**
+Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; every point scored automatically; not published, not piloted, not validated.**
 Last updated: 2026-11-05.
 
 This document describes how the accounts receivable (AR) assessment was produced by duplicating the
@@ -55,19 +55,21 @@ this document records the gap in section 6 instead of asserting a result.
 | --- | --- |
 | Component weights A 20 / B 60 / C 20 | Four scoring components: A Foundations 20, B Work sample 60 (B1 16, B2 24, B3 20), C Controls and handoff 20 (C1 12, C2 8). A section's `cap` is now a point weight, and the validator refuses a section whose authored points do not equal its cap, so a component cannot drift away from its share. |
 | Named tasks A1–A6, B1–B3, C1–C3 | Item ids carry the blueprint task: `a1`–`a6`, `b1a`–`b1d`, `b2a`–`b2f`, `b3a`–`b3e`, `c2a`–`c2c`, `c2d`. |
-| 25 fields, 12 scored tasks | 25 activities in 6 sections: 24 auto-scored fields worth **92** points plus one written handoff worth **8**, marked by a person. |
-| Wording tiers and difficulty labels | Items carry `level`: 25 points foundation, 51 core, 16 stretch (blueprint target 25/59/16; see deviation 3 in section 7). The level is a quiet label in the candidate UI, never a hint or a score. |
+| 25 fields, 12 scored tasks | 25 activities in 6 sections worth **100** points. All 25 are scored by the server; none waits for a person. |
+| Wording tiers and difficulty labels | Items carry `level`: 25 points foundation, 59 core, 16 stretch, exactly the blueprint's authored mix. The level is a quiet label in the candidate UI, never a hint or a score. |
 | Unsigned amounts as exact cents | Amount fields are `format: "rand"`. `cleanBatteryWorkbook` refuses a minus sign or brackets on entry, so a signed figure never becomes a wrong answer. `R2 300,00`, `2,300.00` and `2300` all parse to the same cents. |
 | A reference field takes a single document code | New item type `ref`, compared on letters and digits only (`GRN-77` = `GRN 77` = `grn77`). An amount typed in a code box scores zero, and the box warns before submission. |
 | Zero or full points per field; a blank submitted field is 0 | Unchanged engine behaviour; a blank is scored as wrong rather than skipped, so a submitted form is always out of the full mark. |
-| Human-marked handoff, 0/1/2 on four anchors | New item type `note`. The rubric lives in the scoring key, never in the candidate payload. `validateReview` requires all four criteria and rejects 3, 1.5, a missing criterion or an invented one. A note is never auto-scored. |
-| Manual marks kept separate from the automatic score | `assessment_reviews` (live mark) and `assessment_review_revisions` (every replaced mark, with its reason). The automatic award does not move when a handoff is marked. |
+| Written handoff on four anchors | New item type `note`, **scored automatically**. The four anchors (facts, status, next action with owner, timing) are encoded as evidence markers in the scoring key, never in the candidate payload. Each criterion is worth 2 points, all or nothing within that criterion, so a compliant note earns 8 and a note that misses the timing loses exactly 2. Negation is understood: "do not release the refund" satisfies the status criterion, "release it" fails it. |
+| Every point automated, no manual marking | There is no reviewer route, no pending state and no way for a person to set a score. The per-criterion award and the marker that matched are reported, so the mark is auditable without being editable. |
+| Manual decisions kept separate from the score | `assessment_decisions` records `advance` / `hold` / `not_advance` with an author and a reason, and never writes to a score column. |
 | A decision is not a score | `assessment_decisions` records `advance` / `hold` / `not_advance` with an author and a reason, and never writes to a score column. |
-| A pending attempt has its own status and no composite | `combineScores` returns `status: "pending_review"` and `total: null` until the handoff is marked; the report shows the automatic award as a partial score only. |
+| A submitted attempt is always final | `combineScores` now always returns `status: "scored"` with a total, because every item is scored on submission. The old `pending_review` state is retired. |
 | No cascading errors | Reference, disposition and result are separate fields, the two adjusted balances are separate dependent fields, and no field borrows another exhibit's figure. |
 | No keys, anchors or rationale in the candidate payload | `publicBattery` emits id, type, prompt, level, instructions, options, cell ref, and amount format only. A test asserts the words `rubric` and `anchors` never appear in the candidate payload. |
 | Rejects a 70 % convention as a cut score | No cut score is applied or displayed. `passed` / `pass_percent` remain computed and unsurfaced (see section 7). |
 | AR is a later expansion profile needing its own matrix, form version and validation record | This form is version `ar-clerk-v1` with its own content, its own practice table and its own approval record; it makes no claim to inherit the AP form's validity. |
+| An owner decision supersedes the blueprint's human handoff | The blueprint expects the handoff to be marked by a trained reviewer. The owner has directed that **all scoring be automated**, so the handoff is machine-scored instead (see deviation 4). |
 
 ### Deviations and open items against the blueprint
 
@@ -79,14 +81,21 @@ Recorded rather than papered over:
 2. **Timing is unproven.** 25 fields in 20 minutes is a design assumption, not a measurement. The
    blueprint's own ~28-minute figure is a design target; this form keeps the platform's existing
    20-minute limit and needs a timed pilot before either number is repeated as fact.
-3. **Difficulty mix is 25/51/16 rather than 25/59/16.** Four points sit one tier lower than the
-   blueprint's authored mix. The blueprint's item-review bands (foundation .75–.95, core .45–.80,
-   stretch .30–.65) cannot be applied until real responses exist, so these labels are author intent.
-4. **One handoff, not one per component.** The blueprint's handoff is a single written note worth 8
-   points, marked on the four anchors (facts, payment status, next action and owner, timing). It is C2.
-5. **The reviewer workflow is API and admin-UI only.** There is no bulk marking queue, no second
-   reviewer and no reviewer training record. Marking is one reviewer, one attempt, recorded and
-   auditable.
+3. **The difficulty mix is now exactly 25/59/16**, matching the blueprint. The item-review bands
+   (foundation .75–.95, core .45–.80, stretch .30–.65) still cannot be applied until real responses
+   exist, so the labels remain author intent.
+4. **The handoff is machine-scored, not human-marked.** This is a deliberate departure from the
+   blueprint at the owner's direction. It buys full automation and removes the operational step, and
+   it costs something that must be stated plainly: a written answer is now judged on the presence of
+   evidence, not on the quality of the reasoning or the accuracy of the figures quoted. A candidate
+   who writes "INV-8841 is on hold, bank detail unverified, I will call the contact, update by 13:55"
+   earns 8 even if the surrounding explanation is poor; a candidate who explains the situation
+   beautifully but forgets to promise an update time loses 2. The markers are tuned to the facts the
+   note is asked to contain, and every mark names the marker that produced it, so the trade-off is
+   visible rather than hidden. **If the owner ever wants a judgement of quality rather than content,
+   that is the point where a human mark has to return.**
+5. **The handoff is C2 only.** The blueprint's handoff is a single written note worth 8 points on the
+   four anchors. It is one item, not one per component.
 6. **B1's documents are restated inside the prompts.** The workbook has one documents tab, so the
    purchase order, goods-received note and invoice for B1 appear in the task text rather than as a
    separate sheet. This is a presentation compromise, not a change to the task.
@@ -116,19 +125,23 @@ Small, and each was required for correctness rather than preference:
 5. **Stored engine name** (`functions/lib/battery.js`). `ap-battery-v2` → `battery-v2`, because the
    same engine grades every family. History is unaffected: the value is only written to new rows.
 
-6. **Reviewer marking** (`functions/lib/assessment-review.js`, the review and decision routes,
-   `migrations/assessments/0004_reviewer_marking.sql`). Three additive tables:
-   `assessment_reviews`, `assessment_review_revisions`, `assessment_decisions`. Both write routes are
-   admin-only, audited, and refuse to change a submitted attempt's answers.
+6. **Automatic handoff scoring** (`functions/lib/assessment-review.js`, `migrations/assessments/0005_automated_note_scoring.sql`).
+   A `note` is scored by matching the candidate's own words against evidence markers in the key, on a
+   whole-word and negation-aware basis, two points per criterion and all-or-nothing within each. The
+   per-criterion award and the matched marker are reported with the result so the mark can be audited.
+   **Reviewer marking has been removed**: the `admin/review` route is gone (404) and `0005` marks any
+   mark recorded by a person under `0004` as `source = 'reviewer'`, never used for scoring.
+7. **Hiring decision** (`assessment_decisions`, `admin/decision/<id>`). Admin-only, audited, needs a
+   reason, and never writes to a score column.
 7. **Level and format payload** (`functions/lib/battery.js`). The candidate payload now carries an
    item's `level` and optional `hint`; neither is key material. `practice-isolation.js` now treats a
    `note` item as carrying no answer to leak, instead of failing the key as incomplete.
 
-**Migration 0004 must be applied** to `tt-assessments` before a handoff can be marked in any
-environment (`node scripts/assessment-local.mjs migrate`, or `wrangler d1 migrations apply`). Until it
-is applied, the recruiter report still opens, but the review and decision routes return a 500 — the
-report queries `assessment_reviews`. Nothing else was touched: no binding, secret, `wrangler.toml`
-entry or offers code changed.
+**Migrations 0004 and 0005 must be applied** to `tt-assessments` (`node scripts/assessment-local.mjs
+migrate`, or `wrangler d1 migrations apply`). `0005` adds the note-evidence table and the `source`
+column; until both are applied, the decision route returns a 500 and the report cannot list handoff
+evidence. Nothing else was touched: no binding, secret, `wrangler.toml` entry or offers code changed.
+Both migrations are additive and are safe to apply before anything is published.
 
 ## 4. Where the AR content lives
 
@@ -164,11 +177,11 @@ Draft shape (25 activities in 6 sections, 92 auto-scored points plus an 8-point 
 | B2 · Reconcile a supplier statement | B2 | 24 | 4 typed amounts (invoice value, claimed discount, discount allowed by the terms, balance outstanding), 1 disposition, 1 document choice |
 | B3 · Reconcile the ledger to the cashbook | B3 | 20 | 4 typed amounts (ledger total, 61–90 bucket, 2 % provision, misallocated receipt) and 1 typed count |
 | C1 · Payment controls and priority | C1–C3 | 12 | 3 single-choice (bank-detail change, verification evidence, what comes first before a payment run locks) |
-| C2 · Written handoff | C2 | 8 | 1 written note, reviewer-marked 0/1/2 on four anchors |
+| C2 · Written handoff | C2 | 8 | 1 written note, scored automatically on four evidence anchors |
 
 The weight is the section's points, and the validator enforces `sum(item points) == section cap`, so
-the composite is a plain sum out of 92 rather than a ratio that can drift. Composite = A/20 + B/60 +
-C/20 exactly as the blueprint specifies, with C's 8 written points pending until a reviewer marks them.
+the composite is a plain sum out of 100 rather than a ratio that can drift. Composite = A/20 + B/60 +
+C/20 exactly as the blueprint specifies, and all 100 points are awarded on submission.
 
 Item types, opaque option ids (`o1`…`o8`), per-item instructions, `format: "rand"` / `"count"` answer
 boxes, the amount read-back, and `display: "documents"` all mirror the AP battery. The scenario uses
@@ -197,12 +210,12 @@ content.
 
 | Check | Result |
 | --- | --- |
-| `npm test` | **347 passed, 0 failed** (327 before this work; 20 new AR and blueprint tests) |
+| `npm test` | **350 passed, 0 failed** |
 | `npm run build` | Pass |
-| `node scripts/assessment-local.mjs migrate` | Applies `0004_reviewer_marking.sql` cleanly |
-| Private package self-check (`build.mjs`) | Validator pass; weights 20/60/20 enforced; perfect auto-scored sheet = **92/92** with no critical flag; handoff = **8 pending**; full rubric 8, partial 6; an incomplete rubric is rejected; a negative amount is refused; `R2 300,00`, `2,300.00` and `2300` all read to the same cents |
-| Private end-to-end (`verify-local.mjs`) | **PASS** — sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **92/92**, handoff pending, candidate sees percentages only, recruiter report reproduces 92/92 over 25 activities with the rubric present, an amount typed as `R 2 300,00` still scores, an incomplete rubric is refused (400), a full rubric makes the total 100/100, a correction without a reason is refused (400), a correction with a reason records revision 2 at 99/100, and a hiring decision is recorded without moving the score |
-| Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; the runner renders the written-handoff textarea, the single-code input, the level labels and the "marked by a reviewer" note; no key material in the DOM |
+| Migrations | `0004` and `0005` apply cleanly to a fresh SQLite database; checked by executing every migration in order |
+| Private package self-check (`build.mjs`) | Validator pass; weights 20/60/20 enforced; perfect sheet = **100/100** with no critical flag and nothing pending; handoff checks: compliant 8, no time 6, no owner 6, releases the refund 6, blank 0; a signed amount is refused; `R2 300,00`, `2,300.00` and `2300` all read to the same cents; the candidate payload leaks no criterion |
+| Private end-to-end (`verify-local.mjs`) | **PASS, 26 checks** — sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **100/100 with nothing pending**, an amount typed as `R 6410,00` still scores, the candidate is not told how the handoff is marked, the report reproduces 100/100 and lists the handoff's four criteria with the markers that earned them, a paper with a vague handoff scores 92 with only the handoff losing points, **marking by hand returns 404**, a hiring decision is recorded without moving the score (100/100), and a decision without a real reason is refused |
+| Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; the runner renders the written-handoff textarea, the single-code input and the level labels, and tells the candidate the note is checked for facts, action and time rather than style; no key material in the DOM |
 | Cross-family safety | A new AR battery that reuses AR practice cannot be published (400); a battery reusing any practice table is refused by `assertNoPracticeReuse` |
 
 ### Not verified — do not claim these
@@ -234,10 +247,11 @@ content.
 2. **Time limit.** 25 fields in 20 minutes is a design assumption. The written handoff alone will take
    several minutes. Time a real attempt before relying on the limit, and consider 25 minutes if the
    pilot shows the handoff is rushed.
-3. **Marking is a new operational step.** A handoff is not scored until a person marks it, so a
-   recruiter who never opens the marking panel will see a partial score with no total. That is
-   deliberate (a pending attempt must not look final), but it changes the recruiter's workflow and
-   needs to be stated in the operator instructions.
+3. **The handoff now measures content, not quality.** Automation removed the operational step and
+   the risk of inconsistent marking, but a machine can see whether a note names the invoice, states a
+   hold, names an action with an owner and gives a time; it cannot see whether the reasoning is sound
+   or the figures quoted are right. Read the handoff when the score matters. The evidence report makes
+   that cheap: it shows the matched marker per criterion next to what the candidate wrote.
 4. **Two assessments share one catalogue and one admin list.** Recruiters must filter. If that becomes
    a problem, an explicit filter control in `/admin/assessments` is a small follow-up; the API already
    returns the assessment per attempt.

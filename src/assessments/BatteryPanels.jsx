@@ -144,7 +144,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
               );
             }
             if (item.type === 'note') {
-              // A written handoff, marked later by a reviewer against a published rubric.
+              // A written handoff, scored by the server from evidence markers in its key.
               const value = texts[item.id] || '';
               const words = value.trim() ? value.trim().split(/\s+/).length : 0;
               return (
@@ -154,7 +154,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                   <textarea id={'n-' + item.id} className="tta-note-input" rows={7} maxLength={1200} value={value}
                     onChange={(e) => patchDraft((old) => ({ ...old, structured: { ...old.structured, text: { ...(old.structured?.text || {}), [item.id]: e.target.value } } }))} />
                   <p className="tta-answer-result"><span>Saved as: </span><output aria-label="Words written">{words}</output>
-                    <span className="tta-answer-where"> · marked by a reviewer, not scored automatically</span></p>
+                    <span className="tta-answer-where"> · checked for the facts, the action and the time, not for style</span></p>
                 </div>
               );
             }

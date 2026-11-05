@@ -64,62 +64,29 @@ function Login({ onSuccess }) {
   </section>;
 }
 
-/* Reviewer marking for a written handoff. Every criterion needs 0, 1 or 2; a correction requires a
-   reason, and the server records the revision. Nothing here edits the automatic score. */
-function MarkingPanel({ report, attemptId, onRecorded }) {
-  const review = report.result?.review;
-  const note = report.question_review?.find((q) => q.id === review?.rubric?.[0]?.item_id);
-  const written = note?.chosen && note.chosen !== 'Not answered' ? String(note.chosen) : '';
-  const existing = review?.marks;
-  const [marks, setMarks] = useState(() => Object.fromEntries((review?.rubric?.[0]?.criteria || []).map((c) => [c.id, existing?.marks?.[0]?.criteria?.find((m) => m.id === c.id)?.points ?? null])));
-  const [reviewer, setReviewer] = useState(existing?.reviewer || '');
-  const [rationale, setRationale] = useState(existing?.rationale || '');
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const rubric = review?.rubric?.[0];
-  if (!rubric) return null;
-  const complete = rubric.criteria.every((c) => Number.isInteger(marks[c.id]));
-  const earned = rubric.criteria.reduce((n, c) => n + (Number.isInteger(marks[c.id]) ? marks[c.id] : 0), 0);
-  async function save() {
-    setBusy(true); setError(''); setMessage('');
-    try {
-      await request('review/' + attemptId, { method: 'POST', body: {
-        reviewer: reviewer.trim(), marks: { [rubric.item_id]: marks }, rationale,
-        ...(existing ? { reason: reason.trim() } : {}),
-      } });
-      setMessage('Marks recorded. The report total now includes the handoff.');
-      setReason('');
-      if (onRecorded) await onRecorded();
-    } catch (e) { setError(e.message); }
-    finally { setBusy(false); }
-  }
+/* The written handoff is scored by the server, so this shows the evidence behind the mark rather
+   than asking anyone to set it. Nothing here is editable. */
+export function HandoffEvidence({ report }) {
+  const notes = report.result?.review?.notes || [];
+  if (!notes.length) return null;
   return <section className="tta-admin-panel">
-    <h2>Written handoff — reviewer marking</h2>
-    <p className="tta-admin-muted">This part is not scored automatically. Give each criterion 0, 1 or 2 using the anchors. The reason is required when you change an existing mark.</p>
-    <div className="tta-handoff-text"><h3>What the candidate wrote ({rubric.item_id})</h3>
-      <pre className="tta-handoff-note">{written || 'Nothing was written for this activity.'}</pre></div>
-    <div className="tta-marking-form">
-      {rubric.criteria.map((criterion) => <fieldset key={criterion.id} className="tta-criterion">
-        <legend>{criterion.label} <span className="tta-admin-muted">· 2 points</span></legend>
-        {criterion.anchors.map((anchor, index) => <label key={index} className="tta-anchor">
-          <input type="radio" name={'mark-' + criterion.id} checked={marks[criterion.id] === index}
-            onChange={() => setMarks((old) => ({ ...old, [criterion.id]: index }))} />
-          <span><strong>{index}</strong> {anchor}</span>
-        </label>)}
-      </fieldset>)}
-      <p className="tta-admin-mark-total"><strong>{earned}</strong> of {rubric.points} points selected</p>
-      <label>Reviewer<input value={reviewer} onChange={(e) => setReviewer(e.target.value)} maxLength={120} placeholder="Your name or reviewer reference" /></label>
-      <label>Rationale (optional)<textarea rows={3} value={rationale} onChange={(e) => setRationale(e.target.value)} maxLength={1000} /></label>
-      {existing && <label>Reason for changing the recorded mark<textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={600} placeholder="Required: why the earlier mark is being replaced" /></label>}
-      {error && <p className="tta-admin-error" role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
-      <button type="button" onClick={save} disabled={busy || !complete || reviewer.trim().length < 2 || (existing && reason.trim().length < 8)}>
-        {busy ? 'Recording…' : existing ? 'Record corrected mark' : 'Record marks'}
-      </button>
-      {existing && <p className="tta-admin-muted">Recorded by {existing.reviewer} on {formattedTime(existing.created_at)} · revision {existing.revision}. Earlier marks are retained in the audit history.</p>}
-    </div>
+    <h2>Written handoff — scored automatically</h2>
+    <p className="tta-admin-muted">This activity was scored by the server against published evidence markers, on the same zero-or-full rule as every other field. Each criterion is worth two points and shows the marker that earned it.</p>
+    {notes.map((note) => <div key={note.id} className="tta-handoff-evidence">
+      <p className="tta-admin-mark-total"><strong>{note.earned}</strong> of {note.points} points · {note.id}</p>
+      <ul className="tta-criteria-list">
+        {(note.criteria || []).map((c, index) => <li key={c.id} className={c.points ? 'is-earned' : ''}>
+          <span className="tta-criteria-mark">{c.points}/{2}</span>
+          <span className="tta-criteria-label">Criterion {index + 1}</span>
+          {c.matched ? <span className="tta-admin-muted">· matched “{c.matched}”</span> : null}
+          {!c.points && c.missing?.length ? <span className="tta-admin-muted">· no evidence of: {c.missing.join(', ')}</span> : null}
+          {!c.points && c.blocked_by ? <span className="tta-admin-muted">· the note says “{c.blocked_by}”, which contradicts the criterion</span> : null}
+        </li>)}
+      </ul>
+      <details><summary>What the candidate wrote</summary>
+        <pre className="tta-handoff-note">{report.question_review?.find((q) => q.id === note.id)?.chosen || 'Nothing was written for this activity.'}</pre>
+      </details>
+    </div>)}
   </section>;
 }
 
@@ -190,7 +157,7 @@ function ResultReport({ report, onBack, onRecorded }) {
       <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
       <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
     </div>
-    <MarkingPanel report={report} attemptId={a.id} onRecorded={onRecorded} />
+    <HandoffEvidence report={report} />
     <section className="tta-admin-panel">
       <h2>Assessment interpretation</h2>
       <p>{r?.interpretation || 'The assessment has not yet been scored.'}</p>

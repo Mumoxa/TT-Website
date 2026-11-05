@@ -239,12 +239,13 @@ const BLUEPRINT_KEY = { items: {
   ba2: { answer: 'GRN-77' },
   bb1: { answer: 800, tolerance: 0.005 },
   bb2: { answer: 'o2' },
-  // Never auto-scored: a reviewer marks 0/1/2 on each criterion. Two points per criterion.
-  bc1: { rubric: [
-    { id: 'r1', label: 'Facts', anchors: ['Wrong fact', 'Partly right', 'Facts restated correctly'] },
-    { id: 'r2', label: 'Status', anchors: ['No status', 'Vague', 'Clear status'] },
-    { id: 'r3', label: 'Next action', anchors: ['None', 'Action without owner', 'Action with owner'] },
-    { id: 'r4', label: 'Timing', anchors: ['No time', 'Vague time', 'Specific time'] },
+  // A written handoff is scored by the server from these markers. No answer, no human, no exact
+  // wording: the criteria are the marking scheme.
+  bc1: { criteria: [
+    { id: 'r1', label: 'Facts', all: ['INV-8841', 'bank detail'], any: ['unverified', 'not verified'] },
+    { id: 'r2', label: 'Status', any: ['hold', 'held', 'holding', 'withhold'], none: ['release the refund', 'release it'] },
+    { id: 'r3', label: 'Next action', all: ['will'], any: ['call', 'contact', 'verify', 'confirm'] },
+    { id: 'r4', label: 'Timing', all: ['update'], any: ['13:55', '14:00', '15:00'] },
   ] },
 } };
 
@@ -265,7 +266,7 @@ const BLUEPRINT_SHAPE = {
         prompt: 'Which action follows a short payment?', options: [{ id: 'o1', text: 'Write it off' }, { id: 'o2', text: 'Query it and hold credit' }] },
     ] },
     { id: 'part-c', title: 'C · Written handoff', cap: 8, items: [
-      // The rubric lives in the scoring key, never in the candidate payload.
+      // The marking scheme lives in the scoring key, never in the candidate payload.
       { id: 'bc1', type: 'note', level: 'core', category: 'reconciliation', points: 8,
         prompt: 'Write the handoff note for the finance lead.' },
     ] },
@@ -284,12 +285,14 @@ const BLUEPRINT_SHAPE = {
   answer_labels: { 'Working!A1': 'Working note', 'Working!B1': 'Answer', 'Working!B2': 'Outstanding on the invoice' },
 };
 
-// validateBattery takes a package and returns the key that will be published.
+// A note that satisfies all four criteria, and variants that miss exactly one.
+const GOOD_NOTE = 'The refund on INV-8841 is on hold: the bank detail change is unverified. I will call the contact on record. I will update you by 13:55.';
+
 const blueprintPackage = (shape = BLUEPRINT_SHAPE, key = BLUEPRINT_KEY) => ({ question_payload: shape, scoring_key: key });
 let cached = null;
 const validated = () => (cached ??= validateBattery(blueprintPackage()));
 const grade = (answers) => gradeBattery({ payload: BLUEPRINT_SHAPE, key: validated().scoring_key }, answers);
-const ANSWERS = { mcq: { ba1: 'o2', bb2: 'o2' }, structured: { text: { ba2: 'GRN-77' }, multi: {} }, workbook: { 'Working!B2': '800' } };
+const ANSWERS = { mcq: { ba1: 'o2', bb2: 'o2' }, structured: { text: { ba2: 'GRN-77', bc1: GOOD_NOTE }, multi: {} }, workbook: { 'Working!B2': '800' } };
 const withText = (extra) => ({ ...ANSWERS, structured: { ...ANSWERS.structured, text: { ...ANSWERS.structured.text, ...extra } } });
 
 test('the blueprint battery validates with weighted sections and a 32-point total', () => {
@@ -313,10 +316,9 @@ test('a level outside foundation, core and stretch is rejected', () => {
   assert.throws(() => validateBattery(blueprintPackage(wrong)), /level/i);
 });
 
-test('the rubric never reaches the candidate payload', () => {
+test('the marking scheme never reaches the candidate payload', () => {
   const body = JSON.stringify(publicBattery(BLUEPRINT_SHAPE));
-  assert.ok(!/rubric/.test(body));
-  assert.ok(!/anchors/.test(body));
+  for (const secret of ['criteria', 'markers', 'anchors']) assert.ok(!new RegExp('"' + secret + '"').test(body), secret);
 });
 
 test('a ref field scores the document code only, and an amount in that box scores zero', () => {
@@ -328,13 +330,52 @@ test('a ref field scores the document code only, and an amount in that box score
   }
 });
 
-test('the reviewer-marked handoff is pending, never auto-scored, and never inflates the auto total', () => {
-  const graded = grade(withText({ bc1: 'A perfectly reasonable note.' }));
-  assert.equal(graded.pending_review_points, 8);
-  assert.equal(graded.auto_scored_max, 24);
-  assert.equal(graded.overall_score, 24, 'a written note must not add points on its own');
-  assert.equal(graded.items.find((i) => i.id === 'bc1').pending_review, true);
-  assert.equal(graded.items.find((i) => i.id === 'bc1').awarded, 0);
+test('the whole form is scored on submission, with nothing left pending', () => {
+  const graded = grade(ANSWERS);
+  assert.equal(graded.auto_scored_max, 32, 'every point, including the handoff, is automatic');
+  assert.equal(graded.overall_score, 32);
+  assert.equal(graded.pending_review_points, undefined);
+  assert.equal(graded.items.find((i) => i.id === 'bc1').awarded, 8);
+});
+
+test('a handoff earns two points per criterion, and loses only the criterion it misses', () => {
+  const awarded = (text) => grade(withText({ bc1: text })).items.find((i) => i.id === 'bc1').awarded;
+  assert.equal(awarded(GOOD_NOTE), 8);
+  assert.equal(awarded('The INV-8841 refund is on hold: the bank detail change is unverified. I will call the contact.'), 6, 'no time given');
+  assert.equal(awarded('The INV-8841 refund: the bank detail change is unverified, hold it. Update by 13:55.'), 6, 'no owner action');
+  // Releasing the refund loses the status criterion; "I will update you" also names no action, so
+  // this variant loses two and the test pins exactly that.
+  assert.equal(awarded('The INV-8841 refund: the bank detail change is unverified, so release the refund. I will update you by 13:55.'), 4, 'released the refund, no action');
+  assert.equal(awarded('The INV-8841 refund: the bank detail change is unverified, so release it. I will call the customer and update you by 13:55.'), 6, 'released the refund');
+  assert.equal(awarded(''), 0, 'a blank handoff earns nothing');
+  assert.equal(awarded('It is fine, will handle it.'), 0, 'one vague sentence earns nothing');
+});
+
+test('a negative instruction is not read as the wrong decision', () => {
+  const awarded = (text) => grade(withText({ bc1: text })).items.find((i) => i.id === 'bc1').awarded;
+  // "do not release the refund" is the correct outcome, so the disqualifier must not fire on it.
+  assert.equal(awarded('INV-8841 refund stays on hold: the bank detail change is unverified. I will contact the customer. I will not release the refund before 13:55. I will update you by 13:55.'), 8);
+});
+
+test('a handoff mark names the marker that produced it, so the score can be audited', () => {
+  const note = grade(ANSWERS).items.find((i) => i.id === 'bc1').note;
+  assert.equal(note.earned, 8);
+  assert.equal(note.max, 8);
+  for (const criterion of note.criteria) assert.equal(criterion.points, 2, `${criterion.id} earned ${criterion.points}`);
+  assert.ok(note.criteria.every((c) => c.matched), 'every criterion records what matched');
+});
+
+test('a criterion without markers, or with too many points, is refused at build time', () => {
+  const noMarkers = structuredClone(BLUEPRINT_KEY);
+  noMarkers.items.bc1 = { criteria: [
+    { id: 'r1', label: 'Facts' }, { id: 'r2', label: 'Status', any: ['hold'] },
+    { id: 'r3', label: 'Next', any: ['call'] }, { id: 'r4', label: 'Timing', any: ['13:55'] },
+  ] };
+  assert.throws(() => validateBattery(blueprintPackage(BLUEPRINT_SHAPE, noMarkers)), /needs at least one marker/);
+
+  const imbalance = structuredClone(BLUEPRINT_KEY);
+  imbalance.items.bc1 = { criteria: [{ id: 'r1', label: 'Facts', any: ['hold'] }, { id: 'r2', label: 'Rest', any: ['call'] }] };
+  assert.throws(() => validateBattery(blueprintPackage(BLUEPRINT_SHAPE, imbalance)), /worth 8 points but has 2 criteria/);
 });
 
 test('field points are all-or-nothing: a near miss earns zero, not part marks', () => {
@@ -344,6 +385,7 @@ test('field points are all-or-nothing: a near miss earns zero, not part marks', 
 });
 
 test('a signed amount is refused on entry, so it can never reach the score', () => {
+  // Amount boxes are keyed by canonRef: lower-case sheet, upper-case cell.
   const rules = { writableSheets: new Set(['working']), sourceCanon: new Set(), amountRefs: new Set(['working!B2']) };
   assert.throws(() => cleanBatteryWorkbook({ 'Working!B2': '-800' }, rules), /positive amount, without a minus/);
   assert.throws(() => cleanBatteryWorkbook({ 'Working!B2': '(−800)' }, rules), /positive amount, without a minus/);
@@ -356,66 +398,56 @@ test('the three accepted amount formats parse to the same cents', () => {
   for (const typed of ['R2 300,00', '2,300.00', '2300']) assert.equal(parseAmount(typed), 2300, typed);
 });
 
-/* ---------------------------------------------------------------- reviewer marking
- * The handoff rubric is marked by a person. These tests pin the rules that stop a mark from being
- * invented, silently rounded up, or allowed to replace the original record. */
+/* ---------------------------------------------------------------- the final view
+ * The report uses combineScores; every point is automatic, so there is never a pending total. */
 
-import {combineScores, cleanNoteText, noteRubric, validateReview, ReviewError} from '../functions/lib/assessment-review.js';
+import {combineScores, cleanNoteText, scoreNote, scoreCriterion, matchUnnegated} from '../functions/lib/assessment-review.js';
 
-const REVIEW_KEY = validated().scoring_key;
-const reviewPayload = validated().question_payload;
-const FULL_MARKS = { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } };
-
-test('the rubric a reviewer sees carries labels and all three anchors per criterion', () => {
-  const [note] = noteRubric(reviewPayload, REVIEW_KEY);
-  assert.equal(note.item_id, 'bc1');
-  assert.equal(note.points, 8);
-  assert.equal(note.criteria.length, 4);
-  for (const criterion of note.criteria) assert.equal(criterion.anchors.length, 3);
-});
-
-test('every criterion must be marked, with 0, 1 or 2 only', () => {
-  const ok = validateReview(reviewPayload, REVIEW_KEY, { marks: FULL_MARKS });
-  assert.equal(ok.earned, 8);
-  assert.equal(ok.max, 8);
-  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2, r2: 2, r3: 2 } } }), ReviewError);
-  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2, r2: 3, r3: 2, r4: 2 } } }), /0, 1 or 2/);
-  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 1.5, r2: 2, r3: 2, r4: 2 } } }), /0, 1 or 2/);
-  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2, r9: 2 } } }), /Unknown criterion/);
-  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2 } } }), ReviewError);
-});
-
-test('a pending handoff has no total until it is marked', () => {
-  const graded = grade(ANSWERS);
-  const pendingResult = combineScores(graded, null);
-  assert.equal(pendingResult.status, 'pending_review');
-  assert.equal(pendingResult.total, null, 'a pending attempt must not show a final total');
-  assert.equal(pendingResult.partial_total, 24);
-
-  const marked = combineScores(graded, { earned: 6, max: 8 });
-  assert.equal(marked.status, 'scored');
-  assert.equal(marked.total, 30);
-  assert.equal(marked.total_max, 32);
-  assert.equal(marked.percent, 93.8);
-});
-
-test('a form without reviewer-marked items is scored immediately', () => {
-  const combined = combineScores({ overall_score: 40, auto_scored_max: 50, pending_review_points: 0 }, null);
+test('a submitted attempt always has a final total', () => {
+  const combined = combineScores(grade(ANSWERS));
   assert.equal(combined.status, 'scored');
-  assert.equal(combined.total, 40);
+  assert.equal(combined.total, 32);
+  assert.equal(combined.total_max, 32);
+  assert.equal(combined.percent, 100);
+  assert.equal(combined.review_score, null, 'no human award is part of a total');
 });
 
-test('candidate prose is trimmed but keeps the lines the reviewer needs', () => {
+test('a partial score is a final score, not a pending one', () => {
+  const combined = combineScores(grade(withText({ bc1: '' })));
+  assert.equal(combined.total, 24);
+  assert.equal(combined.total_max, 32);
+  assert.equal(combined.status, 'scored');
+});
+
+test('markers match whole words only, so a marker cannot fire inside another word', () => {
+  assert.equal(scoreCriterion({ id: 'r', any: ['hold'] }, 'the household account is fine').points, 0);
+  assert.equal(scoreCriterion({ id: 'r', any: ['hold'] }, 'please hold this payment').points, 2);
+  assert.equal(scoreCriterion({ id: 'r', all: ['will'], any: ['call'] }, 'we will call').points, 2);
+  assert.equal(scoreCriterion({ id: 'r', all: ['will'], any: ['call'] }, 'call was made').points, 0);
+});
+
+test('a negated disqualifier is not a disqualifier', () => {
+  assert.equal(matchUnnegated('we will not release it today', ['release it']), null);
+  assert.equal(matchUnnegated('we will release it today', ['release it']), 'release it');
+  assert.equal(matchUnnegated('will not call, and do not hold it', ['hold']), null);
+});
+
+test('an empty handoff scores zero on every criterion', () => {
+  const note = scoreNote(BLUEPRINT_KEY.items.bc1, '');
+  assert.equal(note.earned, 0);
+  assert.equal(note.blank, true);
+  assert.ok(note.criteria.every((c) => c.points === 0));
+});
+
+test('candidate prose is trimmed but keeps the lines the candidate wrote', () => {
   assert.equal(cleanNoteText('  first\r\nsecond  '), 'first\nsecond');
   assert.equal(cleanNoteText(undefined), '');
   assert.equal(cleanNoteText('x'.repeat(2000)).length, 1200);
 });
 
-/* ---------------------------------------------------------------- reviewer routes
- * The two write routes are admin-only, audited, and separate: a decision never edits a score. */
+/* ---------------------------------------------------------------- the routes
+ * Nothing a person does can change a score. The only human record left is the hiring decision. */
 
-// The review routes need a genuinely published version, so this harness starts from an empty
-// database and publishes the blueprint fixture through the admin API.
 async function emptyHarness() {
   const db = database();
   const env = { ASSESSMENT_DB: db, ASSESSMENT_ADMIN_KEY: 'synthetic-admin', ASSESSMENT_ID_HASH_KEY: 'synthetic-key-with-at-least32-characters-for-tests', ASSESSMENT_PII_KEY: btoa('0'.repeat(32)) };
@@ -430,95 +462,49 @@ async function emptyHarness() {
   return { db, env, call, fields: { assessment_slug: 'ar-marked-v1', first_name: 'Synthetic', surname: 'Candidate', email: 'ar@example.invalid', consent_acknowledged: true, ...screeningFixture() } };
 }
 
-// Publish the blueprint fixture, submit a perfect answer sheet, and return the attempt id.
-async function markedAttempt() {
+// Publish the blueprint fixture and submit a perfect sheet, including a compliant handoff.
+async function scoredAttempt() {
   const t = await emptyHarness();
   const login = await t.call('admin/login', { key: t.env.ASSESSMENT_ADMIN_KEY });
   const cookie = login.cookie;
   const draft = await t.call('admin/draft', {
-    ...blueprintPackage(), slug: 'ar-marked-v1', client_name: 'Talent Tree', title: 'Synthetic Marked Handoff Assessment',
+    ...blueprintPackage(), slug: 'ar-marked-v1', client_name: 'Talent Tree', title: 'Synthetic Scored Handoff Assessment',
   }, cookie, true);
   const published = await t.call('admin/publish', { version_id: draft.data.version_id, content_approved: true, privacy_approved: true, approval_reference: 'synthetic only' }, cookie, true);
   assert.equal(published.status, 200, JSON.stringify(published.data));
-  const started = await t.call('start', { ...t.fields, assessment_slug: 'ar-marked-v1' });
+  const started = await t.call('start', t.fields);
   assert.equal(started.status, 200, JSON.stringify(started.data));
-  const withHandoff = { ...ANSWERS, structured: { ...ANSWERS.structured, text: { ...ANSWERS.structured.text, bc1: 'A perfectly reasonable note: the invoice is held, the run is 14:00, I will call by 13:55.' } } };
-  const submitted = await t.call('submit', { ...withHandoff, attempt_id: started.data.attempt_id, save_revision: 0 }, started.cookie);
+  const submitted = await t.call('submit', { ...ANSWERS, attempt_id: started.data.attempt_id, save_revision: 0 }, started.cookie);
   assert.equal(submitted.status, 200, JSON.stringify(submitted.data));
   return { ...t, cookie, attemptId: started.data.attempt_id };
 }
 
-test('marking and deciding require an admin session', async () => {
-  const t = await markedAttempt();
-  const noCookie = await t.call('admin/review/' + t.attemptId, { reviewer: 'x', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } } }, null, true);
-  assert.equal(noCookie.status, 401);
-  // A session cookie alone is not enough: the admin header is also required.
-  const noHeader = await t.call('admin/review/' + t.attemptId, { reviewer: 'x', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } } }, t.cookie, false);
-  assert.equal(noHeader.status, 403);
-  const decisionNoAuth = await t.call('admin/decision/' + t.attemptId, { decision: 'hold', reason: 'synthetic reason', decided_by: 'x' }, null, true);
-  assert.equal(decisionNoAuth.status, 401);
+test('an attempt is scored the moment it is submitted, handoff included', async () => {
+  const t = await scoredAttempt();
+  const report = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  assert.equal(report.status, 200, JSON.stringify(report.data));
+  assert.equal(report.data.result.score_status, 'scored');
+  assert.equal(report.data.result.overall_score, 32);
+  assert.equal(report.data.result.review.combined.total, 32);
+  assert.equal(report.data.result.review.combined.total_max, 32);
+  // The handoff evidence is reported so the score can be audited.
+  const [note] = report.data.result.review.notes;
+  assert.equal(note.id, 'bc1');
+  assert.equal(note.earned, 8);
+  assert.equal(note.criteria.length, 4);
+  assert.match(String(report.data.question_review.find((q) => q.id === 'bc1').chosen), /INV-8841/);
 });
 
-test('a marked handoff completes the report without changing the automatic award', async () => {
-  const t = await markedAttempt();
-  const before = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
-  assert.equal(before.status, 200, JSON.stringify(before.data));
-  assert.equal(before.data.result.score_status, 'pending_review');
-  assert.equal(before.data.result.review.combined.total, null, 'a pending handoff must not show a total');
-  assert.equal(before.data.result.review.combined.partial_total, 24);
-  assert.equal(before.data.result.review.combined.auto_max, 24);
-  assert.equal(before.data.result.review.rubric[0].criteria.length, 4);
-
-  const marks = await t.call('admin/review/' + t.attemptId, { reviewer: 'Synthetic Reviewer', marks: { bc1: { r1: 2, r2: 1, r3: 1, r4: 1 } }, rationale: 'Covers the hold and the timing.' }, t.cookie, true);
-  assert.equal(marks.status, 200, JSON.stringify(marks.data));
-  assert.equal(marks.data.earned, 5);
-
-  const after = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
-  assert.equal(after.data.result.score_status, 'scored');
-  assert.equal(after.data.result.overall_score, 24, 'the automatic score must not move');
-  assert.equal(after.data.result.review.combined.total, 29);
-  assert.equal(after.data.result.review.combined.total_max, 32);
-  assert.equal(after.data.result.review.combined.auto_score, 24);
-  // The reviewer sees the candidate's own words, and only this candidate's words.
-  const note = after.data.question_review.find((q) => q.id === 'bc1');
-  assert.match(String(note.chosen), /reasonable note/);
+test('there is no longer any way to mark a handoff by hand', async () => {
+  const t = await scoredAttempt();
+  const review = await t.call('admin/review/' + t.attemptId, { reviewer: 'x', marks: { bc1: { r1: 2 } } }, t.cookie, true);
+  assert.equal(review.status, 404, 'the reviewer-marking route is retired');
+  const scored = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  assert.equal(scored.data.result.review.combined.total, 32, 'the score did not move');
 });
 
-test('a correction replaces a mark only with a recorded reason, and keeps the history', async () => {
-  const t = await markedAttempt();
-  const full = { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } };
-  await t.call('admin/review/' + t.attemptId, { reviewer: 'First Reviewer', marks: full }, t.cookie, true);
-
-  const noReason = await t.call('admin/review/' + t.attemptId, { reviewer: 'Second Reviewer', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 1 } } }, t.cookie, true);
-  assert.equal(noReason.status, 400, JSON.stringify(noReason.data));
-
-  const corrected = await t.call('admin/review/' + t.attemptId, { reviewer: 'Second Reviewer', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 1 } }, reason: 'Timing anchor re-read against the note' }, t.cookie, true);
-  assert.equal(corrected.status, 200, JSON.stringify(corrected.data));
-  assert.equal(corrected.data.earned, 7);
-  const reported = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
-  assert.equal(reported.data.result.review.marks.revision, 2, 'the live mark moves to revision 2');
-  assert.equal(reported.data.result.review.marks.earned, 7);
-  // The original mark is not overwritten: it is an appended revision in the audit history.
-  // One row per replaced mark: the first mark is copied into the history before the live row moves on.
-  const history = t.db.sqlite.prepare('SELECT revision, earned, reason FROM assessment_review_revisions WHERE attempt_id=? ORDER BY revision').all(t.attemptId);
-  assert.equal(history.length, 1);
-  assert.equal(history[0].revision, 1);
-  assert.equal(history[0].earned, 8, 'the superseded award is kept exactly');
-  assert.match(history[0].reason, /Timing anchor/);
-});
-
-test('an incomplete or invented mark is refused with a 400, not a silent zero', async () => {
-  const t = await markedAttempt();
-  const incomplete = await t.call('admin/review/' + t.attemptId, { reviewer: 'R', marks: { bc1: { r1: 2 } } }, t.cookie, true);
-  assert.equal(incomplete.status, 400);
-  const invented = await t.call('admin/review/' + t.attemptId, { reviewer: 'R', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2, r8: 2 } } }, t.cookie, true);
-  assert.equal(invented.status, 400);
-  const three = await t.call('admin/review/' + t.attemptId, { reviewer: 'R', marks: { bc1: { r1: 3, r2: 2, r3: 2, r4: 2 } } }, t.cookie, true);
-  assert.equal(three.status, 400);
-});
-
-test('the decision is recorded separately from the score and needs a reason', async () => {
-  const t = await markedAttempt();
+test('the decision is still recorded separately from the score and needs a reason', async () => {
+  const t = await scoredAttempt();
   const short = await t.call('admin/decision/' + t.attemptId, { decision: 'advance', reason: 'ok', decided_by: 'Synthetic' }, t.cookie, true);
   assert.equal(short.status, 400);
   const bad = await t.call('admin/decision/' + t.attemptId, { decision: 'maybe', reason: 'Adequate reasoning here', decided_by: 'Synthetic' }, t.cookie, true);
@@ -527,16 +513,13 @@ test('the decision is recorded separately from the score and needs a reason', as
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
   const reported = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
   assert.equal(reported.data.result.decision.decision, 'advance');
-  assert.equal(reported.data.result.decision.decided_by, 'Synthetic Lead');
-  // The score is still pending, because a decision is not a mark.
-  assert.equal(reported.data.result.score_status, 'pending_review');
+  assert.equal(reported.data.result.score_status, 'scored');
+  assert.equal(reported.data.result.review.combined.total, 32, 'a decision never edits a score');
 });
 
-test('a candidate cannot reach the reviewer routes at all', async () => {
-  const t = await markedAttempt();
-  const started = await t.call('start', { ...t.fields, assessment_slug: 'ar-marked-v1' });
-  assert.equal(started.status, 200, JSON.stringify(started.data));
-  const attempt = await t.call('admin/review/' + started.data.attempt_id, { reviewer: 'x', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } } }, started.cookie, true);
+test('a candidate cannot reach the decision route', async () => {
+  const t = await scoredAttempt();
+  const started = await t.call('start', t.fields);
+  const attempt = await t.call('admin/decision/' + started.data.attempt_id, { decision: 'advance', reason: 'Synthetic reasoning', decided_by: 'x' }, started.cookie, true);
   assert.ok([401, 403].includes(attempt.status), String(attempt.status));
-  assert.equal(t.attemptId === started.data.attempt_id, false);
 });

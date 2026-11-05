@@ -26,7 +26,7 @@ import { newAttemptTimes } from '../../lib/assessment-core.js';
 import { DEFAULT_ASSESSMENT_SECONDS } from '../../lib/assessment-deadlines.js';
 import { notifyPendingResults } from '../../lib/assessment-email.js';
 import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
-import { ReviewError, combineScores, noteRubric, validateReview, cleanNoteText } from '../../lib/assessment-review.js';
+import { combineScores } from '../../lib/assessment-review.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,7 +74,6 @@ async function publicRateLimit(request, db, operation) {
 }
 
 export function errorResponse(error) {
-  if(error instanceof ReviewError)return failure(error.message,400);
   if(error instanceof ScreeningValidationError)return failure(error.message,400);
   if(error instanceof PrivacyConfigurationError)return failure('Private candidate registration is not configured. Please try again later.',503);
   // Two simultaneous starts with the same ID number: the ordinal key rejects the second.
@@ -382,7 +381,7 @@ async function batteryReport(db, a, attemptId) {
   const rubric = safeParse(a.scoring_key_json, {});
   const answers = { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}), workbook: safeParse(a.workbook_json, {}) };
   const graded = gradeBattery({ payload: payloadObj, key: rubric }, answers);
-  const review = await reviewState(db, attemptId, payloadObj, rubric, graded.overall_score, graded.auto_scored_max);
+  const reviewed = await decisionAndNotes(db, attemptId, graded);
   const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200').bind(attemptId).all();
   const auditEvents = await db.prepare('SELECT event_type,actor_type,created_at FROM audit_events WHERE attempt_id=? ORDER BY created_at LIMIT 300').bind(attemptId).all();
   await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
@@ -406,68 +405,25 @@ async function batteryReport(db, a, attemptId) {
       overall_score: a.overall_score, knowledge_score: a.knowledge_score, reconciliation_score: a.reconciliation_score,
       breakdown: safeParse(a.breakdown_json, {}), critical_flags: safeParse(a.critical_flags_json, []),
       interpretation: a.interpretation, graded_at: a.graded_at,
-      // Reviewer-marked component and status: a pending handoff is never shown as a final total.
-      pending_review_points: graded.pending_review_points,
-      review: review,
-      score_status: review.status,
-      decision: await db.prepare('SELECT decision, reason, decided_by, created_at FROM assessment_decisions WHERE attempt_id=?').bind(attemptId).first() || null,
+      // Every point is awarded by the server, so a submitted attempt is always scored.
+      review: { notes: reviewed.notes, combined: reviewed.combined },
+      score_status: reviewed.combined.status,
+      decision: reviewed.decision,
     },
   });
 }
 
-/* Marks, pending status and the combined view for the recruiter report. */
-async function reviewState(db, attemptId, payload, key, autoScore, autoMax) {
-  const rubrics = noteRubric(payload, key);
-  if (!rubrics.length) return { status: 'scored', rubric: [], marks: null, combined: null };
-  const rows = await db.prepare('SELECT item_id, revision, earned, max_points, marks_json, rationale, reviewer, created_at FROM assessment_reviews WHERE attempt_id=?').bind(attemptId).all();
-  const marks = resultRows(rows)[0] || null;
-  const pendingMax = rubrics.reduce((n, r) => n + r.points, 0);
+/* The automatic score, the handoff evidence that produced it, and the separate hiring decision.
+   A handoff is not a human mark any more: its per-criterion award and the marker that matched are
+   reported so the score can be audited, and nothing here can change it. */
+async function decisionAndNotes(db, attemptId, graded) {
+  const notes = graded.items.filter((i) => i.note).map((i) => ({ id: i.id, awarded: i.awarded, points: i.points, ...i.note }));
+  const decision = await db.prepare('SELECT decision, reason, decided_by, created_at FROM assessment_decisions WHERE attempt_id=?').bind(attemptId).first() || null;
   return {
-    status: marks ? 'scored' : 'pending_review',
-    rubric: rubrics,
-    marks: marks ? { ...marks, marks: safeParse(marks.marks_json, []) } : null,
-    // Pending: the automatic award is shown as a partial score, never as a total.
-    combined: combineScores({ overall_score: autoScore, auto_scored_max: autoMax, pending_review_points: pendingMax },
-      marks ? { earned: marks.earned, max: marks.max_points } : null),
+    notes,
+    decision,
+    combined: combineScores({ overall_score: graded.overall_score, auto_scored_max: graded.auto_scored_max }),
   };
-}
-
-/* Reviewer marking of a written handoff. The award is stored separately from the automatic score,
-   and a correction appends a revision with a reason instead of overwriting the original. */
-async function adminReview(request, db, attemptId) {
-  if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
-  const data = await requestJson(request);
-  const row = await db.prepare(
-    'SELECT a.id, a.status, v.question_payload_json, v.scoring_key_json, v.version_label ' +
-    'FROM attempts a JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?'
-  ).bind(attemptId).first();
-  if (!row) return failure('Assessment result not found.', 404);
-  if (!['completed', 'timed_out'].includes(row.status)) return failure('Only a submitted attempt can be marked.', 409);
-  const payload = safeParse(row.question_payload_json, {});
-  const key = safeParse(row.scoring_key_json, {});
-  const review = validateReview(payload, key, data);
-  const reviewer = String(data.reviewer || '').trim().slice(0, 120);
-  if (reviewer.length < 2) return failure('Record who is marking this handoff.', 400);
-
-  const existing = await db.prepare('SELECT revision FROM assessment_reviews WHERE attempt_id=? AND item_id=? LIMIT 1').bind(attemptId, review.notes[0].item_id).first();
-  const revision = Number(existing?.revision || 0) + 1;
-  if (existing) {
-    const reason = String(data.reason || '').trim().slice(0, 600);
-    if (reason.length < 8) return failure('A correction needs a reason of at least 8 characters.', 400);
-    const prior = await db.prepare('SELECT earned, marks_json, rationale, reviewer, revision FROM assessment_reviews WHERE attempt_id=? AND item_id=?').bind(attemptId, review.notes[0].item_id).first();
-    await db.batch([
-      db.prepare('INSERT INTO assessment_review_revisions (id, attempt_id, item_id, revision, earned, marks_json, rationale, reviewer, reason, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-        .bind(id(), attemptId, review.notes[0].item_id, prior.revision, prior.earned, prior.marks_json, prior.rationale, prior.reviewer, reason, nowIso()),
-      db.prepare('UPDATE assessment_reviews SET revision=?, earned=?, marks_json=?, rationale=?, reviewer=?, rubric_version=?, created_at=? WHERE attempt_id=? AND item_id=?')
-        .bind(revision, review.earned, JSON.stringify(review.notes), review.rationale, reviewer, row.version_label, nowIso(), attemptId, review.notes[0].item_id),
-    ]);
-    await audit(db, 'admin', reviewer, attemptId, 'assessment.review_corrected');
-  } else {
-    await db.prepare('INSERT INTO assessment_reviews (id, attempt_id, item_id, revision, earned, max_points, marks_json, rationale, reviewer, rubric_version, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-      .bind(id(), attemptId, review.notes[0].item_id, revision, review.earned, review.max, JSON.stringify(review.notes), review.rationale, reviewer, row.version_label, nowIso()).run();
-    await audit(db, 'admin', reviewer, attemptId, 'assessment.review_recorded');
-  }
-  return apiJson({ ok: true, earned: review.earned, max: review.max, revision });
 }
 
 /* The human decision is its own record. It never edits a score. */
@@ -576,7 +532,6 @@ export async function onRequest(context) {
       if (segments.length===3 && segments[1]==='draft' && request.method==='GET') return await adminReadDraft(db,segments[2]);
       if (operation === 'admin/publish' && write) return await adminPublish(request, db);
       if (operation === 'admin/invite' && write) return await adminInvite(request, db);
-      if (segments[1] === 'review' && segments[2] && write) return await adminReview(request, db, segments[2]);
       if (segments[1] === 'decision' && segments[2] && write) return await adminDecision(request, db, segments[2]);
       if (segments[1] === 'report' && segments[2] && request.method === 'GET') return await adminReport(db, segments[2]);
       return failure('Admin endpoint not found.', 404);
