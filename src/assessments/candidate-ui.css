@@ -542,3 +542,8 @@
 /* Workbook: wrap labels at spaces, never mid-word. */
 .ca-page .tta-working-grid { min-width: 1080px; }
 .ca-page .tta-working-grid td textarea.tta-cell-input { overflow-wrap: break-word; word-break: normal; }
+@media (max-width: 560px) {
+  .ca-page .ca-welcome .ca-facts > div { flex: 1 1 0; padding-left: 12px; border-left: 1px solid var(--line); }
+  .ca-page .ca-welcome .ca-facts > div:first-child { padding-left: 0; border-left: 0; }
+  .ca-page .ca-welcome-actions .ca-btn { width: 100%; }
+}
