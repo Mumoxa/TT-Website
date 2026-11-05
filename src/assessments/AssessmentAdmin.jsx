@@ -1,3 +1,4 @@
+import { DEFAULT_ASSESSMENT_SECONDS } from '../../functions/lib/assessment-deadlines.js';
 import React, { useEffect, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
@@ -90,7 +91,7 @@ function ResultReport({ report, onBack }) {
       <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
       <div><small>Technical knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
       <div><small>Reconciliation</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
-      <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(600, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
+      <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
     </div>
     <section className="tta-admin-panel">
       <h2>Assessment interpretation</h2>

@@ -22,6 +22,7 @@ import {
 import { calculateCell } from '../../../src/assessments/formulas.js';
 import { scenarioWorkingCells } from '../../../src/assessments/workbook.js';
 import { newAttemptTimes } from '../../lib/assessment-core.js';
+import { DEFAULT_ASSESSMENT_SECONDS } from '../../lib/assessment-deadlines.js';
 import { notifyPendingResults } from '../../lib/assessment-email.js';
 import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
 
@@ -218,7 +219,7 @@ async function startAttempt(request, db, env) {
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
   const hash=await identityHash(env,invited.definition_id,screening.id_number);
   const ciphertext=await encryptId(env,screening.id_number);
-  const start=newAttemptTimes(Date.now(),600);
+  const start=newAttemptTimes(Date.now(),DEFAULT_ASSESSMENT_SECONDS);
   const candidateId=id(),attemptId=id(),sessionToken=newToken(),sessionHash=await tokenHash(sessionToken),at=nowIso();
   const operations=[];
   if(open)operations.push(db.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,redeemed_at,created_at) VALUES (?,?,?,'redeemed',?,?,?,?)").bind(invited.id,invited.definition_id,await tokenHash(newToken()),at,new Date(start.expires_at_ms).toISOString(),at,at));
@@ -273,7 +274,7 @@ async function adminDraft(request, db) {
   const at = nowIso();
   const previous = old ? await db.prepare('SELECT count(*) AS n FROM assessment_versions WHERE definition_id=?').bind(definitionId).first() : null;
   const versionLabel = 'v' + (Number(previous?.n || 0) + 1);
-  const duration = 600; // V1 hard requirement
+  const duration = DEFAULT_ASSESSMENT_SECONDS;
   const operations = [];
   if (!old) {
     operations.push(db.prepare(
@@ -312,7 +313,7 @@ async function adminPublish(request,db) {
   const metadata=JSON.parse(version.question_payload_json)._metadata||{};
   await db.batch([
     db.prepare('UPDATE assessment_versions SET published_at=COALESCE(published_at,?) WHERE id=?').bind(at,version.id),
-    db.prepare('UPDATE assessment_definitions SET current_version_id=?,status=?,duration_seconds=600,updated_at=?,title=COALESCE(?,title),client_name=COALESCE(?,client_name) WHERE id=?').bind(version.id,'published',at,metadata.title||null,metadata.client_name||null,version.definition_id),
+    db.prepare('UPDATE assessment_definitions SET current_version_id=?,status=?,duration_seconds=?,updated_at=?,title=COALESCE(?,title),client_name=COALESCE(?,client_name) WHERE id=?').bind(version.id,'published',DEFAULT_ASSESSMENT_SECONDS,at,metadata.title||null,metadata.client_name||null,version.definition_id),
     db.prepare('INSERT INTO audit_events (id,actor_type,actor_id,event_type,safe_metadata_json,created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id(),'admin',version.id,'assessment.published',JSON.stringify({approval_reference:data.approval_reference.trim(),content_approved:true,privacy_approved:true}),at),
   ]);
   return apiJson({ok:true,assessment_id:version.definition_id,version_id:version.id,version_label:version.version_label});
