@@ -1,13 +1,16 @@
 /* Candidate-facing battery body (format 'battery-v2'): sections of items plus a shared
    workbook. Shares the parent's draft, autosave and submit (CandidateAssessment.jsx).
-   Cell items are answered in the workbook. Each cell item links to its cell, and the live value
-   shown here is for feedback only: the server re-evaluates every formula, so it is not trusted for grading. */
+   A cell item is answered in the box under its task. The box writes to the item's workbook cell, so the
+   workbook and the box always show the same entry, and grading (which reads the cell) is unchanged.
+   The result shown here is for feedback only: the server re-evaluates every formula. */
 import React, { useMemo, useState } from 'react';
 import { Workbook } from './Workbook.jsx';
 import { calculateCell } from './formulas.js';
 import { splitReferences } from './reference-text.js';
+import { splitRef } from './formulas.js';
 
 const fmt = (value) => (value === '' || value === undefined ? '—' : value);
+const isNumericText = (value) => String(value ?? '').trim() !== '' && Number.isFinite(Number(value));
 // Reference codes (INV-2214 and similar) stay on one line; all other text renders as before.
 const keepReferences = (text) => splitReferences(text).map((part, i) => (part.isRef
   ? <span key={i} className="tta-ref">{part.text}</span>
@@ -24,6 +27,17 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
   // On narrow screens the workbook sits below the questions. After a jump, offer a way straight back.
   const [returnTo, setReturnTo] = useState(null);
   const jumpToWorkbook = () => document.getElementById('tta-workbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Answer cells are tagged in the workbook with their task number, e.g. "5.1".
+  const answerCells = useMemo(() => {
+    const out = {};
+    assessment.sections.forEach((section, s) => section.items.forEach((item, i) => { if (item.type === 'cell') out[item.ref] = `${s + 1}.${i + 1}`; }));
+    return out;
+  }, [assessment]);
+  const setCell = (ref, value) => patchDraft((old) => {
+    const next = { ...(old.workbook || {}) };
+    if (value === '') delete next[ref]; else next[ref] = value;
+    return { ...old, workbook: next };
+  });
   const goToCell = (item, number) => { setReturnTo({ id: item.id, number }); setFocusRequest({ key: item.ref, nonce: Date.now() + Math.random() }); };
   const backToQuestion = () => {
     const el = returnTo && document.getElementById('q-' + returnTo.id);
@@ -64,7 +78,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                 <fieldset key={item.id} id={'q-' + item.id} className="tta-question">
                   <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
-                  <p className="tta-sheet-help">Select all that apply.</p>
+                  {!/select all that apply/i.test(item.prompt) && <p className="tta-sheet-help">Select all that apply.</p>}
                   {item.options.map((option) => (
                     <label className={'tta-choice' + (chosen.includes(option.id) ? ' tta-choice-selected' : '')} key={option.id}>
                       <input type="checkbox" checked={chosen.includes(option.id)}
@@ -89,15 +103,27 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                 </div>
               );
             }
-            // cell: the answer lives in the workbook. The link takes the candidate straight to that cell.
+            // cell: answered in the box below the task, which writes to the item's workbook cell.
+            const raw = String(draft.workbook?.[item.ref] ?? '');
+            const value = calculateCell(merged, item.ref);
+            const shown = fmt(isNumericText(value) ? Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 }) : value);
+            const isFormula = raw.trim().startsWith('=');
+            const cellName = splitRef(item.ref).cell;
             return (
               <div key={item.id} id={'q-' + item.id} className="tta-question tta-cell-item">
-                <p><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</p>
+                <label htmlFor={'cell-' + item.id}><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</label>
                 {instructionsFor(item)}
-                <div className="tta-cell-ask">
-                  <p className="tta-sheet-help">Answer in cell <strong>{item.ref}</strong>. Current value: <output aria-label={'Current value of ' + item.ref}>{fmt(calculateCell(merged, item.ref))}</output></p>
-                  <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Go to cell {item.ref}</button>
+                <div className="tta-answer-row">
+                  <input id={'cell-' + item.id} className="tta-answer-input" type="text" inputMode="text" autoComplete="off" spellCheck={false}
+                    maxLength={200} value={raw} placeholder="Type your answer or a formula"
+                    onChange={(e) => setCell(item.ref, e.target.value)} />
+                  <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Show {cellName} in workbook</button>
                 </div>
+                <p className="tta-answer-result">
+                  {isFormula ? <>Result: </> : <>Saved as: </>}
+                  <output aria-label={'Current value of ' + item.ref}>{shown}</output>
+                  <span className="tta-answer-where"> · workbook cell {cellName}</span>
+                </p>
               </div>
             );
           })}
@@ -107,7 +133,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
       <section className="tta-battery-section tta-battery-workbook" id="tta-workbook" aria-label="Shared workbook">
         <h2>Workbook</h2>
         <Workbook sheets={assessment.workbook?.sheets || null} source={source} cells={draft.workbook || {}}
-          focusRequest={focusRequest}
+          focusRequest={focusRequest} answerCells={answerCells}
           onChange={(workbook) => patchDraft((old) => ({ ...old, workbook }))} />
       </section>
       {returnTo && <button type="button" className="tta-return" onClick={backToQuestion}>Back to question {returnTo.number}</button>}
