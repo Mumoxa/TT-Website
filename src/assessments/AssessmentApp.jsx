@@ -133,6 +133,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
             <li>Choose answers, and type amounts in the box under each practical task. You may use a calculator and scrap paper.</li>
             <li>Answers save automatically. You see your results when you submit.</li>
             <li>Use a laptop or desktop and have your ID number ready.</li>
+            <li>You can take this assessment up to 3 times. Every start counts, so start when you are ready.</li>
           </ul>
         </section>
       </div>
@@ -299,7 +300,7 @@ export function AssessmentComplete({ client = '', timedOut = false, candidateNam
           <aside className="ca-complete-side" aria-label="Next steps">
             <h2>What happens next</h2>
             <p>Your recruiter will contact you regarding next steps. You may now close this window.</p>
-            <p>Need to try again? Open the assessment from the catalogue and start a new attempt. Each attempt is recorded and numbered.</p>
+            <p>Each person can take this assessment up to 3 times. Every start counts, including one that is not submitted.</p>
             <a className="ca-btn ca-btn--quiet ca-btn--block" href="/assessments">Back to assessments</a>
           </aside>
         </div>

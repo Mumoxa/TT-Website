@@ -276,7 +276,7 @@ function Workspace({ onExpired }) {
     </section>}
     {tab === 'invitations' && <section className="tta-admin-panel">
       <h2>Create candidate invitation</h2>
-      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered.</p>
+      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered, and each ID number can start at most 3 times.</p>
       <form onSubmit={invitation} className="tta-admin-form">
         <label>Published assessment
           <select value={selectedDefinition} onChange={(e) => setSelectedDefinition(e.target.value)} required>

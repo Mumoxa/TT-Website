@@ -72,7 +72,7 @@ const FAQS = [
   ['Can I pause or restart?', 'No. Once you start, the timer runs. Your answers save automatically, and if you reload, your saved work returns with the timer still running.'],
   ['What do I see when I submit?', 'Your overall score and a percentage for each section. You do not see answer keys, and there is no pass or fail label.'],
   ['Who sees my answers and results?', 'Recruiters at Talent Tree. We retain your results and attempt history. Your ID number is used to link your attempts and is masked in reports.'],
-  ['Can I take an assessment again?', 'Yes. Each repeat attempt is recorded separately and numbered, so earlier attempts are kept.'],
+  ['Can I take an assessment again?', 'Yes, up to 3 times in total. Every start counts, including one that is not submitted, so start when you are ready. Earlier attempts are kept.'],
   ['What should I have ready?', 'A desktop or laptop, a stable connection and your South African ID number. You may use a calculator and scrap paper. No documents need uploading.'],
   ['Do I need spreadsheet or Excel skills?', 'No. Practical tasks show the documents you need on screen, and you type each answer in a box. Amounts can be typed with or without R, with spaces, commas or full stops, and you see how each answer was read.'],
   ['How do I ask about my information?', 'Email hello@talenttree.co.za to see, correct or delete it.'],

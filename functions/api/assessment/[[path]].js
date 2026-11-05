@@ -196,6 +196,11 @@ async function saveProgress(db, a, data, submit = false) {
   return apiJson({ ok: true, ...(submit ? {status:'completed'} : {}), save_revision: expectedRevision + 1, saved_at_ms: now, server_now_ms: Date.now() });
 }
 
+// Owner decision 2026-11-05: each person (by South African ID number) may start an assessment at most 3 times.
+// Every start counts, whether it was submitted, timed out or left unfinished.
+export const MAX_ATTEMPTS_PER_ID = 3;
+const ATTEMPT_LIMIT_MESSAGE = 'You have used all ' + MAX_ATTEMPTS_PER_ID + ' attempts for this assessment. If you think this is a mistake, email hello@talenttree.co.za.';
+
 async function startAttempt(request, db, env) {
   const data=await requestJson(request);
   const identity=normalizeIdentity(data);
@@ -218,6 +223,8 @@ async function startAttempt(request, db, env) {
   // Check the public projection before creating a timed attempt; never alias opaque IDs.
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
   const hash=await identityHash(env,invited.definition_id,screening.id_number);
+  const used=await db.prepare('SELECT COUNT(*) AS n FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=?').bind(invited.definition_id,hash).first();
+  if(Number(used?.n||0)>=MAX_ATTEMPTS_PER_ID)return failure(ATTEMPT_LIMIT_MESSAGE,403);
   const ciphertext=await encryptId(env,screening.id_number);
   const start=newAttemptTimes(Date.now(),DEFAULT_ASSESSMENT_SECONDS);
   const candidateId=id(),attemptId=id(),sessionToken=newToken(),sessionHash=await tokenHash(sessionToken),at=nowIso();
@@ -228,11 +235,13 @@ async function startAttempt(request, db, env) {
   const condition=open?"EXISTS (SELECT id FROM assessment_definitions WHERE id=? AND status='published' AND current_version_id=?)":"EXISTS (SELECT i.id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.status='issued' AND i.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND d.status='published' AND d.current_version_id=?)";
   operations.push(db.prepare('INSERT INTO candidates ('+columns+') SELECT '+values.map(()=>'?').join(',')+' WHERE '+condition).bind(...values,open?invited.definition_id:invited.id,invited.current_version_id));
   // Allocate the next ordinal atomically with the new candidate and attempt graph.
-  operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash));
-  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(attemptId,invited.id,candidateId,invited.definition_id,invited.current_version_id,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at));
+  // The limit is enforced again inside the write, so two simultaneous starts cannot both pass the check above.
+  operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=? HAVING COUNT(*)<?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash,MAX_ATTEMPTS_PER_ID));
+  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,invited.current_version_id,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,candidateId));
   if(!open)operations.push(db.prepare("UPDATE invitations SET status='redeemed',redeemed_at=? WHERE id=? AND status='issued'").bind(at,invited.id));
   await db.batch(operations);
   const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
+  if(!a)return failure(ATTEMPT_LIMIT_MESSAGE,403);
   await audit(db,'candidate',candidateId,attemptId,'assessment.started');
   return apiJson({ok:true,...attemptView(a)},200,{'Set-Cookie':cookieHeader(request,sessionToken)});
 }
