@@ -9,8 +9,19 @@ import { Documents } from './Documents.jsx';
 import { calculateCell } from './formulas.js';
 import { splitReferences } from './reference-text.js';
 import { splitRef } from './formulas.js';
+import { parseAmount } from '../../functions/lib/battery.js';
+import { InstructionText } from './InstructionText.jsx';
 
 const fmt = (value) => (value === '' || value === undefined ? '—' : value);
+// Shows how a typed answer will be read for marking, so a formatting mix-up is visible straight away.
+const readBack = (item, raw) => {
+  if (!raw.trim() || (item.format !== 'rand' && item.format !== 'count')) return null;
+  const n = parseAmount(raw);
+  if (n === null) return { ok: false, text: item.format === 'rand' ? "This doesn't look like an amount. Use digits, for example R26 050.00." : "This doesn't look like a number. Use digits, for example 4." };
+  if (item.format === 'count') return { ok: true, text: 'Read as ' + n.toLocaleString('en-US', { maximumFractionDigits: 2 }) };
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return { ok: true, text: 'Read as ' + (n < 0 ? '\u2212R' : 'R') + abs };
+};
 // Example shown in an empty answer box. Rand answers show an R; counts show a whole number, not an amount.
 const placeholderFor = (item, docsMode) => (item.format === 'rand' ? 'For example R12 500.00'
   : item.format === 'count' ? 'A whole number, for example 4'
@@ -58,7 +69,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
   return (
     <div className="tta-battery">
       <div className="tta-battery-questions">
-      {assessment.instructions && <p className="tta-scenario-instructions">{assessment.instructions}</p>}
+      {assessment.instructions && <div className="tta-scenario-instructions"><InstructionText text={assessment.instructions} /></div>}
       {!docsMode && <div className="tta-battery-jump">
         <button type="button" className="tta-jump" onClick={jumpToWorkbook}>Go to the workbook</button>
       </div>}
@@ -137,6 +148,9 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                     onChange={(e) => setCell(item.ref, e.target.value)} />
                   {!docsMode && <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Show {cellName} in workbook</button>}
                 </div>
+                {docsMode && readBack(item, raw) && (() => { const rb = readBack(item, raw); return (
+                  <p className={'tta-answer-readback' + (rb.ok ? '' : ' is-error')} role={rb.ok ? undefined : 'alert'} aria-live="polite">{rb.text}</p>
+                ); })()}
                 {!docsMode && <p className="tta-answer-result">
                   {isFormula ? <>Result: </> : <>Saved as: </>}
                   <output aria-label={'Current value of ' + item.ref}>{shown}</output>

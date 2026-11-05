@@ -667,3 +667,13 @@
 .ca-modal .ca-modal-note { padding: 10px 12px; background: var(--paper-soft); border-radius: var(--radius); font-size: 0.9rem; color: var(--ink); }
 .ca-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 @media (max-width: 560px) { .ca-modal-actions .ca-btn { width: 100%; } .ca-modal-actions { flex-direction: column-reverse; } }
+
+/* Read-back under an answer box, and formatted instruction text. */
+.ca-page .tta-answer-readback { margin: 4px 0 0 58px; font-size: 0.85rem; color: var(--muted); }
+.ca-page .tta-answer-readback.is-error { color: #8a1c14; }
+@media (max-width: 560px) { .ca-page .tta-answer-readback { margin-left: 0; } }
+.ca-modal .ca-brief-text p, .ca-modal .ca-brief-text li { margin: 0 0 8px; font-size: 0.97rem; line-height: 1.55; color: var(--ink); }
+.ca-modal .ca-brief-text ul { margin: 0 0 10px; padding-left: 20px; }
+.ca-modal .ca-brief-text li { margin-bottom: 4px; }
+.ca-page .tta-scenario-instructions p { margin: 0 0 8px; }
+.ca-page .tta-scenario-instructions ul { margin: 0 0 8px; padding-left: 20px; }

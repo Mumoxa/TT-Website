@@ -48,17 +48,66 @@ export function parseLooseNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-/* Parses an amount a person typed: R 26 050, R26,050.00, 26050,00 or -3 200. Used for marking
-   cell answers, so a candidate is not marked wrong for writing an amount the way it is written on
-   a South African invoice. A single comma followed by one or two digits is a decimal comma; any
-   other ambiguous form (1.234,56) is refused rather than guessed. */
+/* Reads an amount or count the way a person types it, so a correct value is never marked wrong
+   for its formatting. Accepted:
+   - currency marks before or after the number: R, ZAR, rand, rands (any case, with or without a space);
+   - thousands marks: spaces (including non-breaking), apostrophes, and full stops or commas in groups of 3;
+   - decimal marks: a full stop or a comma;
+   - endings such as ",-" or ".-" (R26 050,-), and a trailing full stop;
+   - negatives: a leading minus (- or −), or the value in brackets;
+   - whole numbers written as words from zero to twenty (for counts).
+   Separators: when both a full stop and a comma appear, the last one is the decimal mark. When only one
+   kind appears once, it is a decimal mark if 1 or 2 digits follow it and a thousands mark if exactly 3
+   digits follow (rand amounts never carry three decimals). Repeated, it is a thousands mark.
+   Returns null when the text is not a number. */
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+  'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
 export function parseAmount(value) {
-  const direct = parseLooseNumber(value);
-  if (direct !== null) return direct;
-  let text = String(value ?? '').trim().replace(/[\u00a0\u2009\u202f ]/g, '');
-  text = text.replace(/^(-?)R/i, '$1').replace(/^R(-)/i, '$1');
-  if (/^-?\d+,\d{1,2}$/.test(text)) text = text.replace(',', '.');
-  return parseLooseNumber(text);
+  let text = String(value ?? '').normalize('NFKC').trim().toLowerCase();
+  if (!text) return null;
+  const word = NUMBER_WORDS.indexOf(text.replace(/[.!]$/, ''));
+  if (word >= 0) return word;
+  let negative = false, minusSigns = 0;
+  const flip = () => { negative = !negative; minusSigns += 1; return ''; };
+  if (/^\(.*\)$/.test(text)) { negative = true; minusSigns += 1; text = text.slice(1, -1).trim(); }
+  text = text.replace(/[−‒–—]/g, '-');
+  // Currency words and marks, before or after the number, in any order with a minus sign.
+  for (let i = 0; i < 3; i += 1) {
+    text = text.replace(/^-\s*/, flip)
+      .replace(/^(zar|rands?|r)\s*/, '')
+      .replace(/\s*(zar|rands?|r)$/, '')
+      .trim();
+  }
+  text = text.replace(/[.,]-$/, '').replace(/-$/, flip);
+  if (minusSigns > 1) return null;
+  text = text.replace(/[\s'‘’ʼ`]/g, '');
+  if (text.endsWith('.') || text.endsWith(',')) text = text.slice(0, -1);
+  if (!/^[\d.,]*\d[\d.,]*$/.test(text) && !/^[.,]\d+$/.test(text)) return null;
+  const dots = (text.match(/\./g) || []).length, commas = (text.match(/,/g) || []).length;
+  let intPart = text, decimals = '';
+  // Thousands groups: 1 to 3 digits first, then exactly 3 digits after each mark.
+  const groupsOk = (s, sep) => s.split(sep).every((g, i) => (i === 0 ? /^\d{1,3}$/.test(g) : /^\d{3}$/.test(g)));
+  if (dots && commas) {
+    const decimalSep = text.lastIndexOf('.') > text.lastIndexOf(',') ? '.' : ',';
+    const thousandsSep = decimalSep === '.' ? ',' : '.';
+    const at = text.lastIndexOf(decimalSep);
+    intPart = text.slice(0, at); decimals = text.slice(at + 1);
+    if (intPart.includes(decimalSep) || !/^\d+$/.test(decimals) || !groupsOk(intPart, thousandsSep)) return null;
+    intPart = intPart.split(thousandsSep).join('');
+  } else if (dots + commas === 1) {
+    const sep = dots ? '.' : ',';
+    const [a, b] = text.split(sep);
+    if (b.length === 3 && a.length >= 1 && a.length <= 3) { intPart = a + b; }
+    else { intPart = a || '0'; decimals = b; }
+  } else if (dots + commas > 1) {
+    const sep = dots ? '.' : ',';
+    if (!groupsOk(text, sep)) return null;
+    intPart = text.split(sep).join('');
+  }
+  if (!/^\d+$/.test(intPart) || (decimals && !/^\d+$/.test(decimals))) return null;
+  const n = Number(intPart + (decimals ? '.' + decimals : ''));
+  if (!Number.isFinite(n)) return null;
+  return negative ? -n : n;
 }
 
 /* Display mode for the source records. 'grid' (default) is the spreadsheet; 'documents' shows the
@@ -303,7 +352,9 @@ function gradeItem(item, key, answers, merged) {
       // Text cell answers (e.g. IF(...) returning a word) compare like typed text.
       correct = givenText !== null && normaliseText(givenText) === normaliseText(key.answer);
     } else {
-      const n = parseAmount(shown);
+      // A typed entry is read as a person writes amounts; a formula result is a plain computed number.
+      const raw = String(merged[item.ref] ?? '').trim();
+      const n = raw.startsWith('=') ? parseLooseNumber(shown) : parseAmount(raw);
       correct = n !== null && Math.abs(n - key.answer) <= (key.tolerance ?? 0.005) + 1e-9;
     }
     correctText = String(key.answer);
