@@ -48,6 +48,40 @@ export function parseLooseNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+/* Parses an amount a person typed: R 26 050, R26,050.00, 26050,00 or -3 200. Used for marking
+   cell answers, so a candidate is not marked wrong for writing an amount the way it is written on
+   a South African invoice. A single comma followed by one or two digits is a decimal comma; any
+   other ambiguous form (1.234,56) is refused rather than guessed. */
+export function parseAmount(value) {
+  const direct = parseLooseNumber(value);
+  if (direct !== null) return direct;
+  let text = String(value ?? '').trim().replace(/[\u00a0\u2009\u202f ]/g, '');
+  text = text.replace(/^(-?)R/i, '$1').replace(/^R(-)/i, '$1');
+  if (/^-?\d+,\d{1,2}$/.test(text)) text = text.replace(',', '.');
+  return parseLooseNumber(text);
+}
+
+/* Display mode for the source records. 'grid' (default) is the spreadsheet; 'documents' shows the
+   listed ranges as plain read-only tables and hides the grid, so candidates answer in the boxes only. */
+const DOCUMENT_RANGE = /^([A-Za-z][A-Za-z0-9_]{0,15})!([A-J](?:[1-9]|[1-3][0-9]|40)):([A-J](?:[1-9]|[1-3][0-9]|40))$/;
+function validateDisplay(workbook, sheetNames, writableSheets) {
+  if (workbook.display === undefined || workbook.display === 'grid') {
+    if (workbook.documents !== undefined) bad('Documents are only used with display "documents".');
+    return;
+  }
+  if (workbook.display !== 'documents') bad('Workbook display must be "grid" or "documents".');
+  if (!sheetNames) bad('Documents need named sheets.');
+  const docs = workbook.documents;
+  if (!Array.isArray(docs) || docs.length < 1 || docs.length > 8) bad('Documents need 1–8 entries.');
+  for (const doc of docs) {
+    if (!isObj(doc) || typeof doc.title !== 'string' || doc.title.trim().length < 3 || doc.title.length > 120) bad('Invalid document title.');
+    const m = DOCUMENT_RANGE.exec(typeof doc.range === 'string' ? doc.range : '');
+    if (!m) bad('Invalid document range.');
+    const sheet = m[1].toLowerCase();
+    if (!sheetNames.has(sheet) || writableSheets.has(sheet)) bad('A document must show a read-only sheet.');
+  }
+}
+
 export function isBatteryPayload(payload) {
   return isObj(payload) && payload.format === BATTERY_FORMAT;
 }
@@ -82,6 +116,7 @@ export function validateBattery(pkg) {
   const source = payload.workbook.source;
   const sourceRefs = Object.keys(source);
   const { sheetNames, writableSheets } = workbookSheets(payload.workbook);
+  validateDisplay(payload.workbook, sheetNames, writableSheets);
   const sourceCanon = new Set(sourceRefs.map(canonRef));
   if (sourceRefs.length < 1 || sourceRefs.length > MAX_SOURCE_CELLS) bad('Source cell count out of range.');
   for (const ref of sourceRefs) {
@@ -172,6 +207,10 @@ export function publicBattery(payload) {
     workbook: {
       sheets: Array.isArray(payload.workbook.sheets) ? payload.workbook.sheets.map((s) => ({ name: s.name, writable: s.writable })) : null,
       source: Object.fromEntries(Object.entries(payload.workbook.source).map(([ref, v]) => [ref, String(v).slice(0, 200)])),
+      ...(payload.workbook.display === 'documents' ? {
+        display: 'documents',
+        documents: payload.workbook.documents.map((d) => ({ title: d.title, range: d.range })),
+      } : {}),
     },
   };
 }
@@ -262,7 +301,7 @@ function gradeItem(item, key, answers, merged) {
       // Text cell answers (e.g. IF(...) returning a word) compare like typed text.
       correct = givenText !== null && normaliseText(givenText) === normaliseText(key.answer);
     } else {
-      const n = parseLooseNumber(shown);
+      const n = parseAmount(shown);
       correct = n !== null && Math.abs(n - key.answer) <= (key.tolerance ?? 0.005) + 1e-9;
     }
     correctText = String(key.answer);

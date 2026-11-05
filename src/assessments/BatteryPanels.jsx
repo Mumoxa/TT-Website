@@ -5,6 +5,7 @@
    The result shown here is for feedback only: the server re-evaluates every formula. */
 import React, { useMemo, useState } from 'react';
 import { Workbook } from './Workbook.jsx';
+import { Documents } from './Documents.jsx';
 import { calculateCell } from './formulas.js';
 import { splitReferences } from './reference-text.js';
 import { splitRef } from './formulas.js';
@@ -24,6 +25,11 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
   const texts = draft.structured?.text || {};
   const multis = draft.structured?.multi || {};
   const [focusRequest, setFocusRequest] = useState(null);
+  // 'documents': source records are plain tables and answers are typed in the boxes only (no grid).
+  const docsMode = assessment.workbook?.display === 'documents';
+  const documents = assessment.workbook?.documents || [];
+  // On narrow screens, documents appear just before the first section that needs them.
+  const firstPracticalSection = assessment.sections.findIndex((section) => section.items.some((item) => item.type === 'cell'));
   // On narrow screens the workbook sits below the questions. After a jump, offer a way straight back.
   const [returnTo, setReturnTo] = useState(null);
   const jumpToWorkbook = () => document.getElementById('tta-workbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -49,11 +55,18 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
     <div className="tta-battery">
       <div className="tta-battery-questions">
       {assessment.instructions && <p className="tta-scenario-instructions">{assessment.instructions}</p>}
-      <div className="tta-battery-jump">
+      {!docsMode && <div className="tta-battery-jump">
         <button type="button" className="tta-jump" onClick={jumpToWorkbook}>Go to the workbook</button>
-      </div>
+      </div>}
       {assessment.sections.map((section, sIndex) => (
-        <section key={section.id} className="tta-battery-section" aria-labelledby={'sec-' + section.id}>
+        <React.Fragment key={section.id}>
+        {docsMode && sIndex === firstPracticalSection && (
+          <section className="tta-battery-section tta-docs-inline" aria-label="Documents">
+            <h2>Documents</h2>
+            <Documents source={source} documents={documents} />
+          </section>
+        )}
+        <section className="tta-battery-section" aria-labelledby={'sec-' + section.id}>
           <h2 id={'sec-' + section.id}>{section.title}</h2>
           {section.items.map((item, iIndex) => {
             const number = `${sIndex + 1}.${iIndex + 1}`;
@@ -114,28 +127,37 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                 <label htmlFor={'cell-' + item.id}><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</label>
                 {instructionsFor(item)}
                 <div className="tta-answer-row">
-                  <input id={'cell-' + item.id} className="tta-answer-input" type="text" inputMode="text" autoComplete="off" spellCheck={false}
-                    maxLength={200} value={raw} placeholder="Type your answer or a formula"
+                  {docsMode && <span className="tta-answer-prefix" aria-hidden="true">Answer</span>}
+                  <input id={'cell-' + item.id} className="tta-answer-input" type="text" inputMode={docsMode ? 'decimal' : 'text'} autoComplete="off" spellCheck={false}
+                    maxLength={200} value={raw} placeholder={docsMode ? 'For example 12 500.00' : 'Type your answer or a formula'}
                     onChange={(e) => setCell(item.ref, e.target.value)} />
-                  <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Show {cellName} in workbook</button>
+                  {!docsMode && <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Show {cellName} in workbook</button>}
                 </div>
-                <p className="tta-answer-result">
+                {!docsMode && <p className="tta-answer-result">
                   {isFormula ? <>Result: </> : <>Saved as: </>}
                   <output aria-label={'Current value of ' + item.ref}>{shown}</output>
                   <span className="tta-answer-where"> · workbook cell {cellName}</span>
-                </p>
+                </p>}
               </div>
             );
           })}
         </section>
+        </React.Fragment>
       ))}
       </div>
+      {docsMode ? (
+      <section className="tta-battery-section tta-battery-workbook tta-docs-pane" aria-label="Documents">
+        <h2>Documents</h2>
+        <Documents source={source} documents={documents} />
+      </section>
+      ) : (
       <section className="tta-battery-section tta-battery-workbook" id="tta-workbook" aria-label="Shared workbook">
         <h2>Workbook</h2>
         <Workbook sheets={assessment.workbook?.sheets || null} source={source} cells={draft.workbook || {}}
           focusRequest={focusRequest} answerCells={answerCells}
           onChange={(workbook) => patchDraft((old) => ({ ...old, workbook }))} />
       </section>
+      )}
       {returnTo && <button type="button" className="tta-return" onClick={backToQuestion}>Back to question {returnTo.number}</button>}
     </div>
   );

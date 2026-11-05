@@ -23,7 +23,7 @@ for(const width of [390,1280])test('open start, practice, validation, private re
  await page.getByLabel('Pencil sharpener',{exact:true}).check();await expect(page.getByRole('status').filter({hasText:'Incorrect. Right answer: Umbrella'})).toBeVisible();
  await page.getByLabel('Umbrella',{exact:true}).check();await expect(page.getByRole('status').filter({hasText:'Correct. Right answer: Umbrella'})).toBeVisible();
  await page.getByLabel('Violin',{exact:true}).check();await page.getByLabel('Clarinet',{exact:true}).check();await expect(page.getByRole('status').filter({hasText:'Correct. Right answer: Violin and Clarinet'})).toBeVisible();
- await page.getByLabel('Formula for C5',{exact:true}).fill('=SUM(C2:C3)');await expect(page.getByRole('status').filter({hasText:'Correct. Right answer: =SUM(C2:C3) gives 601.85.'})).toBeVisible();
+ await page.getByRole('textbox',{name:/how many tokens/}).fill('601.85');await expect(page.getByRole('status').filter({hasText:'Correct. Right answer: 173.25 + 428.60 = 601.85.'})).toBeVisible();
  expect(practiceCalls).toEqual([]);page.off('request',observe);await noBrand(page);await page.screenshot({path:`${directory}/practice-${width}.png`,fullPage:true});
  await page.getByRole('button',{name:'Continue to your details'}).click();await identity(page);await noBrand(page);
  const consent=page.getByLabel('I agree to this processing.',{exact:true});expect((await consent.boundingBox()).width).toBeLessThanOrEqual(20);expect((await consent.locator('..').boundingBox()).height).toBeLessThan(100);
