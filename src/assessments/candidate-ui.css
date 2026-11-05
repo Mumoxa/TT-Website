@@ -45,7 +45,7 @@
 .ca-section-head { display: grid; gap: 14px; max-width: 760px; margin-bottom: clamp(36px, 5vw, 56px); }
 .ca-section-head h2 { margin: 0; font: 500 var(--fs-800)/1.05 var(--serif); letter-spacing: -0.03em; }
 .ca-section-head p { margin: 0; color: var(--muted); font-size: 1.05rem; line-height: 1.65; }
-.ca-section { padding-block: var(--section-y); }
+.ca-section { padding-block: clamp(40px, 4.5vw, 64px); }
 .ca-section--tint { background: var(--paper-soft); border-block: 1px solid var(--line); }
 .ca-section--dark { background: var(--ink-deep); color: var(--paper-soft); }
 
@@ -374,8 +374,10 @@
 .tta-complete-note { color: var(--muted); font-size: 0.92rem; }
 
 /* ---------- Motion ---------- */
-.ca-reveal { opacity: 0; transform: translate3d(0, 18px, 0); transition: opacity var(--slow) var(--ease), transform var(--slow) var(--ease); transition-delay: var(--ca-delay, 0ms); }
-.ca-reveal.is-in { opacity: 1; transform: none; }
+/* Content is always visible. The reveal only settles elements into place as they scroll in,
+   so nothing is blank on load, when printed, or when the page is searched. */
+.ca-reveal { transform: translate3d(0, 14px, 0); transition: transform var(--slow) var(--ease); transition-delay: var(--ca-delay, 0ms); }
+.ca-reveal.is-in { transform: none; }
 @keyframes ca-rise { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
 .ca-enter > * { animation: ca-rise var(--slow) var(--ease) both; }
 .ca-enter > *:nth-child(2) { animation-delay: 90ms; }
@@ -426,7 +428,7 @@
     animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important; scroll-behavior: auto !important;
   }
-  .ca-reveal { opacity: 1; transform: none; }
+  .ca-reveal { transform: none; }
 }
 
 /* ---------- Completion and results (rebuilt) ---------- */
@@ -466,3 +468,7 @@
 @media (max-width: 560px) {
   .ca-result-head { align-items: flex-start; flex-direction: column; gap: 6px; }
 }
+
+/* Catalogue list: no default list margin, so the gap between the last card and the next section
+   is the section rhythm only. */
+.ca-cards { margin: 0; padding: 0; list-style: none; }
