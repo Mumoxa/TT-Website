@@ -6,6 +6,15 @@ import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
 import { BatteryPanels } from './BatteryPanels.jsx';
 import './candidate.css';
 
+/* An activity counts as answered once it holds a value. Cell activities are answered in the
+   shared workbook at item.ref. */
+function batteryItemAnswered(item, draft) {
+  if (item.type === 'single') return Boolean(draft.mcq?.[item.id]);
+  if (item.type === 'multi') return (draft.structured?.multi?.[item.id] || []).length > 0;
+  if (item.type === 'text') return String(draft.structured?.text?.[item.id] ?? '').trim() !== '';
+  return String(draft.workbook?.[item.ref] ?? '').trim() !== '';
+}
+
 const BASE = '/api/assessment';
 const blankAnswers = () => ({
   mcq: {},
@@ -247,11 +256,14 @@ export default function CandidateAssessment({catalogItem}) {
 
   const assessment = attempt.assessment;
   if (assessment.format === 'battery-v2') {
+    const batteryItems = assessment.sections.flatMap((section) => section.items);
+    const answeredCount = batteryItems.filter((item) => batteryItemAnswered(item, draft)).length;
     return (
       <AssessmentRunnerLayout client={client.client_name} assessmentTitle={client.title}
         candidateName={attempt.first_name + ' ' + attempt.surname}
         sectionLabel="Assessment battery"
         sectionNumber={1}
+        progress={{ answered: answeredCount, total: batteryItems.length, sections: assessment.sections.length }}
         expiresAt={remainingExpiry}
         onExpired={()=>{blockedRef.current=true;setExpired(true);void refreshStatus();}}
         saveStatus={saveStatus}>
