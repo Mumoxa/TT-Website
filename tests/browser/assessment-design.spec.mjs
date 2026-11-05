@@ -30,7 +30,7 @@ async function start(page,url,email = 'design@example.invalid') {
 
 test('catalogue and slug routes render open-start instructions and candidate form',async({page})=>{
   await mockCatalog(page);await page.goto('/assessments');
-  await expect(page.getByRole('heading',{level:1,name:'Practical accounting assessments, step by step.',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{level:1,name:'Practical skills assessments, step by step.',exact:true})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Accounts Payable Clerk',exact:true})).toBeVisible();
   await expect(page.getByText('10 minutes, timed',{exact:false}).first()).toBeVisible();
   await page.getByRole('link',{name:'View Accounts Payable Clerk'}).click();

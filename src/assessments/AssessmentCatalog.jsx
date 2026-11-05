@@ -52,7 +52,7 @@ const ICONS = {
 
 const FEATURES = [
   { icon: 'sections', title: 'Sections you can see first', body: 'Each welcome page lists the sections and number of activities, so you know the scope before the timer starts.' },
-  { icon: 'workbook', title: 'A live workbook with formulas', body: 'Work in a spreadsheet-style grid. Arithmetic, SUM, VLOOKUP, IF, INDEX, MATCH and more calculate as you type.' },
+  { icon: 'workbook', title: 'Practical tasks with workplace documents', body: 'Read documents such as a supplier statement and a ledger, then type each answer in the box under the task. No spreadsheet skills are needed.' },
   { icon: 'practice', title: 'Practice before you start', body: 'Try the public practice items before you enter any details. Practice is not scored or saved, and the timer stays off.' },
   { icon: 'autosave', title: 'Answers save as you go', body: 'Changes save automatically. If you reload, your saved work returns and the timer keeps running.' },
   { icon: 'timer', title: 'A clear timer', body: 'The timer starts only when you press Start. You cannot pause or restart an attempt once it has begun.' },
@@ -61,7 +61,7 @@ const FEATURES = [
 
 const BENEFITS = [
   { title: 'Know the scope before you start', body: 'The welcome page shows the time limit, the number of sections and the number of activities, so nothing is a surprise.' },
-  { title: 'Practise the formats first', body: 'Public practice items show you how answers and the workbook work. Practice is not scored or saved.' },
+  { title: 'Practise the formats first', body: 'Public practice items show you how choosing and typing answers works. Practice is not scored or saved.' },
   { title: 'Results you can read', body: 'Your overall score and each section’s percentage are shown on screen. The results explain what was tested, not your overall ability.' },
   { title: 'Your privacy, stated plainly', body: 'The privacy notice sits before the form: who sees your details, that results and attempts are kept, and how to contact us.' },
 ];
@@ -73,7 +73,8 @@ const FAQS = [
   ['What do I see when I submit?', 'Your overall score and a percentage for each section. You do not see answer keys, and there is no pass or fail label.'],
   ['Who sees my answers and results?', 'Recruiters at Talent Tree. We retain your results and attempt history. Your ID number is used to link your attempts and is masked in reports.'],
   ['Can I take an assessment again?', 'Yes. Each repeat attempt is recorded separately and numbered, so earlier attempts are kept.'],
-  ['What should I have ready?', 'A desktop or laptop, a stable connection and your South African ID number. No documents need uploading.'],
+  ['What should I have ready?', 'A desktop or laptop, a stable connection and your South African ID number. You may use a calculator and scrap paper. No documents need uploading.'],
+  ['Do I need spreadsheet or Excel skills?', 'No. Practical tasks show the documents you need on screen, and you type each answer in a box. Amounts can be typed with or without R, with spaces, commas or full stops, and you see how each answer was read.'],
   ['How do I ask about my information?', 'Email hello@talenttree.co.za to see, correct or delete it.'],
 ];
 
@@ -86,7 +87,7 @@ function Hero({ first }) {
       ]
     : [
         ['Timing', 'Timed, from the moment you press Start'],
-        ['Format', 'Questions and a live workbook'],
+        ['Format', 'Questions and practical tasks'],
         ['Results', 'Shown when you submit'],
       ];
   return (
@@ -94,8 +95,8 @@ function Hero({ first }) {
       <div className="ca-shell ca-hero-grid">
         <div className="ca-enter">
           <p className="ca-eyebrow">Talent Tree · Candidate assessment</p>
-          <h1 id="ca-hero-title">Practical accounting assessments, <em>step by step.</em></h1>
-          <p className="ca-lead">Answer accounting questions and work through a reconciliation in a live workbook. Your answers save as you go, and you see your results when you submit.</p>
+          <h1 id="ca-hero-title">Practical skills assessments, <em>step by step.</em></h1>
+          <p className="ca-lead">Answer short workplace questions and complete practical tasks using the documents on screen. Your answers save as you go, and you see your results when you submit.</p>
           <div className="ca-hero-actions">
             <a className="ca-btn ca-btn--light" href="#assessments">Choose an assessment <span className="ca-arrow" aria-hidden="true">→</span></a>
             <a className="ca-btn ca-btn--ghost-dark" href="#how-it-works">How it works</a>
@@ -177,7 +178,7 @@ function Features() {
         <Reveal className="ca-section-head">
           <p className="ca-eyebrow">How it works</p>
           <h2 id="ca-features-heading">Everything you need, nothing you do not.</h2>
-          <p>The assessment is a timed sequence of questions and calculations. These are the parts you will use.</p>
+          <p>The assessment is a timed sequence of questions and practical tasks. These are the parts you will use.</p>
         </Reveal>
         <div className="ca-features">
           {FEATURES.map((feature, index) => (
@@ -198,33 +199,36 @@ function Showcase() {
     <section className="ca-section" aria-labelledby="ca-showcase-heading">
       <div className="ca-shell ca-showcase">
         <Reveal>
-          <div className="ca-device" role="group" aria-label="Illustrative workbook with sample figures">
-            <div className="ca-device-bar" aria-hidden="true"><i /><i /><i /><span>Workbook</span></div>
-            <div className="ca-sheet">
-              <div className="ca-sheet-formula"><b>B6</b><span aria-hidden="true">fx</span><code>=SUM(B2:B4)</code></div>
+          <div className="ca-device" role="group" aria-label="Illustrative practical task with sample figures">
+            <div className="ca-device-bar" aria-hidden="true"><i /><i /><i /><span>Practical task</span></div>
+            <div className="ca-sheet ca-sample">
+              <p className="ca-sample-doc">Supplier statement (sample)</p>
               <div className="ca-sheet-scroll">
                 <table>
-                  <thead><tr><th scope="col"><span className="tta-sr-only">Row</span></th><th scope="col">A</th><th scope="col">B</th><th scope="col">C</th></tr></thead>
+                  <thead><tr><th scope="col">Ref</th><th scope="col">Description</th><th scope="col" className="is-num">Amount (R)</th></tr></thead>
                   <tbody>
-                    <tr><th scope="row">1</th><td><strong>Ref</strong></td><td><strong>Amount</strong></td><td><strong>Status</strong></td></tr>
-                    <tr><th scope="row">2</th><td className="is-source">S-1</td><td className="is-source is-num">100</td><td className="is-source">OPEN</td></tr>
-                    <tr><th scope="row">3</th><td className="is-source">S-2</td><td className="is-source is-num">250</td><td className="is-source">CLOSED</td></tr>
-                    <tr><th scope="row">4</th><td className="is-source">S-3</td><td className="is-source is-num">50</td><td className="is-source">OPEN</td></tr>
-                    <tr><th scope="row">6</th><td>Total</td><td className="is-num is-selected is-formula">400</td><td></td></tr>
+                    <tr><td>S-1</td><td>Invoice</td><td className="is-num">1,200.00</td></tr>
+                    <tr><td>S-2</td><td>Invoice</td><td className="is-num">850.00</td></tr>
+                    <tr><td>S-3</td><td>Credit note</td><td className="is-num">−150.00</td></tr>
                   </tbody>
                 </table>
+              </div>
+              <div className="ca-sample-task">
+                <p><strong>What balance does the supplier say you owe?</strong></p>
+                <div className="ca-sample-answer"><span>Answer</span><code>R1 900,00</code></div>
+                <p className="ca-sample-read">Read as R1,900.00</p>
               </div>
             </div>
             <p className="ca-caption">Illustrative example with sample figures. This is not a real assessment.</p>
           </div>
         </Reveal>
         <Reveal delay={120}>
-          <p className="ca-eyebrow">Inside the workbook</p>
-          <h2 id="ca-showcase-heading" className="ca-showcase-title">Formulas that behave like a spreadsheet.</h2>
+          <p className="ca-eyebrow">Inside a practical task</p>
+          <h2 id="ca-showcase-heading" className="ca-showcase-title">Read the documents. Type the answer.</h2>
           <ul className="ca-points">
-            <li><strong>Calculations you already know</strong><span>Arithmetic, SUM, MIN, MAX, ROUND, IF, IFERROR, SUMIF, COUNTIF, VLOOKUP, INDEX and MATCH are available.</span></li>
-            <li><strong>Source records stay locked</strong><span>Grey cells and read-only tabs hold records to read. You cannot edit them.</span></li>
-            <li><strong>Working cells save automatically</strong><span>Your calculations are saved as you go, and the server checks every formula again.</span></li>
+            <li><strong>Documents you can read at a glance</strong><span>Statements, ledgers and listings appear as plain tables beside the tasks, like printed paperwork.</span></li>
+            <li><strong>Type amounts your way</strong><span>With or without R, with spaces, commas or full stops. Under each box you see how your answer was read.</span></li>
+            <li><strong>No spreadsheet needed</strong><span>You may use a calculator and scrap paper. Your answers save as you go.</span></li>
           </ul>
         </Reveal>
       </div>
