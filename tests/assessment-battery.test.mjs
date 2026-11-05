@@ -163,3 +163,35 @@ test('item instructions are optional, bounded to text, and shown to candidates o
  const plain = validateBattery(pkg());
  assert.equal('instructions' in publicBattery(plain.question_payload).sections[0].items[0], false);
 });
+
+test('typed amounts are read the way they appear on South African documents', async () => {
+  const { parseAmount } = await import('../functions/lib/battery.js');
+  for (const [text, n] of [['26050', 26050], ['26,050.00', 26050], ['R26 050', 26050], ['R 26 050,00', 26050], ['r26050', 26050],
+    ['1500,00', 1500], ['1500,5', 1500.5], ['-3 200', -3200], ['-R3 200', -3200], ['R-3200', -3200], ['26 050', 26050]]) {
+    assert.equal(parseAmount(text), n, text);
+  }
+  for (const text of ['1.234,56', '12,34,5', 'R', 'AGREES', '', '#VALUE!']) assert.equal(parseAmount(text), null, text);
+});
+
+test('documents display is validated and passed to the candidate without keys', async () => {
+  const { SYNTHETIC_SHEETS_BATTERY, SYNTHETIC_SHEETS_KEY } = await import('./fixtures/synthetic-battery.mjs');
+  const readOnly = SYNTHETIC_SHEETS_BATTERY.workbook.sheets.find((s) => !s.writable).name;
+  const writable = SYNTHETIC_SHEETS_BATTERY.workbook.sheets.find((s) => s.writable).name;
+  const withDocs = (workbook) => ({ question_payload: { ...structuredClone(SYNTHETIC_SHEETS_BATTERY), workbook: { ...structuredClone(SYNTHETIC_SHEETS_BATTERY.workbook), ...workbook } }, scoring_key: structuredClone(SYNTHETIC_SHEETS_KEY) });
+  const ok = withDocs({ display: 'documents', documents: [{ title: 'Supplier statement', range: readOnly + '!A1:C4' }] });
+  assert.doesNotThrow(() => validateBattery(ok));
+  const pub = publicBattery(ok.question_payload);
+  assert.equal(pub.workbook.display, 'documents');
+  assert.deepEqual(pub.workbook.documents, [{ title: 'Supplier statement', range: readOnly + '!A1:C4' }]);
+  assert.equal(publicBattery(SYNTHETIC_SHEETS_BATTERY).workbook.display, undefined);
+  for (const bad of [
+    { display: 'pictures' },
+    { display: 'documents' },
+    { display: 'documents', documents: [] },
+    { display: 'documents', documents: [{ title: 'X', range: readOnly + '!A1:C4' }] },
+    { display: 'documents', documents: [{ title: 'Working', range: writable + '!A1:C4' }] },
+    { display: 'documents', documents: [{ title: 'Unknown', range: 'Nope!A1:C4' }] },
+    { display: 'documents', documents: [{ title: 'Bad range', range: readOnly + '!A1' }] },
+    { documents: [{ title: 'Supplier statement', range: readOnly + '!A1:C4' }] },
+  ]) assert.throws(() => validateBattery(withDocs(bad)), BatteryError, JSON.stringify(bad));
+});

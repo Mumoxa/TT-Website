@@ -13,10 +13,9 @@ test('public practice has exactly three unscored formats and exact choice feedba
   assert.equal(practiceFeedback('practice-music', ['o3', 'o1']).correct, true);
   assert.equal(practiceFeedback('practice-music', ['o1', 'o2', 'o3']).correct, false);
 });
-test('formula feedback uses workbook engine and requires a formula', () => {
-  assert.equal(practiceFeedback('practice-tokens', '=SUM(C2:C3)').correct, true);
-  assert.equal(practiceFeedback('practice-tokens', '=C2+C3').correct, true);
-  for (const value of ['601.85', '=SUM(C2:C4)+1', '=1/0', '']) assert.equal(practiceFeedback('practice-tokens', value).correct, false);
+test('amount feedback accepts a typed amount or a formula', () => {
+  for (const value of ['601.85', 'R601.85', '601,85'.replace(',', '.'), '=SUM(C2:C3)', '=C2+C3']) assert.equal(practiceFeedback('practice-tokens', value).correct, true, value);
+  for (const value of ['601', '=SUM(C2:C4)+1', '=1/0', '']) assert.equal(practiceFeedback('practice-tokens', value).correct, false, value);
   assert.match(practiceFeedback('practice-tokens', '').answer, /601\.85/);
 });
 test('existing synthetic batteries do not collide despite shared opaque option IDs', () => {
