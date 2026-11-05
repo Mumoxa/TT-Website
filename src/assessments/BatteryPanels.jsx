@@ -11,6 +11,10 @@ import { splitReferences } from './reference-text.js';
 import { splitRef } from './formulas.js';
 
 const fmt = (value) => (value === '' || value === undefined ? '—' : value);
+// Example shown in an empty answer box. Rand answers show an R; counts show a whole number, not an amount.
+const placeholderFor = (item, docsMode) => (item.format === 'rand' ? 'For example R12 500.00'
+  : item.format === 'count' ? 'A whole number, for example 4'
+  : docsMode ? 'Type your answer' : 'Type your answer or a formula');
 const isNumericText = (value) => String(value ?? '').trim() !== '' && Number.isFinite(Number(value));
 // Reference codes (INV-2214 and similar) stay on one line; all other text renders as before.
 const keepReferences = (text) => splitReferences(text).map((part, i) => (part.isRef
@@ -128,8 +132,8 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                 {instructionsFor(item)}
                 <div className="tta-answer-row">
                   {docsMode && <span className="tta-answer-prefix" aria-hidden="true">Answer</span>}
-                  <input id={'cell-' + item.id} className="tta-answer-input" type="text" inputMode={docsMode ? 'decimal' : 'text'} autoComplete="off" spellCheck={false}
-                    maxLength={200} value={raw} placeholder={docsMode ? 'For example 12 500.00' : 'Type your answer or a formula'}
+                  <input id={'cell-' + item.id} className="tta-answer-input" type="text" inputMode={item.format === 'count' ? 'numeric' : docsMode ? 'decimal' : 'text'} autoComplete="off" spellCheck={false}
+                    maxLength={200} value={raw} placeholder={placeholderFor(item, docsMode)}
                     onChange={(e) => setCell(item.ref, e.target.value)} />
                   {!docsMode && <button type="button" className="tta-cell-link" onClick={() => goToCell(item, number)}>Show {cellName} in workbook</button>}
                 </div>

@@ -195,3 +195,20 @@ test('documents display is validated and passed to the candidate without keys', 
     { documents: [{ title: 'Supplier statement', range: readOnly + '!A1:C4' }] },
   ]) assert.throws(() => validateBattery(withDocs(bad)), BatteryError, JSON.stringify(bad));
 });
+
+test('cell answer format is optional, validated, and passed to the candidate', async () => {
+  const { SYNTHETIC_SHEETS_BATTERY, SYNTHETIC_SHEETS_KEY } = await import('./fixtures/synthetic-battery.mjs');
+  const withFormat = (format) => {
+    const payload = structuredClone(SYNTHETIC_SHEETS_BATTERY);
+    const cell = payload.sections.flatMap((s) => s.items).find((i) => i.type === 'cell');
+    cell.format = format;
+    return { pkg: { question_payload: payload, scoring_key: structuredClone(SYNTHETIC_SHEETS_KEY) }, id: cell.id };
+  };
+  for (const format of ['rand', 'count']) {
+    const { pkg, id } = withFormat(format);
+    assert.doesNotThrow(() => validateBattery(pkg));
+    const item = publicBattery(pkg.question_payload).sections.flatMap((s) => s.items).find((i) => i.id === id);
+    assert.equal(item.format, format);
+  }
+  assert.throws(() => validateBattery(withFormat('dollars').pkg), BatteryError);
+});

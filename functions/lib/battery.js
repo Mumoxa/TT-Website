@@ -173,6 +173,8 @@ export function validateBattery(pkg) {
         const textAnswer = typeof k.answer === 'string' && k.answer.trim().length > 0 && k.answer.length <= 100;
         if (!numericAnswer && !textAnswer) bad(`Cell answer for ${item.id} must be a number or short text.`);
         if (k.tolerance !== undefined && (typeof k.tolerance !== 'number' || k.tolerance < 0 || k.tolerance > 1)) bad('Tolerance must be 0–1.');
+        // Optional answer format: tells the answer box what to expect ('rand' amount or whole-number 'count').
+        if (item.format !== undefined && !['rand', 'count'].includes(item.format)) bad(`Answer format for ${item.id} must be "rand" or "count".`);
       }
     }
   }
@@ -200,7 +202,7 @@ export function publicBattery(payload) {
         const base = { id: item.id, type: item.type, prompt: item.prompt };
         if (typeof item.instructions === 'string' && item.instructions.trim()) base.instructions = item.instructions.trim();
         if (item.type === 'single' || item.type === 'multi') base.options = item.options.map((o) => ({ id: o.id, text: o.text }));
-        if (item.type === 'cell') base.ref = item.ref;
+        if (item.type === 'cell') { base.ref = item.ref; if (item.format === 'rand' || item.format === 'count') base.format = item.format; }
         return base;
       }),
     })),
