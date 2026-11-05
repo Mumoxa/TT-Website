@@ -14,6 +14,7 @@ This repository is **public**. Do not commit live question wording, answer optio
 3. [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md): the current policy (open starts, retained results, repeat attempts, privacy fields).
 4. [BATTERY_V2.md](BATTERY_V2.md): the battery format and grading rules. Parts are out of date; see section 9.
 5. [TALENT_TREE_AP_ASSESSMENT_V1.md](TALENT_TREE_AP_ASSESSMENT_V1.md): the original build contract. It is historical, but its security and acceptance intent still applies.
+6. [AR_ASSESSMENT_HANDOFF.md](AR_ASSESSMENT_HANDOFF.md): the duplicate for accounts receivable — what is shared, what changed, and what is still unapproved.
 
 ## 1. What the product is
 
@@ -22,6 +23,7 @@ This repository is **public**. Do not commit live question wording, answer optio
   - `https://talenttree.co.za/assessments`: catalogue.
   - `https://talenttree.co.za/assessments/ap-clerk-v1`: welcome page for the live assessment.
 - Live assessment: slug `ap-clerk-v1`, title "Accounts Payable Clerk Assessment", client "Talent Tree".
+- Second assessment family, **not published**: slug `ar-clerk-v1`, title "Accounts Receivable Clerk Assessment", client "Talent Tree", 5 sections and 26 activities, same 20-minute limit and the same 40/60 weighting. It reuses this platform and adds no migration. Its content is a private draft awaiting SME review; see [AR_ASSESSMENT_HANDOFF.md](AR_ASSESSMENT_HANDOFF.md). Until it is published, `/assessments/ar-clerk-v1` reports that the assessment is not open.
 - Shape (verified against the live catalogue on 2026-11-05, after v4): 6 sections, 23 items, 20-minute limit enforced by the server (`DEFAULT_ASSESSMENT_SECONDS` in `functions/lib/assessment-deadlines.js`).
 - No invitation is needed. Anyone with the link can start. The practice mode writes no records.
 - Scoring: two categories, knowledge (weight 40) and reconciliation (weight 60), giving an overall score out of 100. Marking runs on the server. Formulas are re-evaluated on the server and client-reported values are never trusted.
@@ -44,7 +46,7 @@ These are decisions the owner has made. Do not change them without the owner.
 
 | Kind of truth | Where it lives | Notes |
 |---|---|---|
-| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v13` (verified 2026-11-05). |
+| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v13` (verified 2026-11-05). The receivable draft is a separate definition (`ar-clerk-v1`) in the same database and is **not published**. |
 | Candidate and recruiter behaviour | `functions/api/assessment/[[path]].js`, `functions/lib/*.js`, `src/assessments/*` | The code is the behaviour. |
 | Battery format and grading | `functions/lib/battery.js` (format `battery-v2`) | `gradeBattery` grades on the server. |
 | Current policy | `docs/assessments/OPEN_START_HANDOFF.md` | Partly superseded; see section 9. |

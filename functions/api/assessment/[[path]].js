@@ -11,6 +11,7 @@
 import {normalizeScreening, ScreeningValidationError} from '../../../src/assessments/screening.js';
 import {identityHash,encryptId,maskId,publicScreening,PrivacyConfigurationError} from '../../lib/candidate-privacy.js';
 import {assertPracticeIsolation} from '../../lib/practice-isolation.js';
+import {practiceForSlug} from '../../../src/assessments/practice-tables.js';
 import {candidateResult} from '../../lib/candidate-results.js';
 import { assessmentCatalog } from '../../lib/assessment-catalog.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
@@ -203,7 +204,7 @@ async function startAttempt(request, db, env) {
   const open=typeof data.assessment_slug==='string' && /^[a-z0-9-]{3,60}$/.test(data.assessment_slug);
   let invited;
   if(open){
-    const definition=await db.prepare("SELECT id AS definition_id,client_name,title,status AS assessment_status,duration_seconds,current_version_id FROM assessment_definitions WHERE slug=? AND status='published' AND current_version_id IS NOT NULL").bind(data.assessment_slug).first();
+    const definition=await db.prepare("SELECT id AS definition_id,slug,client_name,title,status AS assessment_status,duration_seconds,current_version_id FROM assessment_definitions WHERE slug=? AND status='published' AND current_version_id IS NOT NULL").bind(data.assessment_slug).first();
     if(!definition)return failure('This assessment is not open right now.',404);
     invited={...definition,id:id()};
   }else{
@@ -214,7 +215,8 @@ async function startAttempt(request, db, env) {
   }
   const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
   const payload=safeParse(version?.question_payload_json,{});
-  if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
+  // Practice is checked against this assessment's own family (slug-scoped), never another's.
+  if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}),practiceForSlug(invited.slug));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
   // Check the public projection before creating a timed attempt; never alias opaque IDs.
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
   const hash=await identityHash(env,invited.definition_id,screening.id_number);
@@ -308,11 +310,11 @@ async function adminPublish(request,db) {
   if(data.content_approved!==true || data.privacy_approved!==true || typeof data.approval_reference!=='string' || data.approval_reference.trim().length<8 || data.approval_reference.length>200) {
     return failure('Assessment content and privacy approvals with a reference are required.',400);
   }
-  const version=await db.prepare('SELECT * FROM assessment_versions WHERE id=?').bind(typeof data.version_id==='string'?data.version_id:'').first();
+  const version=await db.prepare('SELECT v.*, d.slug FROM assessment_versions v JOIN assessment_definitions d ON d.id=v.definition_id WHERE v.id=?').bind(typeof data.version_id==='string'?data.version_id:'').first();
   if(!version)return failure('Assessment draft not found.',404);
   validateAssessmentPackage({question_payload:JSON.parse(version.question_payload_json),scoring_key:JSON.parse(version.scoring_key_json)});
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment identifiers or workbook sources need a branding review before publishing.',400);
-  if(isBatteryPayload(JSON.parse(version.question_payload_json))){try{assertPracticeIsolation(JSON.parse(version.question_payload_json),JSON.parse(version.scoring_key_json));}catch{return failure('Practice content overlaps this assessment. Review practice before publishing.',400);}}
+  if(isBatteryPayload(JSON.parse(version.question_payload_json))){try{assertPracticeIsolation(JSON.parse(version.question_payload_json),JSON.parse(version.scoring_key_json),practiceForSlug(version.slug));}catch{return failure('Practice content overlaps this assessment. Review practice before publishing.',400);}}
   const at=nowIso();
   const metadata=JSON.parse(version.question_payload_json)._metadata||{};
   await db.batch([

@@ -66,6 +66,8 @@ function Login({ onSuccess }) {
 
 function ResultReport({ report, onBack }) {
   const r = report.result, a = report.attempt;
+  // Wording follows the assessment that was taken, never a hard-coded product family.
+  const receivable = /receivable|debtor/i.test(report.assessment?.title || '');
   const score = r?.overall_score;
   function printReport() { window.print(); }
   const workbook = report.responses?.workbook || {};
@@ -89,14 +91,14 @@ function ResultReport({ report, onBack }) {
     </section>
     <div className="tta-admin-score-row">
       <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
-      <div><small>Technical knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
-      <div><small>Reconciliation</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
+      <div><small>Knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
+      <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
       <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
     </div>
     <section className="tta-admin-panel">
       <h2>Assessment interpretation</h2>
       <p>{r?.interpretation || 'The assessment has not yet been scored.'}</p>
-      <p className="tta-admin-muted">A timed work sample is screening evidence, not independent proof of full-function AP competence. Verify practical experience, Sage 300 usage and references.</p>
+      <p className="tta-admin-muted">A timed work sample is screening evidence, not independent proof of full-function {receivable ? 'accounts receivable' : 'accounts payable'} competence. Verify practical experience, {receivable ? 'debtors ledger and collections systems' : 'Sage 300 and creditor systems'} usage and references.</p>
       {!!r?.critical_flags?.length && <div className="tta-admin-flags">
         {r.critical_flags.map((f, i) => <span key={i}>{f}</span>)}
       </div>}
@@ -108,7 +110,7 @@ function ResultReport({ report, onBack }) {
       </dl>
     </section>}
     <section className="tta-admin-panel">
-      <h2>Technical knowledge — question review</h2>
+      <h2>Activity review — knowledge and practical work</h2>
       <div className="tta-admin-table-scroll"><table className="tta-admin-table">
         <thead><tr><th>Question</th><th>Candidate's answer</th><th>Expected answer</th><th>Outcome</th></tr></thead>
         <tbody>{(report.question_review || []).map((q, i) => <tr key={i}>
@@ -211,6 +213,19 @@ function Workspace({ onExpired }) {
       setMessage('Draft saved privately. Approval is required before publishing.');await load();
     }catch(e){setError(e.message);}finally{setBusy(false);}
   }
+  // Imports a private package file (never a public one) straight into the JSON field, so a real
+  // assessment does not have to be pasted by hand. The file is read in the browser only.
+  async function importPackage(e) {
+    const file=e.target.files?.[0];if(!file)return;
+    setError('');setMessage('');
+    try {
+      const parsed=JSON.parse(await file.text());
+      if(!parsed.question_payload||!parsed.scoring_key||!parsed.slug)throw new Error('That file is not an assessment package.');
+      setPackageJson(JSON.stringify(parsed,null,2));setDraftVersion('');
+      setMessage('Loaded '+file.name+'. Check the slug and title, then save the private draft.');
+    }catch(err){setError('Could not read that package: '+err.message);}
+    finally{e.target.value='';}
+  }
   async function loadDraft(versionId) {
     setBusy(true);setError('');
     try {const result=await request('draft/'+versionId);setPackageJson(JSON.stringify(result.package,null,2));setDraftVersion(versionId);setContentApproved(false);setPrivacyApproved(false);setApprovalReference('');}
@@ -305,6 +320,10 @@ function Workspace({ onExpired }) {
       </div>
       <p>Each question needs an id, prompt, and four options with id/text. scenario requires instructions, supplier and ledger rows (ref, amount, description), and action_options (id/text). The private scoring_key requires mcq answer ids, exactly three discrepancy refs, actions by ref, corrected_balance and optional unsafe_actions. Amounts use signed debits/credits as explained in your instructions. Save a new immutable version after editing.</p>
       <form onSubmit={saveDraft} className="tta-admin-form">
+        <label>Import a private package file
+          <input type="file" accept="application/json,.json" onChange={importPackage} disabled={busy}/>
+        </label>
+        <p className="tta-admin-muted">Load a package kept outside this repository (for example under <code>private/assessments/</code>, which is git-ignored). Never paste live questions into a tracked file.</p>
         <label>Assessment package (JSON)
           <textarea value={packageJson} onChange={(e) => {setPackageJson(e.target.value);setDraftVersion('');}}
             rows={15} placeholder={'{\n  "slug": "ap-clerk-v1",\n  "client_name": "Talent Tree",\n  "title": "Accounts Payable Clerk Assessment",\n  "question_payload": { "questions": [], "scenario": {} },\n  "scoring_key": { "mcq": {}, "discrepancies": [], "actions": {}, "corrected_balance": 0 }\n}'} required />
@@ -345,7 +364,7 @@ function breakdownRows(b) {
     const cat = (c, label) => [label, `${c.earned} / ${c.max} points (${c.percent}%)`];
     return [
       cat(b.categories.knowledge, 'Knowledge'),
-      cat(b.categories.reconciliation, 'Practical reconciliation'),
+      cat(b.categories.reconciliation, 'Practical work'),
       ['Items correct', `${b.items_correct} / ${b.items_total}`],
       ...(b.sections || []).map((s) => [s.title, `${s.earned} / ${s.max} (${s.percent}%)`]),
     ];

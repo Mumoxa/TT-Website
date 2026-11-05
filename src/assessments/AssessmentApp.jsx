@@ -7,6 +7,7 @@ import { InstructionText } from './InstructionText.jsx';
 import ScreeningFields, {emptyScreening} from './ScreeningFields.jsx';
 import {normalizeScreening} from './screening.js';
 import {AssessmentPractice} from './AssessmentPractice.jsx';
+import {practiceForSlug} from './practice-tables.js';
 
 /**
  * Candidate-facing assessment UI. Behaviour (validation, Start payload, timer, autosave,
@@ -99,7 +100,7 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
   );
 }
 
-export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions=''}) {
+export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug=''}) {
   const catalogue=useAssessmentCatalog(!sectionTitles);
   const matching=catalogue.assessments.find(item=>item.title===assessmentTitle && item.client_name===client);
   const sections=sectionTitles || matching?.section_titles || ['Technical knowledge','Practical reconciliation'];
@@ -116,7 +117,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
     try {const normalized=normalizeScreening(screening);setValidation('');setPending({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true});}
     catch(e){setValidation(e.message);}
   }
-  if(view==='practice')return <AssessmentFrame><AssessmentPractice onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
+  if(view==='practice')return <AssessmentFrame><AssessmentPractice practice={practiceForSlug(slug)} onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
   return <AssessmentFrame client={client}>
     <main className="ca-welcome" id="main-content">
       <div className="ca-welcome-intro">

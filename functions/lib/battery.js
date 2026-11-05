@@ -14,7 +14,9 @@
 import { calculateCell, CELL_REF, QUALIFIED_REF, splitRef } from '../../src/assessments/formulas.js';
 
 export const BATTERY_FORMAT = 'battery-v2';
-export const BATTERY_ENGINE = 'ap-battery-v2';
+// Stored as results.scoring_version. Family-neutral, because the same engine grades every
+// battery (payable, receivable or any later one); the assessment slug identifies the family.
+export const BATTERY_ENGINE = 'battery-v2';
 export const CATEGORY_WEIGHT = { knowledge: 40, reconciliation: 60 };
 const ITEM_TYPES = new Set(['single', 'multi', 'text', 'cell']);
 const DEFAULT_PASS_PERCENT = 75;
