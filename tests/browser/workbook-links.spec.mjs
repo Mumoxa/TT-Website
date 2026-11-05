@@ -29,3 +29,27 @@ test('a cell activity links to its cell, shows instructions, and its text wraps 
  await expect(page.getByLabel('Cell B2',{exact:true})).toBeDisabled();
  expect(errors).toEqual([]);
 });
+
+async function invitationWithReference(api){
+ await post(api,'admin/login',{key:key()});
+ const payload=structuredClone(SYNTHETIC_BATTERY);
+ const item=payload.sections.flatMap(s=>s.items).find(i=>i.id==='k1');
+ item.prompt='Synthetic question one: check INV-2214 first, then pick option alpha.';
+ item.instructions='Find INV-2214 on the Supplier tab (row 4). Then check column A of the Ledger tab for INV-2214.';
+ const draft=await post(api,'admin/draft',{slug:'reference-text-'+Date.now(),client_name:'Synthetic client',title:'Reference text browser test',question_payload:payload,scoring_key:SYNTHETIC_BATTERY_KEY});
+ await post(api,'admin/publish',{version_id:draft.version_id,content_approved:true,privacy_approved:true,approval_reference:'Synthetic local browser approval only'});
+ return (await post(api,'admin/invite',{assessment_id:draft.assessment_id,intended_email:'links@example.invalid'})).invitation_url;
+}
+
+test('a reference code such as INV-2214 stays on one line in a question title and its instructions, and keeps the title style',async({page,request})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await start(page,await invitationWithReference(request));
+ const question=page.locator('.tta-question').filter({hasText:'check INV-2214 first'});
+ await expect(question.locator('legend')).toBeVisible();
+ const refs=await question.locator('.tta-ref').evaluateAll(els=>els.map(el=>({text:el.textContent,whiteSpace:getComputedStyle(el).whiteSpace,lines:el.getClientRects().length})));
+ expect(refs.map(r=>r.text)).toEqual(['INV-2214','INV-2214','INV-2214']);
+ for(const r of refs){expect(r.whiteSpace).toBe('nowrap');expect(r.lines).toBe(1);}
+ const titleStyle=await question.locator('legend .tta-ref').evaluate(el=>{const a=getComputedStyle(el),b=getComputedStyle(el.closest('legend'));return {font:a.fontFamily===b.fontFamily,size:a.fontSize===b.fontSize,color:a.color===b.color,margin:a.marginRight};});
+ expect(titleStyle).toEqual({font:true,size:true,color:true,margin:'0px'});
+ expect(errors).toEqual([]);
+});
