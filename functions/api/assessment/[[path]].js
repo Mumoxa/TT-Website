@@ -246,11 +246,15 @@ async function inviteMeta(request, db) {
   const token = new URL(request.url).searchParams.get('token');
   if (!isToken(token)) return failure('A valid invitation is required.', 400);
   const i = await db.prepare(
-    'SELECT i.status, i.expires_at, d.title, d.client_name, d.duration_seconds ' +
-    'FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.token_sha256=?'
+    'SELECT i.status, i.expires_at, d.title, d.client_name, d.duration_seconds, v.question_payload_json ' +
+    'FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id ' +
+    'LEFT JOIN assessment_versions v ON v.id=d.current_version_id WHERE i.token_sha256=?'
   ).bind(await tokenHash(token)).first();
   if (!i || i.status !== 'issued' || Date.parse(i.expires_at) <= Date.now()) return failure('Invitation unavailable.', 404);
-  return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: i.duration_seconds });
+  // Only the candidate-facing instruction text, shown before the timer starts. Never questions or keys.
+  let instructions;
+  try { const payload = JSON.parse(i.question_payload_json || '{}'); if (payload.format === 'battery-v2' && typeof payload.instructions === 'string') instructions = payload.instructions.trim().slice(0, 1500) || undefined; } catch { instructions = undefined; }
+  return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: i.duration_seconds, ...(instructions ? { instructions } : {}) });
 }
 
 async function requireAdmin(request, env) {

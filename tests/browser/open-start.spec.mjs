@@ -33,16 +33,16 @@ for(const width of [390,1280])test('open start, practice, validation, private re
  let weekend=new Date(screeningFixture().earliest_start_date+'T00:00:00Z');while(weekend.getUTCDay()!==6)weekend=new Date(weekend.getTime()+86400000);
  await page.getByLabel('Earliest date you can start (your first day)',{exact:true}).fill(weekend.toISOString().slice(0,10));await page.getByRole('button',{name:'Start assessment',exact:true}).click();await expect(page.getByRole('alert')).toContainText(/weekday/);
  await page.getByLabel('Earliest date you can start (your first day)',{exact:true}).fill(screeningFixture().earliest_start_date);
- await page.getByRole('button',{name:'Start assessment',exact:true}).click();await expect(page.getByRole('timer')).toBeVisible();await noBrand(page);
+ await page.getByRole('button',{name:'Start assessment',exact:true}).click();const starts=[];const seeStart=r=>{if(/\/api\/assessment\/start/.test(r.url()))starts.push(r.url());};page.on('request',seeStart);await expect(page.getByRole('dialog',{name:'Before the timer starts'})).toBeVisible();await expect(page.getByRole('timer')).toHaveCount(0);await page.getByRole('button',{name:'Back',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);expect(starts).toEqual([]);await page.getByRole('button',{name:'Start assessment',exact:true}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();page.off('request',seeStart);await expect(page.getByRole('timer')).toBeVisible();await noBrand(page);
  const receiptPromise=page.waitForResponse(response=>response.url().endsWith('/api/assessment/submit'));
  await page.getByRole('button',{name:'Submit assessment',exact:true}).click();const receipt=await (await receiptPromise).json();
  await expect(page.getByRole('heading',{name:'Your assessment results',exact:true})).toBeVisible();await expect(page.getByText('Attempt 1',{exact:true})).toBeVisible();await expect(page.getByText('0 / 100',{exact:false})).toBeVisible();
  expect(JSON.stringify(receipt)).not.toMatch(/question_review|scoring_key|correctAnswer|interpretation|pass_percent|workbook_source/);await expect(page.locator('input')).toHaveCount(0);await noBrand(page);
  await page.screenshot({path:`${directory}/results-${width}.png`,fullPage:true});await page.reload();await expect(page.getByText('Attempt 1',{exact:true})).toBeVisible();
- await page.goto(route);await openDetails(page);await identity(page);await page.getByRole('button',{name:'Start assessment',exact:true}).click();await expect(page.getByRole('timer')).toBeVisible();await page.getByRole('button',{name:'Submit assessment',exact:true}).click();await expect(page.getByText('Attempt 2',{exact:true})).toBeVisible();
+ await page.goto(route);await openDetails(page);await identity(page);await page.getByRole('button',{name:'Start assessment',exact:true}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();await expect(page.getByRole('timer')).toBeVisible();await page.getByRole('button',{name:'Submit assessment',exact:true}).click();await expect(page.getByText('Attempt 2',{exact:true})).toBeVisible();
 });
 test('server timeout shows candidate results without answer review',async({page,request})=>{
- const route=await publish(request);await page.goto(route);await openDetails(page);await identity(page);await page.getByRole('button',{name:'Start assessment',exact:true}).click();await expect(page.getByRole('timer')).toBeVisible();
+ const route=await publish(request);await page.goto(route);await openDetails(page);await identity(page);await page.getByRole('button',{name:'Start assessment',exact:true}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();await expect(page.getByRole('timer')).toBeVisible();
  const active=await (await page.request.get(base+'/api/assessment/me')).json();
  const directory='.wrangler/assessment-state/v3/d1/miniflare-D1DatabaseObject';
  let updated=false;

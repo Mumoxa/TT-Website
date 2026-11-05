@@ -46,3 +46,11 @@ test('exact slug lookup finds a published assessment beyond the 100-item listing
  assert.deepEqual(await (await bySlug('unknown-slug')).json(),[]);
  assert.deepEqual(await (await bySlug("x'%20OR%201=1")).json().then(j=>j.length),100);
 });
+test('catalogue includes battery instruction text for the start briefing, and nothing else new',async()=>{
+ const db=database();
+ seed(db,{payload:{format:'battery-v2',instructions:'  Read the documents. You have 20 minutes.  ',sections:[{title:'Knowledge',items:[{prompt:'PRIVATE_CATALOG_CANARY'}]}],workbook:{source:{A1:'PRIVATE_CATALOG_CANARY'}}}});
+ const [item]=await (await get(db)).json();
+ assert.equal(item.instructions,'Read the documents. You have 20 minutes.');
+ assert.deepEqual(Object.keys(item).sort(),['client_name','duration_minutes','instructions','item_count','section_titles','slug','title']);
+ assert.doesNotMatch(JSON.stringify(item),/PRIVATE_CATALOG_CANARY/);
+});

@@ -11,7 +11,7 @@ async function batteryInvitation(api){
  await post(api,'admin/publish',{version_id:draft.version_id,content_approved:true,privacy_approved:true,approval_reference:'Synthetic local browser approval only'});
  return (await post(api,'admin/invite',{assessment_id:draft.assessment_id,intended_email:'battery@example.invalid'})).invitation_url;
 }
-async function start(page,url){await page.goto(url);await openDetails(page);await page.getByLabel('First name',{exact:true}).fill('Battery');await page.getByLabel('Surname',{exact:true}).fill('Synthetic');await page.getByLabel('Email address',{exact:true}).fill('battery@example.invalid');await fillScreening(page);await page.getByRole('button',{name:'Start assessment'}).click();await expect(page.getByRole('timer')).toBeVisible();}
+async function start(page,url){await page.goto(url);await openDetails(page);await page.getByLabel('First name',{exact:true}).fill('Battery');await page.getByLabel('Surname',{exact:true}).fill('Synthetic');await page.getByLabel('Email address',{exact:true}).fill('battery@example.invalid');await fillScreening(page);await page.getByRole('button',{name:'Start assessment'}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();await expect(page.getByRole('timer')).toBeVisible();}
 
 test('battery: sections render, cells calculate, read-only source is locked, submission completes',async({page,request})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));

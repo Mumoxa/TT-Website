@@ -24,7 +24,7 @@ async function start(page,url,email = 'design@example.invalid') {
   await page.getByLabel('Surname',{exact:true}).fill('Candidate');
   await page.getByLabel('Email address',{exact:true}).fill(email);
   await fillScreening(page);
-  await page.getByRole('button',{name:'Start assessment',exact:true}).click();
+  await page.getByRole('button',{name:'Start assessment',exact:true}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();
   await expect(page.getByRole('timer')).toBeVisible();
 }
 
