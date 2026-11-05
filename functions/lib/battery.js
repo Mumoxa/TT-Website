@@ -111,6 +111,7 @@ export function validateBattery(pkg) {
       if (!['knowledge', 'reconciliation'].includes(item.category)) bad('Item category must be knowledge or reconciliation.');
       categories.add(item.category);
       if (typeof item.prompt !== 'string' || item.prompt.trim().length < 15 || item.prompt.length > 900) bad('Prompt must be 15–900 characters.');
+      if (item.instructions !== undefined && (typeof item.instructions !== 'string' || item.instructions.trim().length > 600)) bad('Instructions must be text of at most 600 characters.');
       const k = key.items[item.id];
       if (!isObj(k)) bad(`Missing answer key for ${item.id}.`);
       if (item.type === 'single' || item.type === 'multi') {
@@ -162,6 +163,7 @@ export function publicBattery(payload) {
       title: s.title,
       items: s.items.map((item) => {
         const base = { id: item.id, type: item.type, prompt: item.prompt };
+        if (typeof item.instructions === 'string' && item.instructions.trim()) base.instructions = item.instructions.trim();
         if (item.type === 'single' || item.type === 'multi') base.options = item.options.map((o) => ({ id: o.id, text: o.text }));
         if (item.type === 'cell') base.ref = item.ref;
         return base;

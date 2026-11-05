@@ -472,3 +472,16 @@
 /* Catalogue list: no default list margin, so the gap between the last card and the next section
    is the section rhythm only. */
 .ca-cards { margin: 0; padding: 0; list-style: none; }
+
+/* Battery items: instructions, workbook jump and cell links. */
+.tta-battery-jump { display: flex; justify-content: flex-end; margin: -6px 0 18px; }
+.tta-jump, .tta-cell-link {
+  min-height: 42px; padding: 0 16px; background: var(--white); color: var(--accent-deep, #00567e);
+  border: 1px solid var(--accent); border-radius: var(--radius); font: 600 0.88rem/1 var(--sans); cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.tta-jump:hover, .tta-cell-link:hover { background: var(--accent); color: var(--white); }
+.tta-jump:focus-visible, .tta-cell-link:focus-visible { outline: 3px solid var(--accent-bright); outline-offset: 3px; }
+.tta-item-instructions { margin: 0 0 12px; padding: 10px 12px; background: var(--paper-soft); border-left: 3px solid var(--accent); color: var(--ink); font-size: 0.92rem; line-height: 1.6; }
+.tta-cell-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.tta-cell-ask p { margin: 0; }

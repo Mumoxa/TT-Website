@@ -171,3 +171,16 @@
 .tta-sheet-toolbar {display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--line);}
 .tta-sheet-toolbar button {padding:6px 12px;background:var(--paper-soft);color:var(--ink);border:1px solid var(--line);cursor:pointer;}
 .tta-sheet-toolbar button:disabled {opacity:.5;cursor:default;}
+
+/* Cells show their whole value: text wraps, the row grows to fit, and numbers align right.
+   Read-only source cells stay disabled; they only change appearance. */
+.tta-working-grid { min-width: 880px; }
+.tta-working-grid td textarea.tta-cell-input {
+  display: block; width: 100%; min-width: 0; min-height: 36px; box-sizing: border-box;
+  resize: none; overflow: hidden; padding: 7px 9px; border: 0; outline: none; background: transparent;
+  color: var(--ink); font: 400 14px/1.35 var(--sans); text-align: left;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.tta-working-grid td textarea.tta-cell-num { text-align: right; font-variant-numeric: tabular-nums; }
+.tta-working-grid td textarea:focus { background: #f0f8fc; }
+.tta-working-grid td textarea:disabled { background: #f7f7f7; color: var(--ink); cursor: default; }
