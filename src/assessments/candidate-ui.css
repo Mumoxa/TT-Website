@@ -608,3 +608,22 @@
 .ca-page .tta-cell-ask { padding-top: 4px; }
 .ca-page .tta-working-grid td.tta-cell-selected { background: #f0f8fc; }
 .ca-page .tta-working-grid td textarea:focus { background: transparent; }
+
+/* ==========================================================================
+   Answer box under each workbook task (2026-11-05).
+   The candidate types the answer where the task is asked. The box writes to the task's
+   workbook cell, and that cell is tinted and tagged with the task number in the grid.
+   ========================================================================== */
+.ca-page .tta-cell-item > label { padding: 0 0 2px; font: 600 1rem/1.5 var(--sans); color: var(--ink-deep); }
+.ca-page .tta-answer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+.ca-page .tta-answer-input { flex: 1 1 260px; min-width: 0; min-height: 46px; padding: 10px 12px; background: var(--white); border: 1px solid var(--line-strong); border-radius: var(--radius); font: 400 16px/1.3 ui-monospace, Consolas, monospace; color: var(--ink); }
+.ca-page .tta-answer-input::placeholder { font-family: var(--sans); color: var(--muted); }
+.ca-page .tta-answer-input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90, 185, 232, 0.45); }
+.ca-page .tta-answer-row .tta-cell-link { flex: none; min-height: 46px; background: var(--white); color: var(--ink); border: 1px solid var(--line-strong); }
+.ca-page .tta-answer-row .tta-cell-link:hover { background: var(--paper-soft); color: var(--ink-deep); }
+.ca-page .tta-answer-result { margin: 4px 0 0; font-size: 0.88rem; color: var(--muted); }
+.ca-page .tta-answer-result output { font-weight: 600; color: var(--ink-deep); font-variant-numeric: tabular-nums; }
+.ca-page .tta-answer-where { color: var(--muted); }
+.ca-page .tta-working-grid td.tta-answer-cell { background: #eef7fc; }
+.ca-page .tta-working-grid td.tta-answer-cell::after { content: attr(data-task); position: absolute; top: 2px; right: 3px; padding: 0 4px; font: 600 10px/14px var(--sans); color: var(--accent-deep, #00567e); background: #d7ecf7; border-radius: 2px; pointer-events: none; }
+.ca-page .tta-working-grid td.tta-answer-cell textarea { padding-right: 30px; }

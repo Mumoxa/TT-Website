@@ -21,7 +21,7 @@ test('a cell activity links to its cell, shows instructions, and its text wraps 
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await start(page,await invitation(request));
  await expect(page.getByText('Use the source totals to calculate the working value',{exact:false})).toBeVisible();
- await page.getByRole('button',{name:'Go to cell B12',exact:true}).click();
+ await page.getByRole('button',{name:'Show B12 in workbook',exact:true}).click();
  await expect(page.getByLabel('Cell B12',{exact:true})).toBeFocused();
  await page.getByLabel('Cell D5',{exact:true}).fill('A long working note that must wrap inside the cell so that nothing is cut off at the edge');
  const fits=await page.getByLabel('Cell D5',{exact:true}).evaluate(el=>el.scrollHeight<=el.clientHeight+1);

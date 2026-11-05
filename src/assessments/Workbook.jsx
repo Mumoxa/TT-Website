@@ -14,7 +14,7 @@ const keyFor = (sheet, cell) => (sheet ? sheet + '!' + cell : cell);
 // Numbers align right. Cell height is measured from the rendered text, so a cell shows its whole value.
 const isNumeric = (text) => String(text ?? '').trim() !== '' && Number.isFinite(Number(text));
 
-export function Workbook({ sheets = null, source = {}, cells = {}, onChange, readOnly = false, focusRequest = null }) {
+export function Workbook({ sheets = null, source = {}, cells = {}, onChange, readOnly = false, focusRequest = null, answerCells = {} }) {
   const tabs = sheets && sheets.length ? sheets : [{ name: '', writable: true }];
   const sourceKeys = useMemo(() => new Set(Object.keys(source)), [source]);
   const writableSheet = (name) => !readOnly && (tabs.find((t) => t.name === name)?.writable ?? false);
@@ -143,7 +143,9 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
                   const cell = col + (row + 1);
                   const key = keyFor(active, cell);
                   const locked = !isEditable(key);
-                  return <td key={key} className={(selected === key ? 'tta-cell-selected ' : '') + (sourceKeys.has(key) ? 'tta-source-cell' : '')}>
+                  const task = answerCells[key];
+                  return <td key={key} data-task={task || undefined} title={task ? 'Answer to task ' + task : undefined}
+                    className={(selected === key ? 'tta-cell-selected ' : '') + (sourceKeys.has(key) ? 'tta-source-cell' : '') + (task ? ' tta-answer-cell' : '')}>
                     <textarea ref={(el) => { inputRefs.current[key] = el; }}
                       rows={1}
                       className={'tta-cell-input' + (isNumeric(computed[key]) ? ' tta-cell-num' : '')}
