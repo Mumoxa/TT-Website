@@ -55,7 +55,7 @@ const FEATURES = [
   { icon: 'workbook', title: 'Practical tasks with workplace documents', body: 'Read documents such as a supplier statement and a ledger, then type each answer in the box under the task. No spreadsheet skills are needed.' },
   { icon: 'practice', title: 'Practice before you start', body: 'Try the public practice items before you enter any details. Practice is not scored or saved, and the timer stays off.' },
   { icon: 'autosave', title: 'Answers save as you go', body: 'Changes save automatically. If you reload, your saved work returns and the timer keeps running.' },
-  { icon: 'timer', title: 'A clear timer', body: 'The timer starts only when you press Start. You cannot pause or restart an attempt once it has begun.' },
+  { icon: 'timer', title: 'A clear timer', body: 'You read the instructions first. The timer starts only when you click OK, and you cannot pause or restart an attempt once it has begun.' },
   { icon: 'results', title: 'Results when you submit', body: 'You see an overall score and a percentage for each section. There are no answer keys and no pass or fail label.' },
 ];
 
@@ -68,7 +68,7 @@ const BENEFITS = [
 
 const FAQS = [
   ['Do I need an invitation?', 'No. Open the assessment, read the instructions and start when you are ready. If you were sent an invitation link, that link still works.'],
-  ['How long does it take?', 'Each assessment states its time limit on its welcome page. The timer starts only when you press Start.'],
+  ['How long does it take?', 'Each assessment states its time limit on its welcome page. The timer starts only when you click OK after reading the instructions.'],
   ['Can I pause or restart?', 'No. Once you start, the timer runs. Your answers save automatically, and if you reload, your saved work returns with the timer still running.'],
   ['What do I see when I submit?', 'Your overall score and a percentage for each section. You do not see answer keys, and there is no pass or fail label.'],
   ['Who sees my answers and results?', 'Recruiters at Talent Tree. We retain your results and attempt history. Your ID number is used to link your attempts and is masked in reports.'],
@@ -86,7 +86,7 @@ function Hero({ first }) {
         ['Activities', String(first.item_count)],
       ]
     : [
-        ['Timing', 'Timed, from the moment you press Start'],
+        ['Timing', 'Timed, from when you click OK'],
         ['Format', 'Questions and practical tasks'],
         ['Results', 'Shown when you submit'],
       ];
