@@ -4,7 +4,7 @@ import {onRequest} from '../functions/api/assessment/[[path]].js';
 import {practiceForSlug, AP_PRACTICE, AR_PRACTICE, PRACTICE_TABLES} from '../src/assessments/practice-tables.js';
 import {practiceFeedbackFor, PRACTICE_ITEMS} from '../src/assessments/practice.js';
 import {assertPracticeIsolation, assertNoPracticeReuse} from '../functions/lib/practice-isolation.js';
-import {gradeBattery, parseAmount, validateBattery, BATTERY_ENGINE} from '../functions/lib/battery.js';
+import {cleanBatteryWorkbook, gradeBattery, parseAmount, publicBattery, validateBattery, BATTERY_ENGINE} from '../functions/lib/battery.js';
 import {database} from './helpers/assessment-db.mjs';
 import {screeningFixture} from './helpers/screening-fixture.mjs';
 
@@ -227,4 +227,316 @@ test('a receivable draft that reuses its own practice cannot be published', asyn
   const publish = await t.call('admin/publish', { version_id: draft.data.version_id, content_approved: true, privacy_approved: true, approval_reference: 'Synthetic test only' }, login.cookie, true);
   assert.equal(publish.status, 400);
   assert.match(publish.data.message, /practice/i);
+});
+
+/* ---------------------------------------------------------------- blueprint rules
+ * The Talza blueprint's scoring rules, exercised on synthetic items only:
+ * weighted sections, foundation/core/stretch levels, a single-document reference field,
+ * a reviewer-marked handoff that is never auto-scored, and format errors before submission. */
+
+const BLUEPRINT_KEY = { items: {
+  ba1: { answer: 'o2' },
+  ba2: { answer: 'GRN-77' },
+  bb1: { answer: 800, tolerance: 0.005 },
+  bb2: { answer: 'o2' },
+  // Never auto-scored: a reviewer marks 0/1/2 on each criterion. Two points per criterion.
+  bc1: { rubric: [
+    { id: 'r1', label: 'Facts', anchors: ['Wrong fact', 'Partly right', 'Facts restated correctly'] },
+    { id: 'r2', label: 'Status', anchors: ['No status', 'Vague', 'Clear status'] },
+    { id: 'r3', label: 'Next action', anchors: ['None', 'Action without owner', 'Action with owner'] },
+    { id: 'r4', label: 'Timing', anchors: ['No time', 'Vague time', 'Specific time'] },
+  ] },
+} };
+
+const BLUEPRINT_SHAPE = {
+  format: 'battery-v2',
+  instructions: 'Synthetic blueprint battery. Every figure is invented.',
+  sections: [
+    { id: 'part-a', title: 'A · Foundations', cap: 8, items: [
+      { id: 'ba1', type: 'single', level: 'foundation', category: 'knowledge', points: 4,
+        prompt: 'Which document proves the goods arrived?', options: [{ id: 'o1', text: 'The order' }, { id: 'o2', text: 'The delivery note' }] },
+      { id: 'ba2', type: 'ref', level: 'core', category: 'reconciliation', points: 4,
+        prompt: 'Type the ONE document code for the delivery.', instructions: 'Code only, no amount.' },
+    ] },
+    { id: 'part-b', title: 'B · Work sample', cap: 16, items: [
+      { id: 'bb1', type: 'cell', level: 'core', category: 'reconciliation', points: 10, ref: 'Working!B2', format: 'rand',
+        prompt: 'Working!B2: the invoice value outstanding.' },
+      { id: 'bb2', type: 'single', level: 'stretch', category: 'reconciliation', points: 6,
+        prompt: 'Which action follows a short payment?', options: [{ id: 'o1', text: 'Write it off' }, { id: 'o2', text: 'Query it and hold credit' }] },
+    ] },
+    { id: 'part-c', title: 'C · Written handoff', cap: 8, items: [
+      // The rubric lives in the scoring key, never in the candidate payload.
+      { id: 'bc1', type: 'note', level: 'core', category: 'reconciliation', points: 8,
+        prompt: 'Write the handoff note for the finance lead.' },
+    ] },
+  ],
+  workbook: {
+    sheets: [{ name: 'Statement', writable: false }, { name: 'Working', writable: true }],
+    display: 'documents',
+    documents: [{ title: 'Synthetic statement', range: 'Statement!A1:B3' }],
+    source: { 'Statement!A1': 'Ref', 'Statement!B1': 'Amount (R)', 'Statement!A2': 'INV-1', 'Statement!B2': '1200', 'Statement!A3': 'INV-2', 'Statement!B3': '800' },
+    writable: ['Working!A1', 'Working!B1', 'Working!B2'],
+  },
+  activities: [
+    { id: 'ba1', section: 'part-a' }, { id: 'ba2', section: 'part-a' },
+    { id: 'bb1', section: 'part-b' }, { id: 'bb2', section: 'part-b' }, { id: 'bc1', section: 'part-c' },
+  ],
+  answer_labels: { 'Working!A1': 'Working note', 'Working!B1': 'Answer', 'Working!B2': 'Outstanding on the invoice' },
+};
+
+// validateBattery takes a package and returns the key that will be published.
+const blueprintPackage = (shape = BLUEPRINT_SHAPE, key = BLUEPRINT_KEY) => ({ question_payload: shape, scoring_key: key });
+let cached = null;
+const validated = () => (cached ??= validateBattery(blueprintPackage()));
+const grade = (answers) => gradeBattery({ payload: BLUEPRINT_SHAPE, key: validated().scoring_key }, answers);
+const ANSWERS = { mcq: { ba1: 'o2', bb2: 'o2' }, structured: { text: { ba2: 'GRN-77' }, multi: {} }, workbook: { 'Working!B2': '800' } };
+const withText = (extra) => ({ ...ANSWERS, structured: { ...ANSWERS.structured, text: { ...ANSWERS.structured.text, ...extra } } });
+
+test('the blueprint battery validates with weighted sections and a 32-point total', () => {
+  const out = validated();
+  const sections = out.question_payload.sections;
+  assert.equal(sections.map((s) => s.cap).join('/'), '8/16/8');
+  assert.equal(sections.flatMap((s) => s.items).reduce((n, i) => n + i.points, 0), 32);
+  // The cap is a weight, so every section's authored points must equal it exactly.
+  for (const section of sections) assert.equal(section.items.reduce((n, i) => n + i.points, 0), section.cap);
+});
+
+test('section weights are point caps, so a section that does not add up is rejected', () => {
+  const wrong = structuredClone(BLUEPRINT_SHAPE);
+  wrong.sections[0].cap = 12;
+  assert.throws(() => validateBattery(blueprintPackage(wrong)), /cap of 12 but its items total 8/);
+});
+
+test('a level outside foundation, core and stretch is rejected', () => {
+  const wrong = structuredClone(BLUEPRINT_SHAPE);
+  wrong.sections[0].items[0].level = 'expert';
+  assert.throws(() => validateBattery(blueprintPackage(wrong)), /level/i);
+});
+
+test('the rubric never reaches the candidate payload', () => {
+  const body = JSON.stringify(publicBattery(BLUEPRINT_SHAPE));
+  assert.ok(!/rubric/.test(body));
+  assert.ok(!/anchors/.test(body));
+});
+
+test('a ref field scores the document code only, and an amount in that box scores zero', () => {
+  assert.equal(grade(ANSWERS).items.find((i) => i.id === 'ba2').awarded, 4);
+  assert.equal(grade(withText({ ba2: '1200' })).items.find((i) => i.id === 'ba2').awarded, 0);
+  // One code, written either way, still scores.
+  for (const typed of ['grn-77', 'GRN 77', ' GRN-77 ', 'grn77']) {
+    assert.equal(grade(withText({ ba2: typed })).items.find((i) => i.id === 'ba2').awarded, 4, typed);
+  }
+});
+
+test('the reviewer-marked handoff is pending, never auto-scored, and never inflates the auto total', () => {
+  const graded = grade(withText({ bc1: 'A perfectly reasonable note.' }));
+  assert.equal(graded.pending_review_points, 8);
+  assert.equal(graded.auto_scored_max, 24);
+  assert.equal(graded.overall_score, 24, 'a written note must not add points on its own');
+  assert.equal(graded.items.find((i) => i.id === 'bc1').pending_review, true);
+  assert.equal(graded.items.find((i) => i.id === 'bc1').awarded, 0);
+});
+
+test('field points are all-or-nothing: a near miss earns zero, not part marks', () => {
+  const graded = gradeBattery({ payload: BLUEPRINT_SHAPE, key: validated().scoring_key },
+    { ...ANSWERS, workbook: { 'Working!B2': '801' } });
+  assert.equal(graded.items.find((i) => i.id === 'bb1').awarded, 0);
+});
+
+test('a signed amount is refused on entry, so it can never reach the score', () => {
+  const rules = { writableSheets: new Set(['working']), sourceCanon: new Set(), amountRefs: new Set(['working!B2']) };
+  assert.throws(() => cleanBatteryWorkbook({ 'Working!B2': '-800' }, rules), /positive amount, without a minus/);
+  assert.throws(() => cleanBatteryWorkbook({ 'Working!B2': '(−800)' }, rules), /positive amount, without a minus/);
+  assert.deepEqual(cleanBatteryWorkbook({ 'Working!B2': '800' }, rules), { 'Working!B2': '800' });
+  // A count box is not an amount box, so a plain negative is a wrong answer rather than a format error.
+  assert.equal(cleanBatteryWorkbook({ 'Working!A1': '-3' }, { ...rules, amountRefs: new Set() })['Working!A1'], '-3');
+});
+
+test('the three accepted amount formats parse to the same cents', () => {
+  for (const typed of ['R2 300,00', '2,300.00', '2300']) assert.equal(parseAmount(typed), 2300, typed);
+});
+
+/* ---------------------------------------------------------------- reviewer marking
+ * The handoff rubric is marked by a person. These tests pin the rules that stop a mark from being
+ * invented, silently rounded up, or allowed to replace the original record. */
+
+import {combineScores, cleanNoteText, noteRubric, validateReview, ReviewError} from '../functions/lib/assessment-review.js';
+
+const REVIEW_KEY = validated().scoring_key;
+const reviewPayload = validated().question_payload;
+const FULL_MARKS = { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } };
+
+test('the rubric a reviewer sees carries labels and all three anchors per criterion', () => {
+  const [note] = noteRubric(reviewPayload, REVIEW_KEY);
+  assert.equal(note.item_id, 'bc1');
+  assert.equal(note.points, 8);
+  assert.equal(note.criteria.length, 4);
+  for (const criterion of note.criteria) assert.equal(criterion.anchors.length, 3);
+});
+
+test('every criterion must be marked, with 0, 1 or 2 only', () => {
+  const ok = validateReview(reviewPayload, REVIEW_KEY, { marks: FULL_MARKS });
+  assert.equal(ok.earned, 8);
+  assert.equal(ok.max, 8);
+  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2, r2: 2, r3: 2 } } }), ReviewError);
+  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2, r2: 3, r3: 2, r4: 2 } } }), /0, 1 or 2/);
+  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 1.5, r2: 2, r3: 2, r4: 2 } } }), /0, 1 or 2/);
+  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2, r9: 2 } } }), /Unknown criterion/);
+  assert.throws(() => validateReview(reviewPayload, REVIEW_KEY, { marks: { bc1: { r1: 2 } } }), ReviewError);
+});
+
+test('a pending handoff has no total until it is marked', () => {
+  const graded = grade(ANSWERS);
+  const pendingResult = combineScores(graded, null);
+  assert.equal(pendingResult.status, 'pending_review');
+  assert.equal(pendingResult.total, null, 'a pending attempt must not show a final total');
+  assert.equal(pendingResult.partial_total, 24);
+
+  const marked = combineScores(graded, { earned: 6, max: 8 });
+  assert.equal(marked.status, 'scored');
+  assert.equal(marked.total, 30);
+  assert.equal(marked.total_max, 32);
+  assert.equal(marked.percent, 93.8);
+});
+
+test('a form without reviewer-marked items is scored immediately', () => {
+  const combined = combineScores({ overall_score: 40, auto_scored_max: 50, pending_review_points: 0 }, null);
+  assert.equal(combined.status, 'scored');
+  assert.equal(combined.total, 40);
+});
+
+test('candidate prose is trimmed but keeps the lines the reviewer needs', () => {
+  assert.equal(cleanNoteText('  first\r\nsecond  '), 'first\nsecond');
+  assert.equal(cleanNoteText(undefined), '');
+  assert.equal(cleanNoteText('x'.repeat(2000)).length, 1200);
+});
+
+/* ---------------------------------------------------------------- reviewer routes
+ * The two write routes are admin-only, audited, and separate: a decision never edits a score. */
+
+// The review routes need a genuinely published version, so this harness starts from an empty
+// database and publishes the blueprint fixture through the admin API.
+async function emptyHarness() {
+  const db = database();
+  const env = { ASSESSMENT_DB: db, ASSESSMENT_ADMIN_KEY: 'synthetic-admin', ASSESSMENT_ID_HASH_KEY: 'synthetic-key-with-at-least32-characters-for-tests', ASSESSMENT_PII_KEY: btoa('0'.repeat(32)) };
+  async function call(path, data, cookie, admin = false) {
+    const response = await onRequest({ env, request: new Request(origin + '/api/assessment/' + path, {
+      method: data === undefined ? 'GET' : 'POST',
+      headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}), ...(admin ? { 'x-tt-assessment-admin': '1' } : {}), 'CF-Connecting-IP': '192.0.2.5' },
+      body: data === undefined ? undefined : JSON.stringify(data),
+    }) });
+    return { status: response.status, data: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
+  }
+  return { db, env, call, fields: { assessment_slug: 'ar-marked-v1', first_name: 'Synthetic', surname: 'Candidate', email: 'ar@example.invalid', consent_acknowledged: true, ...screeningFixture() } };
+}
+
+// Publish the blueprint fixture, submit a perfect answer sheet, and return the attempt id.
+async function markedAttempt() {
+  const t = await emptyHarness();
+  const login = await t.call('admin/login', { key: t.env.ASSESSMENT_ADMIN_KEY });
+  const cookie = login.cookie;
+  const draft = await t.call('admin/draft', {
+    ...blueprintPackage(), slug: 'ar-marked-v1', client_name: 'Talent Tree', title: 'Synthetic Marked Handoff Assessment',
+  }, cookie, true);
+  const published = await t.call('admin/publish', { version_id: draft.data.version_id, content_approved: true, privacy_approved: true, approval_reference: 'synthetic only' }, cookie, true);
+  assert.equal(published.status, 200, JSON.stringify(published.data));
+  const started = await t.call('start', { ...t.fields, assessment_slug: 'ar-marked-v1' });
+  assert.equal(started.status, 200, JSON.stringify(started.data));
+  const withHandoff = { ...ANSWERS, structured: { ...ANSWERS.structured, text: { ...ANSWERS.structured.text, bc1: 'A perfectly reasonable note: the invoice is held, the run is 14:00, I will call by 13:55.' } } };
+  const submitted = await t.call('submit', { ...withHandoff, attempt_id: started.data.attempt_id, save_revision: 0 }, started.cookie);
+  assert.equal(submitted.status, 200, JSON.stringify(submitted.data));
+  return { ...t, cookie, attemptId: started.data.attempt_id };
+}
+
+test('marking and deciding require an admin session', async () => {
+  const t = await markedAttempt();
+  const noCookie = await t.call('admin/review/' + t.attemptId, { reviewer: 'x', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } } }, null, true);
+  assert.equal(noCookie.status, 401);
+  // A session cookie alone is not enough: the admin header is also required.
+  const noHeader = await t.call('admin/review/' + t.attemptId, { reviewer: 'x', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } } }, t.cookie, false);
+  assert.equal(noHeader.status, 403);
+  const decisionNoAuth = await t.call('admin/decision/' + t.attemptId, { decision: 'hold', reason: 'synthetic reason', decided_by: 'x' }, null, true);
+  assert.equal(decisionNoAuth.status, 401);
+});
+
+test('a marked handoff completes the report without changing the automatic award', async () => {
+  const t = await markedAttempt();
+  const before = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  assert.equal(before.status, 200, JSON.stringify(before.data));
+  assert.equal(before.data.result.score_status, 'pending_review');
+  assert.equal(before.data.result.review.combined.total, null, 'a pending handoff must not show a total');
+  assert.equal(before.data.result.review.combined.partial_total, 24);
+  assert.equal(before.data.result.review.combined.auto_max, 24);
+  assert.equal(before.data.result.review.rubric[0].criteria.length, 4);
+
+  const marks = await t.call('admin/review/' + t.attemptId, { reviewer: 'Synthetic Reviewer', marks: { bc1: { r1: 2, r2: 1, r3: 1, r4: 1 } }, rationale: 'Covers the hold and the timing.' }, t.cookie, true);
+  assert.equal(marks.status, 200, JSON.stringify(marks.data));
+  assert.equal(marks.data.earned, 5);
+
+  const after = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  assert.equal(after.data.result.score_status, 'scored');
+  assert.equal(after.data.result.overall_score, 24, 'the automatic score must not move');
+  assert.equal(after.data.result.review.combined.total, 29);
+  assert.equal(after.data.result.review.combined.total_max, 32);
+  assert.equal(after.data.result.review.combined.auto_score, 24);
+  // The reviewer sees the candidate's own words, and only this candidate's words.
+  const note = after.data.question_review.find((q) => q.id === 'bc1');
+  assert.match(String(note.chosen), /reasonable note/);
+});
+
+test('a correction replaces a mark only with a recorded reason, and keeps the history', async () => {
+  const t = await markedAttempt();
+  const full = { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } };
+  await t.call('admin/review/' + t.attemptId, { reviewer: 'First Reviewer', marks: full }, t.cookie, true);
+
+  const noReason = await t.call('admin/review/' + t.attemptId, { reviewer: 'Second Reviewer', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 1 } } }, t.cookie, true);
+  assert.equal(noReason.status, 400, JSON.stringify(noReason.data));
+
+  const corrected = await t.call('admin/review/' + t.attemptId, { reviewer: 'Second Reviewer', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 1 } }, reason: 'Timing anchor re-read against the note' }, t.cookie, true);
+  assert.equal(corrected.status, 200, JSON.stringify(corrected.data));
+  assert.equal(corrected.data.earned, 7);
+  const reported = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  assert.equal(reported.data.result.review.marks.revision, 2, 'the live mark moves to revision 2');
+  assert.equal(reported.data.result.review.marks.earned, 7);
+  // The original mark is not overwritten: it is an appended revision in the audit history.
+  // One row per replaced mark: the first mark is copied into the history before the live row moves on.
+  const history = t.db.sqlite.prepare('SELECT revision, earned, reason FROM assessment_review_revisions WHERE attempt_id=? ORDER BY revision').all(t.attemptId);
+  assert.equal(history.length, 1);
+  assert.equal(history[0].revision, 1);
+  assert.equal(history[0].earned, 8, 'the superseded award is kept exactly');
+  assert.match(history[0].reason, /Timing anchor/);
+});
+
+test('an incomplete or invented mark is refused with a 400, not a silent zero', async () => {
+  const t = await markedAttempt();
+  const incomplete = await t.call('admin/review/' + t.attemptId, { reviewer: 'R', marks: { bc1: { r1: 2 } } }, t.cookie, true);
+  assert.equal(incomplete.status, 400);
+  const invented = await t.call('admin/review/' + t.attemptId, { reviewer: 'R', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2, r8: 2 } } }, t.cookie, true);
+  assert.equal(invented.status, 400);
+  const three = await t.call('admin/review/' + t.attemptId, { reviewer: 'R', marks: { bc1: { r1: 3, r2: 2, r3: 2, r4: 2 } } }, t.cookie, true);
+  assert.equal(three.status, 400);
+});
+
+test('the decision is recorded separately from the score and needs a reason', async () => {
+  const t = await markedAttempt();
+  const short = await t.call('admin/decision/' + t.attemptId, { decision: 'advance', reason: 'ok', decided_by: 'Synthetic' }, t.cookie, true);
+  assert.equal(short.status, 400);
+  const bad = await t.call('admin/decision/' + t.attemptId, { decision: 'maybe', reason: 'Adequate reasoning here', decided_by: 'Synthetic' }, t.cookie, true);
+  assert.equal(bad.status, 400);
+  const ok = await t.call('admin/decision/' + t.attemptId, { decision: 'advance', reason: 'Reconciliation evidence is strong', decided_by: 'Synthetic Lead' }, t.cookie, true);
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  const reported = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  assert.equal(reported.data.result.decision.decision, 'advance');
+  assert.equal(reported.data.result.decision.decided_by, 'Synthetic Lead');
+  // The score is still pending, because a decision is not a mark.
+  assert.equal(reported.data.result.score_status, 'pending_review');
+});
+
+test('a candidate cannot reach the reviewer routes at all', async () => {
+  const t = await markedAttempt();
+  const started = await t.call('start', { ...t.fields, assessment_slug: 'ar-marked-v1' });
+  assert.equal(started.status, 200, JSON.stringify(started.data));
+  const attempt = await t.call('admin/review/' + started.data.attempt_id, { reviewer: 'x', marks: { bc1: { r1: 2, r2: 2, r3: 2, r4: 2 } } }, started.cookie, true);
+  assert.ok([401, 403].includes(attempt.status), String(attempt.status));
+  assert.equal(t.attemptId === started.data.attempt_id, false);
 });

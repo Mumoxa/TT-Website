@@ -20,7 +20,11 @@ function overlapsTable(payload, key, table) {
     if (!Array.isArray(section.items)) throw new Error('Invalid published battery content.');
     for (const item of section.items) {
       const scoring = key.items[item.id];
-      if (!scoring || !Object.hasOwn(scoring, 'answer')) throw new Error('Incomplete published scoring key.');
+      if (!scoring) throw new Error('Incomplete published scoring key.');
+      // A reviewer-marked note carries no answer to leak, so it cannot overlap practice answers.
+      // Every other type must have an answer, or the guard fails closed.
+      if (item.type === 'note') continue;
+      if (!Object.hasOwn(scoring, 'answer')) throw new Error('Incomplete published scoring key.');
       if (prompts.has(normalize(item.prompt))) overlap();
       if ((item.options || []).some(option => options.has(normalize(option.text)))) overlap();
       const values = Array.isArray(scoring.answer) ? scoring.answer : [scoring.answer];

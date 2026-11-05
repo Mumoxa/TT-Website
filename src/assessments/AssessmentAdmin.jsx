@@ -64,7 +64,102 @@ function Login({ onSuccess }) {
   </section>;
 }
 
-function ResultReport({ report, onBack }) {
+/* Reviewer marking for a written handoff. Every criterion needs 0, 1 or 2; a correction requires a
+   reason, and the server records the revision. Nothing here edits the automatic score. */
+function MarkingPanel({ report, attemptId, onRecorded }) {
+  const review = report.result?.review;
+  const note = report.question_review?.find((q) => q.id === review?.rubric?.[0]?.item_id);
+  const written = note?.chosen && note.chosen !== 'Not answered' ? String(note.chosen) : '';
+  const existing = review?.marks;
+  const [marks, setMarks] = useState(() => Object.fromEntries((review?.rubric?.[0]?.criteria || []).map((c) => [c.id, existing?.marks?.[0]?.criteria?.find((m) => m.id === c.id)?.points ?? null])));
+  const [reviewer, setReviewer] = useState(existing?.reviewer || '');
+  const [rationale, setRationale] = useState(existing?.rationale || '');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const rubric = review?.rubric?.[0];
+  if (!rubric) return null;
+  const complete = rubric.criteria.every((c) => Number.isInteger(marks[c.id]));
+  const earned = rubric.criteria.reduce((n, c) => n + (Number.isInteger(marks[c.id]) ? marks[c.id] : 0), 0);
+  async function save() {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await request('review/' + attemptId, { method: 'POST', body: {
+        reviewer: reviewer.trim(), marks: { [rubric.item_id]: marks }, rationale,
+        ...(existing ? { reason: reason.trim() } : {}),
+      } });
+      setMessage('Marks recorded. The report total now includes the handoff.');
+      setReason('');
+      if (onRecorded) await onRecorded();
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  return <section className="tta-admin-panel">
+    <h2>Written handoff — reviewer marking</h2>
+    <p className="tta-admin-muted">This part is not scored automatically. Give each criterion 0, 1 or 2 using the anchors. The reason is required when you change an existing mark.</p>
+    <div className="tta-handoff-text"><h3>What the candidate wrote ({rubric.item_id})</h3>
+      <pre className="tta-handoff-note">{written || 'Nothing was written for this activity.'}</pre></div>
+    <div className="tta-marking-form">
+      {rubric.criteria.map((criterion) => <fieldset key={criterion.id} className="tta-criterion">
+        <legend>{criterion.label} <span className="tta-admin-muted">· 2 points</span></legend>
+        {criterion.anchors.map((anchor, index) => <label key={index} className="tta-anchor">
+          <input type="radio" name={'mark-' + criterion.id} checked={marks[criterion.id] === index}
+            onChange={() => setMarks((old) => ({ ...old, [criterion.id]: index }))} />
+          <span><strong>{index}</strong> {anchor}</span>
+        </label>)}
+      </fieldset>)}
+      <p className="tta-admin-mark-total"><strong>{earned}</strong> of {rubric.points} points selected</p>
+      <label>Reviewer<input value={reviewer} onChange={(e) => setReviewer(e.target.value)} maxLength={120} placeholder="Your name or reviewer reference" /></label>
+      <label>Rationale (optional)<textarea rows={3} value={rationale} onChange={(e) => setRationale(e.target.value)} maxLength={1000} /></label>
+      {existing && <label>Reason for changing the recorded mark<textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={600} placeholder="Required: why the earlier mark is being replaced" /></label>}
+      {error && <p className="tta-admin-error" role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      <button type="button" onClick={save} disabled={busy || !complete || reviewer.trim().length < 2 || (existing && reason.trim().length < 8)}>
+        {busy ? 'Recording…' : existing ? 'Record corrected mark' : 'Record marks'}
+      </button>
+      {existing && <p className="tta-admin-muted">Recorded by {existing.reviewer} on {formattedTime(existing.created_at)} · revision {existing.revision}. Earlier marks are retained in the audit history.</p>}
+    </div>
+  </section>;
+}
+
+/* The hiring decision is a separate record from the score, with its own reason and author. */
+function DecisionPanel({ report, attemptId, onRecorded }) {
+  const current = report.result?.decision;
+  const [decision, setDecision] = useState(current?.decision || '');
+  const [reason, setReason] = useState('');
+  const [decidedBy, setDecidedBy] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  async function save() {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await request('decision/' + attemptId, { method: 'POST', body: { decision, reason: reason.trim(), decided_by: decidedBy.trim() } });
+      setMessage('Decision recorded.');
+      if (onRecorded) await onRecorded();
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  return <section className="tta-admin-panel no-print">
+    <h2>Hiring decision</h2>
+    <p className="tta-admin-muted">The decision is recorded separately and never changes a score. Current: {current ? <><strong>{current.decision.replace('_', ' ')}</strong> by {current.decided_by}</> : 'not recorded'}</p>
+    {current && <p className="tta-admin-muted">{current.reason}</p>}
+    <div className="tta-marking-form">
+      <label>Decision<select value={decision} onChange={(e) => setDecision(e.target.value)}>
+        <option value="">Select</option><option value="advance">Advance to interview</option>
+        <option value="hold">Hold</option><option value="not_advance">Not advance</option>
+      </select></label>
+      <label>Reason<textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={1000} placeholder="At least 8 characters" /></label>
+      <label>Decided by<input value={decidedBy} onChange={(e) => setDecidedBy(e.target.value)} maxLength={120} /></label>
+      {error && <p className="tta-admin-error" role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      <button type="button" onClick={save} disabled={busy || !decision || reason.trim().length < 8 || decidedBy.trim().length < 2}>{busy ? 'Saving…' : 'Record decision'}</button>
+    </div>
+  </section>;
+}
+
+function ResultReport({ report, onBack, onRecorded }) {
   const r = report.result, a = report.attempt;
   // Wording follows the assessment that was taken, never a hard-coded product family.
   const receivable = /receivable|debtor/i.test(report.assessment?.title || '');
@@ -95,6 +190,7 @@ function ResultReport({ report, onBack }) {
       <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
       <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
     </div>
+    <MarkingPanel report={report} attemptId={a.id} onRecorded={onRecorded} />
     <section className="tta-admin-panel">
       <h2>Assessment interpretation</h2>
       <p>{r?.interpretation || 'The assessment has not yet been scored.'}</p>
@@ -155,6 +251,7 @@ function ResultReport({ report, onBack }) {
       <h2>Audit records</h2>
       <ol>{(report.audit_events||[]).map((event,i)=><li key={i}>{formattedTime(event.created_at)} — {event.event_type} ({event.actor_type})</li>)}</ol>
     </section>
+    <DecisionPanel report={report} attemptId={a.id} onRecorded={onRecorded} />
     <section className="tta-admin-panel no-print">
       <h2>Structured response evidence</h2>
       <pre className="tta-admin-json">{JSON.stringify(report.responses, null, 2)}</pre>
@@ -241,7 +338,7 @@ function Workspace({ onExpired }) {
   async function openReport(id) {
     setBusy(true); setError('');
     try {
-      setActiveReport(await request('report/' + encodeURIComponent(id)));
+      setActiveReport(await request('report/' + encodeURIComponent(id.trim())));
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
@@ -250,7 +347,9 @@ function Workspace({ onExpired }) {
     [a.first_name, a.surname, a.email, a.client_name, a.title].join(' ').toLowerCase().includes(search.toLowerCase()));
 
   if (activeReport) return <main className="tta-admin-shell">
-    <ResultReport report={activeReport} onBack={() => { setActiveReport(null); void load(); }} />
+    <ResultReport report={activeReport}
+      onBack={() => { setActiveReport(null); void load(); }}
+      onRecorded={async () => { setActiveReport(await request('report/' + activeReport.attempt.id)); }} />
   </main>;
 
   return <main className="tta-admin-shell tta-admin-main">

@@ -1,6 +1,6 @@
 # Accounts Receivable assessment — duplicate of the payable assessment
 
-Status: **platform verified locally; AR content drafted and privately authored; not published, not piloted, not validated.**
+Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; not published, not piloted, not validated.**
 Last updated: 2026-11-05.
 
 This document describes how the accounts receivable (AR) assessment was produced by duplicating the
@@ -35,7 +35,7 @@ second content package plus the small number of places that were hard-coded to o
 
 - Catalogue: `/assessments` now lists both published assessments.
 - Welcome: `/assessments/ar-clerk-v1` (title "Accounts Receivable Clerk Assessment", client
-  "Talent Tree", 20-minute server-enforced limit, 5 sections).
+  "Talent Tree", 20-minute server-enforced limit, 6 sections).
 - No invitation is needed; the existing optional invitation links keep working.
 - Recruiter: `/admin/assessments` — the candidate list, report, printable PDF and result email are
   the same surfaces, filtered by assessment.
@@ -43,6 +43,53 @@ second content package plus the small number of places that were hard-coded to o
 **Nothing is published.** The catalogue shows the AR assessment only after the owner publishes an
 approved version (section 5). Until then `/assessments/ar-clerk-v1` correctly reports that the
 assessment is not open.
+
+## 2a. Conformance to the Talza Assessment Blueprint
+
+The content is authored against the blueprint supplied by the owner (A.0.2, 5 November 2026). The
+blueprint is a specification, not evidence: where it states a rule it is implemented, and where it
+states something that only local evidence can settle (timing, weights, difficulty labels, cut score)
+this document records the gap in section 6 instead of asserting a result.
+
+| Blueprint requirement | How the build satisfies it |
+| --- | --- |
+| Component weights A 20 / B 60 / C 20 | Four scoring components: A Foundations 20, B Work sample 60 (B1 16, B2 24, B3 20), C Controls and handoff 20 (C1 12, C2 8). A section's `cap` is now a point weight, and the validator refuses a section whose authored points do not equal its cap, so a component cannot drift away from its share. |
+| Named tasks A1–A6, B1–B3, C1–C3 | Item ids carry the blueprint task: `a1`–`a6`, `b1a`–`b1d`, `b2a`–`b2f`, `b3a`–`b3e`, `c2a`–`c2c`, `c2d`. |
+| 25 fields, 12 scored tasks | 25 activities in 6 sections: 24 auto-scored fields worth **92** points plus one written handoff worth **8**, marked by a person. |
+| Wording tiers and difficulty labels | Items carry `level`: 25 points foundation, 51 core, 16 stretch (blueprint target 25/59/16; see deviation 3 in section 7). The level is a quiet label in the candidate UI, never a hint or a score. |
+| Unsigned amounts as exact cents | Amount fields are `format: "rand"`. `cleanBatteryWorkbook` refuses a minus sign or brackets on entry, so a signed figure never becomes a wrong answer. `R2 300,00`, `2,300.00` and `2300` all parse to the same cents. |
+| A reference field takes a single document code | New item type `ref`, compared on letters and digits only (`GRN-77` = `GRN 77` = `grn77`). An amount typed in a code box scores zero, and the box warns before submission. |
+| Zero or full points per field; a blank submitted field is 0 | Unchanged engine behaviour; a blank is scored as wrong rather than skipped, so a submitted form is always out of the full mark. |
+| Human-marked handoff, 0/1/2 on four anchors | New item type `note`. The rubric lives in the scoring key, never in the candidate payload. `validateReview` requires all four criteria and rejects 3, 1.5, a missing criterion or an invented one. A note is never auto-scored. |
+| Manual marks kept separate from the automatic score | `assessment_reviews` (live mark) and `assessment_review_revisions` (every replaced mark, with its reason). The automatic award does not move when a handoff is marked. |
+| A decision is not a score | `assessment_decisions` records `advance` / `hold` / `not_advance` with an author and a reason, and never writes to a score column. |
+| A pending attempt has its own status and no composite | `combineScores` returns `status: "pending_review"` and `total: null` until the handoff is marked; the report shows the automatic award as a partial score only. |
+| No cascading errors | Reference, disposition and result are separate fields, the two adjusted balances are separate dependent fields, and no field borrows another exhibit's figure. |
+| No keys, anchors or rationale in the candidate payload | `publicBattery` emits id, type, prompt, level, instructions, options, cell ref, and amount format only. A test asserts the words `rubric` and `anchors` never appear in the candidate payload. |
+| Rejects a 70 % convention as a cut score | No cut score is applied or displayed. `passed` / `pass_percent` remain computed and unsurfaced (see section 7). |
+| AR is a later expansion profile needing its own matrix, form version and validation record | This form is version `ar-clerk-v1` with its own content, its own practice table and its own approval record; it makes no claim to inherit the AP form's validity. |
+
+### Deviations and open items against the blueprint
+
+Recorded rather than papered over:
+
+1. **No cut score, no pilot, no Angoff study.** The blueprint asks for independent South African SMEs
+   and a 100–200 attempt pilot per stable form. Neither exists. The form is labelled **draft/pilot**
+   and no validity claim is made anywhere in the product.
+2. **Timing is unproven.** 25 fields in 20 minutes is a design assumption, not a measurement. The
+   blueprint's own ~28-minute figure is a design target; this form keeps the platform's existing
+   20-minute limit and needs a timed pilot before either number is repeated as fact.
+3. **Difficulty mix is 25/51/16 rather than 25/59/16.** Four points sit one tier lower than the
+   blueprint's authored mix. The blueprint's item-review bands (foundation .75–.95, core .45–.80,
+   stretch .30–.65) cannot be applied until real responses exist, so these labels are author intent.
+4. **One handoff, not one per component.** The blueprint's handoff is a single written note worth 8
+   points, marked on the four anchors (facts, payment status, next action and owner, timing). It is C2.
+5. **The reviewer workflow is API and admin-UI only.** There is no bulk marking queue, no second
+   reviewer and no reviewer training record. Marking is one reviewer, one attempt, recorded and
+   auditable.
+6. **B1's documents are restated inside the prompts.** The workbook has one documents tab, so the
+   purchase order, goods-received note and invoice for B1 appear in the task text rather than as a
+   separate sheet. This is a presentation compromise, not a change to the task.
 
 ## 3. What had to change in shared code
 
@@ -69,8 +116,19 @@ Small, and each was required for correctness rather than preference:
 5. **Stored engine name** (`functions/lib/battery.js`). `ap-battery-v2` → `battery-v2`, because the
    same engine grades every family. History is unaffected: the value is only written to new rows.
 
-No database migration was needed. No binding, secret, `wrangler.toml` entry or offers code was
-touched.
+6. **Reviewer marking** (`functions/lib/assessment-review.js`, the review and decision routes,
+   `migrations/assessments/0004_reviewer_marking.sql`). Three additive tables:
+   `assessment_reviews`, `assessment_review_revisions`, `assessment_decisions`. Both write routes are
+   admin-only, audited, and refuse to change a submitted attempt's answers.
+7. **Level and format payload** (`functions/lib/battery.js`). The candidate payload now carries an
+   item's `level` and optional `hint`; neither is key material. `practice-isolation.js` now treats a
+   `note` item as carrying no answer to leak, instead of failing the key as incomplete.
+
+**Migration 0004 must be applied** to `tt-assessments` before a handoff can be marked in any
+environment (`node scripts/assessment-local.mjs migrate`, or `wrangler d1 migrations apply`). Until it
+is applied, the recruiter report still opens, but the review and decision routes return a 500 — the
+report queries `assessment_reviews`. Nothing else was touched: no binding, secret, `wrangler.toml`
+entry or offers code changed.
 
 ## 4. Where the AR content lives
 
@@ -97,21 +155,26 @@ node private/assessments/ar-clerk-v1/build.mjs        # rebuild + self-check
 node private/assessments/ar-clerk-v1/verify-local.mjs # end-to-end through the real function
 ```
 
-Draft shape (26 activities in 5 sections, two answer formats, documents rather than an editable grid):
+Draft shape (25 activities in 6 sections, 92 auto-scored points plus an 8-point written handoff):
 
-| # | Section focus | Activities |
-| --- | --- | --- |
-| 1 | Debtors ledger and credit control | 5 single |
-| 2 | Invoices, VAT and revenue documents | 5 single |
-| 3 | Reconciling a customer account | 2 multi-select |
-| 4 | Cash application and deductions | 1 short answer, 3 typed amounts, 3 single |
-| 5 | Ageing, provision and month-end | 1 typed count, 4 typed amounts, 1 single, 1 multi-select |
+| Section | Blueprint task | Weight | Activities |
+| --- | --- | --- | --- |
+| Part A · Foundations | A1–A6 | 20 | 6 single-choice (credit purchase, 14-day terms, VAT inside a gross amount, a possible duplicate, a cut-off exception, a credit note) |
+| B1 · Check an invoice against delivery | B1 | 16 | 3 typed results (units received, undelivered value, document code) and 1 disposition |
+| B2 · Reconcile a supplier statement | B2 | 24 | 4 typed amounts (invoice value, claimed discount, discount allowed by the terms, balance outstanding), 1 disposition, 1 document choice |
+| B3 · Reconcile the ledger to the cashbook | B3 | 20 | 4 typed amounts (ledger total, 61–90 bucket, 2 % provision, misallocated receipt) and 1 typed count |
+| C1 · Payment controls and priority | C1–C3 | 12 | 3 single-choice (bank-detail change, verification evidence, what comes first before a payment run locks) |
+| C2 · Written handoff | C2 | 8 | 1 written note, reviewer-marked 0/1/2 on four anchors |
 
-Weighting follows AP exactly: knowledge out of 40, practical work out of 60, overall out of 100.
+The weight is the section's points, and the validator enforces `sum(item points) == section cap`, so
+the composite is a plain sum out of 92 rather than a ratio that can drift. Composite = A/20 + B/60 +
+C/20 exactly as the blueprint specifies, with C's 8 written points pending until a reviewer marks them.
+
 Item types, opaque option ids (`o1`…`o8`), per-item instructions, `format: "rand"` / `"count"` answer
 boxes, the amount read-back, and `display: "documents"` all mirror the AP battery. The scenario uses
-fictional customers and a fictional ledger; it shares no prompt, option, table or answer with the AP
-content (the practice guard enforces the practice overlap only, since the AP package is not in git).
+fictional customers, a fictional supplier and a fictional ledger; it shares no prompt, option, table or
+answer with the live AP content, and reuses the blueprint's own fictional task scenarios, which were
+written for this form. The practice guard enforces non-overlap with the public practice items.
 
 ## 5. How to publish (owner action, needs approval)
 
@@ -134,11 +197,12 @@ content.
 
 | Check | Result |
 | --- | --- |
-| `npm test` | **327 passed, 0 failed** (318 before this work; 9 new AR tests) |
+| `npm test` | **347 passed, 0 failed** (327 before this work; 20 new AR and blueprint tests) |
 | `npm run build` | Pass |
-| Private package self-check (`build.mjs`) | Validator pass; perfect sheet 100 with no critical flag; wrong cell and unsafe choice both detected; amount read-back `R160 730,00` / `160,730.00` / `R 160730` all read correctly |
-| Private end-to-end (`verify-local.mjs`) | **PASS** — admin sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **100/100**, candidate sees percentages only, recruiter list and report reproduce 100/100 across 26 activities, and amounts typed as `R 160 730.00` still score 100 |
-| Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; runner shows 5 sections, documents visible with the grid hidden, 8 rand boxes and 1 count box (numeric keypad), read-back `Read as R160,730.00`, invalid entry announces an alert, no key material in the DOM |
+| `node scripts/assessment-local.mjs migrate` | Applies `0004_reviewer_marking.sql` cleanly |
+| Private package self-check (`build.mjs`) | Validator pass; weights 20/60/20 enforced; perfect auto-scored sheet = **92/92** with no critical flag; handoff = **8 pending**; full rubric 8, partial 6; an incomplete rubric is rejected; a negative amount is refused; `R2 300,00`, `2,300.00` and `2300` all read to the same cents |
+| Private end-to-end (`verify-local.mjs`) | **PASS** — sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **92/92**, handoff pending, candidate sees percentages only, recruiter report reproduces 92/92 over 25 activities with the rubric present, an amount typed as `R 2 300,00` still scores, an incomplete rubric is refused (400), a full rubric makes the total 100/100, a correction without a reason is refused (400), a correction with a reason records revision 2 at 99/100, and a hiring decision is recorded without moving the score |
+| Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; the runner renders the written-handoff textarea, the single-code input, the level labels and the "marked by a reviewer" note; no key material in the DOM |
 | Cross-family safety | A new AR battery that reuses AR practice cannot be published (400); a battery reusing any practice table is refused by `assertNoPracticeReuse` |
 
 ### Not verified — do not claim these
@@ -152,32 +216,39 @@ content.
 - **No real content approval, no SME review, no pilot.** The content is a draft written by an
   engineer, not by a receivables specialist.
 - **No validity evidence.** Nothing shows the score predicts job performance. Do not describe it as a
-  pass/fail or predictive cut-off; the 75% figure in the key is unused by any view.
+  pass/fail or predictive cut-off; the 75% figure in the key is unused by any view. The blueprint's
+  modified-Angoff study and its 100–200 attempt pilot have not been done, so no cut score may be set.
+- **No reviewer workflow rehearsal.** Marking was exercised by the local verifier and the unit tests,
+  not by a real reviewer on a real attempt. The admin marking and decision panels render, but no
+  browser run confirmed them end to end.
 - **Result email** for an AR attempt was not sent through a live provider.
 
 ## 7. Risks and decisions needed
 
-1. **Content quality is the main risk.** Fifteen knowledge activities and nine practical amounts were
-   written without SME review, including VAT and settlement-discount treatment under South African
-   practice. Two specific points need a decision: the 2% provision rate is an arbitrary exercise rate
-   (say so, or let the task state it — it currently does), and the settlement-discount activity in
-   section 4 assumes a written agreement that the ledger does not itself record, which is realistic
-   but should be confirmed as fair.
-2. **Time limit.** 26 activities in 20 minutes is slightly more than the AP battery's 23. The AP pilot
-   evidence suggested the workbook tasks, not the knowledge questions, consumed the time; here the
-   practical work is typed amounts rather than computed cells, which is faster, but this is unproven.
-   Pilot before relying on it.
-3. **Two assessments share one catalogue and one admin list.** Recruiters must filter. If that becomes
+1. **Content quality is the main risk.** 24 auto-scored fields and one written handoff were written
+   without SME review, including VAT inside a gross amount and settlement-discount treatment under
+   South African practice. Three points need a decision: the 2 % provision rate is an exercise rate
+   (the task says so), the settlement discount depends on a written agreement that the advice restates
+   rather than the ledger recording, and the reviewer anchors for "timing" must be read the same way by
+   every reviewer. All three are on the `APPROVAL.md` checklist.
+2. **Time limit.** 25 fields in 20 minutes is a design assumption. The written handoff alone will take
+   several minutes. Time a real attempt before relying on the limit, and consider 25 minutes if the
+   pilot shows the handoff is rushed.
+3. **Marking is a new operational step.** A handoff is not scored until a person marks it, so a
+   recruiter who never opens the marking panel will see a partial score with no total. That is
+   deliberate (a pending attempt must not look final), but it changes the recruiter's workflow and
+   needs to be stated in the operator instructions.
+4. **Two assessments share one catalogue and one admin list.** Recruiters must filter. If that becomes
    a problem, an explicit filter control in `/admin/assessments` is a small follow-up; the API already
    returns the assessment per attempt.
-4. **Party names can collide with the live AP assessment.** The first draft of this content
+5. **Party names can collide with the live AP assessment.** The first draft of this content
    independently chose customer names that the live AP assessment already uses (the AP versions are
    recorded in `PRODUCT_HANDOFF.md` section 4), which would have shown the same organisations in two
    assessments in one catalogue. They were renamed. Anyone drafting a further family should read that
    table first: the AP battery is not in git, but its party names are described there in the change
    log.
-5. **Practice content is public and non-financial by design.** If the owner prefers finance-flavoured
+6. **Practice content is public and non-financial by design.** If the owner prefers finance-flavoured
    practice for AR, change `practice-ar.js` — but re-run the isolation guard, because practice may not
    overlap the published battery.
-6. **Retention, privacy wording and test records** carry over unchanged from the AP assessment and
+7. **Retention, privacy wording and test records** carry over unchanged from the AP assessment and
    remain open decisions in `PRODUCT_HANDOFF.md` section 8.
