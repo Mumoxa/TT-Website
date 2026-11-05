@@ -32,3 +32,13 @@ test('repeated dependency graphs complete without exponential evaluation',()=>{
  const cells={A1:'1'};for(let r=2;r<=20;r++)cells['A'+r]='=SUM('+Array(6).fill('A'+(r-1)).join(',')+')';
  assert.ok(Number.isFinite(Number(calculateCell(cells,'A20'))));
 });
+
+test('absolute references ($A$1, A$1, $A1) resolve like plain references', () => {
+  const cells = { 'Ledger!A2': 'X-1', 'Ledger!A3': 'X-2', 'Sheet!B1': '5', 'Sheet!B2': '7' };
+  cells['Sheet!C1'] = '=IFERROR(VLOOKUP("X-2",Ledger!$A$2:$A$3,1,FALSE),"MISSING")';
+  assert.equal(calculateCell(cells, 'Sheet!C1'), 'X-2');
+  cells['Sheet!C2'] = '=SUM($B$1:B$2)+$B1';
+  assert.equal(calculateCell(cells, 'Sheet!C2'), '17');
+  cells['Sheet!C3'] = '=$$B1';
+  assert.equal(calculateCell(cells, 'Sheet!C3'), '#FORMULA!');
+});

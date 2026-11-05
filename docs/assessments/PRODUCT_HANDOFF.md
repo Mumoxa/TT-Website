@@ -62,6 +62,7 @@ These are decisions the owner has made. Do not change them without the owner.
 | Live content: instructions on all 23 items, including the c5 instruction | Implemented and live (v3) | Admin readback, 2026-11-05. Catalogue returns HTTP 200 with 23 items and 5 sections. |
 | Question 3.6 (c5) renders on the live site | Verified | A test attempt on 2026-11-05 showed four options, none selected, instructions present and no horizontal overflow at 1280px or 390px. |
 | Reference codes such as INV-2214 stay on one line | Implemented and live (PR #43, merged as `0676194`) | Live asset check, and the live screenshot of question 3.6. |
+| Formula engine accepts `$` absolute references (`$A$2:$A$7`) | Implemented on branch `claude/beautiful-noether-lc8u7p`, not deployed | Before this, `$` references returned `#FORMULA!` on the live site. Unit test added. |
 | Unit tests | Implemented; 312 passing on the branch before the merge | `npm test`. Re-run before any change. |
 | Browser tests | Partly verified | 11 of 11 pass in Chromium (battery, workbook and layout suites), run against a local harness on 2026-11-05. Firefox and WebKit have not been run since the last full cross-engine run, which predates later changes. |
 | Candidate flow end to end on production | Partly verified | Earlier live runs covered the welcome, form, timer, autosave, submit and results. A full run after the latest changes has not been repeated. |
