@@ -129,7 +129,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
         <section aria-labelledby="ca-expect-heading">
           <h2 id="ca-expect-heading">What to expect</h2>
           <ul className="ca-checklist">
-            <li>The timer starts when you press Start. It keeps running if you reload or close the page.</li>
+            <li>You see the instructions first. The timer starts only when you click OK, and keeps running if you reload or close the page.</li>
             <li>Choose answers, and type amounts in the box under each practical task. You may use a calculator and scrap paper.</li>
             <li>Answers save automatically. You see your results when you submit.</li>
             <li>Use a laptop or desktop and have your ID number ready.</li>
