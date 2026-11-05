@@ -122,7 +122,7 @@ export function Workbook({ sheets = null, source = {}, cells = {}, onChange, rea
                       onFocus={() => { setSelected(key); setEditing(key); }}
                       onChange={(e) => update(key, e.target.value)}
                       onBlur={() => setEditing((prev) => (prev === key ? null : prev))}
-                      onPaste={(e) => { if (paste(key, e.clipboardData.getData('text/plain'))) e.preventDefault(); }}
+                      onPaste={(e) => { if (paste(key, e.clipboardData?.getData('text/plain') ?? '')) e.preventDefault(); }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') { e.preventDefault(); move(key, 0, 1); }
                         else if (e.key === 'Tab') { e.preventDefault(); move(key, e.shiftKey ? -1 : 1, 0); }

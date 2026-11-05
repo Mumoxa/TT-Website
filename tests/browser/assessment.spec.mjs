@@ -21,7 +21,7 @@ test('workbook editing, formulas, paste clipping, undo and saved recovery',async
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByLabel('Cell C2',{exact:true})).toHaveValue('');
  await page.getByRole('button',{name:'Redo',exact:true}).click();
  // Real clipboardData must be constructed inside the browser.
- await page.getByLabel('Cell F20',{exact:true}).evaluate(el=>{const dt=new DataTransfer();dt.setData('text/plain','1\t2\n3\t4');el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));});
+ await page.getByLabel('Cell F20',{exact:true}).evaluate(el=>{const dt=new DataTransfer();dt.setData('text/plain','1\t2\n3\t4');const ev=new Event('paste',{bubbles:true,cancelable:true});Object.defineProperty(ev,'clipboardData',{value:dt});el.dispatchEvent(ev);});
  await page.getByLabel('Cell C3',{exact:true}).focus();await expect(page.getByRole('status').filter({hasText:'All changes saved'})).toBeVisible();
  await page.reload();await expect(page.getByRole('timer')).toBeVisible();await page.getByRole('button',{name:'Continue to reconciliation'}).click();
  await expect(page.getByLabel('Cell B2',{exact:true})).toHaveValue('');await expect(page.getByLabel('Cell C2',{exact:true})).toHaveValue('500');await expect(page.getByLabel('Cell F20',{exact:true})).toHaveValue('1');
@@ -44,7 +44,10 @@ test('admin draft authoring, approval, report and printable formula evidence',as
  await page.getByRole('button',{name:'Assessment setup',exact:true}).click();await page.getByLabel('Assessment package (JSON)',{exact:true}).fill(JSON.stringify({...SYNTHETIC,slug:'author-browser-'+Date.now()}));await page.getByRole('button',{name:'Save private draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');
  await page.getByRole('button',{name:'Results',exact:true}).click();await page.getByRole('button',{name:'View',exact:true}).first().click();await expect(page.getByRole('heading',{name:'Saved cells and formulas',exact:true})).toBeVisible();await expect(page.getByText('=SUM(B2:B3)',{exact:true})).toBeVisible();
  await page.screenshot({path:'.wrangler/browser-results/admin-report.png',fullPage:true});
- await page.emulateMedia({media:'print'});await page.pdf({path:'.wrangler/browser-results/synthetic-report.pdf',format:'A4',printBackground:true});expect(fs.statSync('.wrangler/browser-results/synthetic-report.pdf').size).toBeGreaterThan(10000);
+ const engine=page.context().browser().browserType().name();
+ await page.emulateMedia({media:'print'});
+ if(engine==='chromium'){await page.pdf({path:'.wrangler/browser-results/synthetic-report.pdf',format:'A4',printBackground:true});expect(fs.statSync('.wrangler/browser-results/synthetic-report.pdf').size).toBeGreaterThan(10000);}
+ // page.pdf is Chromium-only in Playwright; other engines check the printable report content above.
 });
 
 
