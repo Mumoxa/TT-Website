@@ -106,7 +106,7 @@ for(const width of [390,1280]){
    await page.getByLabel('Surname',{exact:true}).fill('Quality');
    await page.getByLabel('Email address',{exact:true}).fill('ui-quality@example.invalid');
    await fillScreening(page);
-   await page.getByRole('button',{name:'Start assessment',exact:true}).click();
+   await page.getByRole('button',{name:'Start assessment',exact:true}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();
    await expect(page.getByRole('timer')).toBeVisible();
    await expectClean(page,'candidate runner',width);
    await page.getByRole('button',{name:/Submit assessment/}).click();

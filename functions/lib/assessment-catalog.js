@@ -22,6 +22,8 @@ export async function assessmentCatalog(db, slug = null) {
       duration_minutes: Math.ceil(row.duration_seconds / 60),
       section_titles: sections ? sections.map(section => typeof section.title === 'string' ? section.title.slice(0, 120) : '') : ['Technical knowledge', 'Practical reconciliation'],
       item_count: sections ? sections.reduce((total, section) => total + (Array.isArray(section.items) ? section.items.length : 0), 0) : payload.questions.length + 1,
+      // Candidate-facing instruction text, shown before the timer starts. Contains no answers.
+      ...(sections && typeof payload.instructions === 'string' && payload.instructions.trim() ? { instructions: payload.instructions.trim().slice(0, 1500) } : {}),
     };
   }));
 }

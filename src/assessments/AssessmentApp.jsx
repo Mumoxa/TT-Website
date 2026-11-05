@@ -79,18 +79,40 @@ function AssessmentPrivacyNotice({ withConsentLine = true }) {
 }
 const cleanName = value => value.trim().replace(/\s+/g, ' ');
 
-export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error=''}) {
+/* Shown after the details are valid and before the attempt starts. The timer starts only on OK. */
+function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting }) {
+  const okRef = React.useRef(null);
+  React.useEffect(() => { okRef.current?.focus(); }, []);
+  return (
+    <div className="ca-modal-backdrop" onKeyDown={(e) => { if (e.key === 'Escape' && !isStarting) onCancel(); }}>
+      <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
+        <h2 id="ca-brief-title">Before the timer starts</h2>
+        <p id="ca-brief-text">{instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`}</p>
+        <p className="ca-modal-note">The {durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset.</p>
+        <div className="ca-modal-actions">
+          <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>
+          <button ref={okRef} type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={isStarting}>{isStarting ? 'Starting…' : 'OK, start the timer'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions=''}) {
   const catalogue=useAssessmentCatalog(!sectionTitles);
   const matching=catalogue.assessments.find(item=>item.title===assessmentTitle && item.client_name===client);
   const sections=sectionTitles || matching?.section_titles || ['Technical knowledge','Practical reconciliation'];
   const activities = itemCount ?? matching?.item_count;
   const [view,setView]=useState('welcome');
   const [firstName,setFirstName]=useState(''),[surname,setSurname]=useState(''),[email,setEmail]=useState('');
+  const [pending,setPending]=useState(null);
+  // A failed start closes the briefing so the error on the form is visible; the next Start reopens it.
+  useEffect(()=>{ if(error) setPending(null); },[error]);
   const [consent,setConsent]=useState(false),[screening,setScreening]=useState(emptyScreening),[validation,setValidation]=useState('');
   const canStart=Boolean(onStart && !isStarting && cleanName(firstName).length>=2 && cleanName(surname).length>=2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && consent);
   function handleSubmit(event) {
     event.preventDefault();if(!canStart)return;
-    try {const normalized=normalizeScreening(screening);setValidation('');onStart({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true});}
+    try {const normalized=normalizeScreening(screening);setValidation('');setPending({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true});}
     catch(e){setValidation(e.message);}
   }
   if(view==='practice')return <AssessmentFrame><AssessmentPractice onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
@@ -134,10 +156,12 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
             <label className="tta-consent"><input type="checkbox" checked={consent} required onChange={e=>setConsent(e.target.checked)}/><span>I agree to this processing.</span></label>
             {(validation||error) && <p className="tta-error" role="alert">{validation||error}</p>}
             <button className="ca-btn ca-btn--primary ca-btn--block" type="submit" disabled={!canStart}>{isStarting?'Starting assessment…':'Start assessment'} <span className="ca-arrow" aria-hidden="true">↗</span></button>
-            <p className="tta-form-note">The timer has not started. You cannot reset it once the assessment begins.</p>
+            <p className="tta-form-note">The timer has not started. You will see the instructions next, and the timer starts only when you click OK.</p>
           </form>
         </>}
       </section>
+      {pending && <StartBriefing instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
+        onCancel={()=>setPending(null)} onConfirm={()=>onStart(pending)} />}
     </main>
   </AssessmentFrame>;
 }
