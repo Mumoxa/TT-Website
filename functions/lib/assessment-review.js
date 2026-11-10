@@ -4,22 +4,20 @@
  * candidate's own words against evidence markers that the item keys define, so the mark is
  * reproducible and a marker can never inflate or withhold it:
  *   - each criterion is all-or-nothing, 2 points or 0, on the same zero-or-full rule as any field;
- *   - a criterion states what must be present (`all`), what earns it alone (`any`) and what
- *     disqualifies it (`none`), so "hold the refund" cannot earn a criterion that requires a time;
+ *   - `all` marks a fact that must be present, `any` marks a choice of which one must be present and
+ *     un-negated, and `none` disqualifies the criterion. A criterion with no positive marker can never
+ *     be earned, and is refused at build time;
  *   - the matched term is recorded with the mark, which is what makes the award auditable;
- *   - an empty answer earns nothing, and every mark names the marker it matched.
+ *   - an empty answer earns nothing.
  *
- * Reviewer marking is retired (see migrations/assessments/0005_automated_note_scoring.sql). The
- * helpers for it are kept only where they still describe a human decision, which is never a score.
+ * Reviewer marking is retired (see migrations/assessments/0005_automated_note_scoring.sql), so there
+ * is no human award to combine: `combineScores` exists only to present a final total.
  *
  * Pure logic only: no D1 and no network, so the rules can be unit-tested directly.
  */
 
 export const REVIEW_CRITERION_POINTS = 2;
 const MAX_NOTE = 1200;
-
-export const noteItems = (payload) => (payload?.sections || [])
-  .flatMap((section) => (section.items || []).filter((item) => item.type === 'note'));
 
 /* Text is compared case- and punctuation-insensitively, on whole words, so a marker cannot match
    inside another word ("hold" must not fire on "household"). */
@@ -31,14 +29,30 @@ const normalise = (value) => String(value ?? '')
   .trim();
 
 const escapeTerm = (term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const termPattern = (term) => new RegExp('(^|[^a-z0-9])' + escapeTerm(term) + '($|[^a-z0-9])');
 
-/* A negation immediately before a marker reverses it: "will not release the refund" must not be read
-   as "release the refund". Only the disqualifying markers need this, but the rule is shared. */
-const NEGATORS = /\b(not|never|no|without|don't|doesn't|won't|cannot|can't|isn't|aren't|avoid|stop)\b/;
+/* A negation in the same clause reverses a marker: "do not hold it" is not a decision to hold.
+   The window is deliberately narrow. A wide window let a negation intended for one phrase silently
+   suppress a different phrase ("do not touch the ledger, release the refund" must still fail), which
+   is the more dangerous error: it hides a wrong decision rather than over-crediting a correct one. */
+/* "not only X" is additive, not a negation, so it must not suppress the marker it precedes. */
+const NOT_ONLY = /\bnot only\b/g;
+const NEGATORS = /\b(not|never|no|none|without|don't|doesn't|didn't|won't|cannot|can't|isn't|aren't|avoid|avoiding|stop|refuse|refused|decline|declined)\b/;
+const CLAUSE_BREAK = /[,.;:!?()\u2014\u2013]|\bbut\b|\bhowever\b|\bso\b|\bthen\b|\bunless\b|\band\b/;
 
-/* Finds a marker that is not negated, so a candidate who says NOT to do the wrong thing is not
-   penalised for naming it. */
+/* True when the marker occurrence at `index` is negated by a negator in the same clause.
+   Scope is deliberately narrow, and what it does NOT do is worth knowing: a negation that retracts
+   an earlier mention ("hold it? no, do not hold") is not detected, because the negation follows the
+   marker. Supporting that needs real candidate phrasing to tune against, not invented examples. */
+function isNegated(haystack, index) {
+  const before = haystack.slice(Math.max(0, index - 40), index);
+  // Only the text after the last clause break can negate this occurrence.
+  const clause = (before.split(CLAUSE_BREAK).pop() || '').replace(NOT_ONLY, '');
+  return NEGATORS.test(clause);
+}
+
+/* Finds a marker that is not negated. Used for BOTH earning and disqualifying markers: a candidate
+   who writes "do not hold it" must not earn the hold criterion, and a candidate who writes "we will
+   not release the refund" must not be disqualified by the word "release". */
 export function matchUnnegated(text, markers) {
   const haystack = normalise(text);
   if (!haystack) return null;
@@ -46,34 +60,48 @@ export function matchUnnegated(text, markers) {
     const pattern = new RegExp('(^|[^a-z0-9])' + escapeTerm(term) + '($|[^a-z0-9])', 'g');
     let match;
     while ((match = pattern.exec(haystack)) !== null) {
-      const before = haystack.slice(Math.max(0, match.index - 28), match.index);
-      if (!NEGATORS.test(before)) return term;
+      // match.index covers the leading boundary character, so the marker itself starts just after it.
+      const markerIndex = match.index + (match[1] ? match[1].length : 0);
+      if (!isNegated(haystack, markerIndex)) return term;
       if (pattern.lastIndex === match.index) pattern.lastIndex += 1;
     }
   }
   return null;
 }
 
-/* Which marker produced the mark, if any. Returns the first marker that matched, so the report can
-   show the reviewer of the evidence why a criterion was awarded. */
-export function matchMarker(text, marker) {
+/* Presence only: the first marker found anywhere in the text, negated or not. */
+export function matchMarker(text, markers) {
   const haystack = normalise(text);
   if (!haystack) return null;
-  const terms = (marker || []).map((t) => normalise(t)).filter(Boolean);
-  return terms.find((term) => termPattern(term).test(haystack)) || null;
+  return (markers || []).map((t) => normalise(t)).filter(Boolean)
+    .find((term) => new RegExp('(^|[^a-z0-9])' + escapeTerm(term) + '($|[^a-z0-9])').test(haystack)) || null;
 }
 
-/* Scores one criterion, all or nothing. `all` must all be present, `any` must contribute at least
-   one, and any `none` term disqualifies the criterion outright. */
+/* Scores one criterion, all or nothing.
+   - `all`: every phrase must be PRESENT. Negation does not apply: these are facts and words, so
+     "Do not hold the INV-8841 refund" still contains the invoice number it is about.
+   - `any`: at least one phrase must be present AND not negated. These are the choices, so
+     "do not hold it" must not earn the hold criterion.
+   - `none`: any occurrence that is NOT negated disqualifies the criterion.
+   A criterion with no positive marker can never be earned: otherwise text that says nothing at all
+   would trip no disqualifier and collect the points by default. That case is rejected at build time,
+   and refused here as well so a malformed key cannot award marks. */
 export function scoreCriterion(criterion, text) {
   const haystack = normalise(text);
-  if (!haystack) return { id: criterion.id, points: 0, matched: null, missing: [] };
+  if (!haystack) return { id: criterion.id, points: 0, matched: null, missing: [], blank: true };
+  const positives = [...(criterion.all || []), ...(criterion.any || [])];
+  if (!positives.length) return { id: criterion.id, points: 0, matched: null, invalid: 'no positive marker' };
+
   const disqualified = matchUnnegated(haystack, criterion.none || []);
   if (disqualified) return { id: criterion.id, points: 0, matched: null, blocked_by: disqualified };
+
+  // `all` is presence-only: a fact is not reversed by a negation elsewhere in the sentence.
   const missing = (criterion.all || []).filter((term) => !matchMarker(haystack, [term]));
   if (missing.length) return { id: criterion.id, points: 0, matched: null, missing };
-  const anyMatched = (criterion.any || []).length ? matchMarker(haystack, criterion.any) : null;
+
+  const anyMatched = (criterion.any || []).length ? matchUnnegated(haystack, criterion.any) : null;
   if ((criterion.any || []).length && !anyMatched) return { id: criterion.id, points: 0, matched: null, missing: criterion.any };
+
   const matched = matchMarker(haystack, criterion.all || []) || anyMatched;
   return { id: criterion.id, points: REVIEW_CRITERION_POINTS, matched };
 }
@@ -88,12 +116,6 @@ export function scoreNote(keyItem, text) {
   const earned = rows.reduce((n, r) => n + r.points, 0);
   return { criteria: rows, earned, max, blank: answer.length === 0 };
 }
-
-/* The criteria an item is scored against, with their markers, for validation and for the audit note.
-   Never returned to a candidate. */
-export const noteCriteria = (payload, key) => (payload?.sections || [])
-  .flatMap((section) => (section.items || []).filter((item) => item.type === 'note'))
-  .map((item) => ({ item_id: item.id, points: item.points, criteria: key?.items?.[item.id]?.criteria || [] }));
 
 /* The final view of a grade. Every point is awarded automatically, so an attempt is scored the
    moment it is submitted and there is no pending state. */

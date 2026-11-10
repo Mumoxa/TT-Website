@@ -371,7 +371,14 @@ test('a criterion without markers, or with too many points, is refused at build 
     { id: 'r1', label: 'Facts' }, { id: 'r2', label: 'Status', any: ['hold'] },
     { id: 'r3', label: 'Next', any: ['call'] }, { id: 'r4', label: 'Timing', any: ['13:55'] },
   ] };
-  assert.throws(() => validateBattery(blueprintPackage(BLUEPRINT_SHAPE, noMarkers)), /needs at least one marker/);
+  assert.throws(() => validateBattery(blueprintPackage(BLUEPRINT_SHAPE, noMarkers)), /needs at least one positive marker/);
+  // Disqualifiers alone are refused too: they would award the points to any text that avoids the word.
+  const noneOnly = structuredClone(BLUEPRINT_KEY);
+  noneOnly.items.bc1 = { criteria: [
+    { id: 'r1', label: 'Facts', none: ['wrong'] }, { id: 'r2', label: 'Status', any: ['hold'] },
+    { id: 'r3', label: 'Next', any: ['call'] }, { id: 'r4', label: 'Timing', any: ['13:55'] },
+  ] };
+  assert.throws(() => validateBattery(blueprintPackage(BLUEPRINT_SHAPE, noneOnly)), /positive marker/);
 
   const imbalance = structuredClone(BLUEPRINT_KEY);
   imbalance.items.bc1 = { criteria: [{ id: 'r1', label: 'Facts', any: ['hold'] }, { id: 'r2', label: 'Rest', any: ['call'] }] };
@@ -426,10 +433,38 @@ test('markers match whole words only, so a marker cannot fire inside another wor
   assert.equal(scoreCriterion({ id: 'r', all: ['will'], any: ['call'] }, 'call was made').points, 0);
 });
 
+test('a negated decision does not earn the criterion it negates', () => {
+  const status = { id: 'r', any: ['hold', 'held'], none: ['release it'] };
+  // "do not hold it" is not a decision to hold: the marker must be read as negated.
+  assert.equal(scoreCriterion(status, 'do not hold it, it can go ahead').points, 0);
+  // A negation that RETRACTS an earlier mention in the same breath is a known limit, not a supported
+  // case: "hold it? no, do not hold" reads as the first mention. No realistic note is written that
+  // way, and the standing instruction is not to fit heuristics to contrived phrasing.
+  assert.equal(scoreCriterion(status, 'not only will I hold it, I will call the customer').points, 2, '"not only" is additive');
+  assert.equal(scoreCriterion(status, 'we will hold the payment').points, 2);
+});
+
 test('a negated disqualifier is not a disqualifier', () => {
   assert.equal(matchUnnegated('we will not release it today', ['release it']), null);
   assert.equal(matchUnnegated('we will release it today', ['release it']), 'release it');
-  assert.equal(matchUnnegated('will not call, and do not hold it', ['hold']), null);
+  assert.equal(matchUnnegated('never release it before verification', ['release it']), null);
+});
+
+test('a negation in one clause cannot hide a real disqualifier in another', () => {
+  // A wide negation window silently suppressed this and awarded the point. It must not.
+  const status = { id: 'r', any: ['hold'], none: ['release the refund'] };
+  const row = scoreCriterion(status, 'do not touch the ledger, release the refund');
+  assert.equal(row.points, 0);
+  assert.equal(row.blocked_by, 'release the refund');
+  // ...while the same negation in the same clause does suppress it.
+  assert.equal(scoreCriterion(status, 'do not release the refund; hold it').points, 2);
+});
+
+test('a criterion must be earnable: disqualifiers alone cannot carry points', () => {
+  // Text that says nothing would trip no disqualifier and collect the points by default.
+  assert.equal(scoreCriterion({ id: 'r', none: ['release'] }, 'anything at all').points, 0);
+  assert.equal(scoreCriterion({ id: 'r' }, 'some text').points, 0);
+  assert.equal(scoreCriterion({ id: 'r', none: ['release'] }, 'some text').invalid, 'no positive marker');
 });
 
 test('an empty handoff scores zero on every criterion', () => {
@@ -522,4 +557,32 @@ test('a candidate cannot reach the decision route', async () => {
   const started = await t.call('start', t.fields);
   const attempt = await t.call('admin/decision/' + started.data.attempt_id, { decision: 'advance', reason: 'Synthetic reasoning', decided_by: 'x' }, started.cookie, true);
   assert.ok([401, 403].includes(attempt.status), String(attempt.status));
+});
+
+test('a decision is audited against the authenticated admin, not a typed-in name', async () => {
+  const t = await scoredAttempt();
+  await t.call('admin/decision/' + t.attemptId, {
+    decision: 'hold', reason: 'Awaiting a second reference', decided_by: 'Some Name Typed In',
+  }, t.cookie, true);
+  const row = t.db.sqlite.prepare(
+    "SELECT actor_id FROM audit_events WHERE attempt_id=? AND event_type='assessment.decision_recorded'"
+  ).get(t.attemptId);
+  // A free-text name must never become the audit actor: a caller could write anything there.
+  assert.notEqual(row.actor_id, 'Some Name Typed In');
+  assert.equal(row.actor_id, 'assessment-admin');
+  // The typed name is still recorded where it belongs.
+  const decision = t.db.sqlite.prepare('SELECT decided_by FROM assessment_decisions WHERE attempt_id=?').get(t.attemptId);
+  assert.equal(decision.decided_by, 'Some Name Typed In');
+});
+
+test('audit events keep their insertion order within the same second', async () => {
+  const t = await scoredAttempt();
+  await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  await t.call('admin/decision/' + t.attemptId, { decision: 'advance', reason: 'Strong evidence throughout', decided_by: 'Lead' }, t.cookie, true);
+  const report = await t.call('admin/report/' + t.attemptId, undefined, t.cookie);
+  const events = report.data.audit_events.map((e) => e.event_type);
+  // created_at has one-second resolution, so submission and the first report view land in the same
+  // second; ordering must not depend on that column alone.
+  assert.ok(events.includes('assessment.submitted'));
+  assert.ok(events.indexOf('assessment.submitted') < events.indexOf('assessment.decision_recorded'));
 });

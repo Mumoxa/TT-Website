@@ -238,7 +238,10 @@ export function validateBattery(pkg) {
           // Every marker must be a plain phrase. An empty or overlong marker would match everything
           // or nothing, so it is a build error rather than a silent mis-score.
           const markers = [criterion.all, criterion.any, criterion.none];
-          if (!markers.some((list) => Array.isArray(list) && list.length)) bad(`Note criterion ${criterion.id} needs at least one marker.`);
+          // A criterion needs a POSITIVE marker to be earnable. Disqualifiers alone would award the
+          // points to any text that avoids the wrong word, including text that says nothing.
+          const positive = [criterion.all, criterion.any].some((list) => Array.isArray(list) && list.length);
+          if (!positive) bad(`Note criterion ${criterion.id} needs at least one positive marker (all or any).`);
           for (const list of markers) {
             if (list === undefined) continue;
             if (!Array.isArray(list) || list.length > 24) bad(`Invalid marker list for ${criterion.id}.`);
@@ -393,28 +396,6 @@ export function cleanBatteryWorkbook(cells, rules) {
 /* A document code is compared as normalised text. A code mixed with an amount is not a code, so it
    is reported as a format problem rather than silently marked wrong. */
 const REF_CODE = /^[A-Za-z]{2,6}-?\d{1,6}[A-Za-z]?$/;
-/* A signed amount is a format error before submission: fields ask for a positive figure, and the
-   reference fields take a document code. Refusing it here keeps a stray minus out of the score. */
-export function assertUnsignedAmounts(payload, answers) {
-  const refFields = new Set();
-  for (const section of payload.sections || []) {
-    for (const item of section.items || []) {
-      let ref = item.ref;
-      // The public payload names the cell on the activity instead of the item.
-      if (!ref) ref = payload.activities?.find((act) => act.id === item.id)?.ref;
-      if (item.type === 'cell' && ref) refFields.add(canonRef(ref));
-    }
-  }
-  for (const [ref, raw] of Object.entries(answers.workbook || {})) {
-    if (!refFields.has(canonRef(ref))) continue;
-    const text = String(raw ?? '').trim();
-    if (!text) continue;
-    const signed = /^-/.test(text) || /^[-−‒–—]/.test(text) || /^\(.*\)$/.test(text);
-    if (signed) throw new BatteryError(`Enter ${ref} as a positive amount without a minus sign.`);
-  }
-  return answers;
-}
-
 export function parseReference(value) {
   const text = String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, '');
   if (!text) return null;

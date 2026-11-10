@@ -383,7 +383,9 @@ async function batteryReport(db, a, attemptId) {
   const graded = gradeBattery({ payload: payloadObj, key: rubric }, answers);
   const reviewed = await decisionAndNotes(db, attemptId, graded);
   const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200').bind(attemptId).all();
-  const auditEvents = await db.prepare('SELECT event_type,actor_type,created_at FROM audit_events WHERE attempt_id=? ORDER BY created_at LIMIT 300').bind(attemptId).all();
+  // Order by insertion as well as time: created_at has one-second resolution, so two events in the
+  // same second would otherwise come back in an arbitrary order.
+  const auditEvents = await db.prepare('SELECT event_type,actor_type,created_at FROM audit_events WHERE attempt_id=? ORDER BY created_at, rowid LIMIT 300').bind(attemptId).all();
   await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
   return apiJson({
     ok: true,
@@ -439,7 +441,9 @@ async function adminDecision(request, db, attemptId) {
   if (!attempt) return failure('Assessment result not found.', 404);
   await db.prepare('INSERT INTO assessment_decisions (id, attempt_id, decision, reason, decided_by, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET decision=?, reason=?, decided_by=?, created_at=?')
     .bind(id(), attemptId, decision, reason, decidedBy, nowIso(), decision, reason, decidedBy, nowIso()).run();
-  await audit(db, 'admin', decidedBy, attemptId, 'assessment.decision_recorded');
+  // The audit actor is the authenticated admin, never a name typed into the form: a caller could
+  // otherwise write an arbitrary string into the audit trail. `decided_by` stays in its own column.
+  await audit(db, 'admin', 'assessment-admin', attemptId, 'assessment.decision_recorded');
   return apiJson({ ok: true, decision });
 }
 

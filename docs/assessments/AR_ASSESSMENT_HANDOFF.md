@@ -168,7 +168,7 @@ node private/assessments/ar-clerk-v1/build.mjs        # rebuild + self-check
 node private/assessments/ar-clerk-v1/verify-local.mjs # end-to-end through the real function
 ```
 
-Draft shape (25 activities in 6 sections, 92 auto-scored points plus an 8-point written handoff):
+Draft shape (25 activities in 6 sections, 100 points, every one scored by the server):
 
 | Section | Blueprint task | Weight | Activities |
 | --- | --- | --- | --- |
@@ -177,11 +177,39 @@ Draft shape (25 activities in 6 sections, 92 auto-scored points plus an 8-point 
 | B2 · Reconcile a supplier statement | B2 | 24 | 4 typed amounts (invoice value, claimed discount, discount allowed by the terms, balance outstanding), 1 disposition, 1 document choice |
 | B3 · Reconcile the ledger to the cashbook | B3 | 20 | 4 typed amounts (ledger total, 61–90 bucket, 2 % provision, misallocated receipt) and 1 typed count |
 | C1 · Payment controls and priority | C1–C3 | 12 | 3 single-choice (bank-detail change, verification evidence, what comes first before a payment run locks) |
-| C2 · Written handoff | C2 | 8 | 1 written note, scored automatically on four evidence anchors |
+| C2 · Written handoff | C2 | 8 | 1 written note (8 points), scored automatically on four evidence anchors |
 
 The weight is the section's points, and the validator enforces `sum(item points) == section cap`, so
 the composite is a plain sum out of 100 rather than a ratio that can drift. Composite = A/20 + B/60 +
 C/20 exactly as the blueprint specifies, and all 100 points are awarded on submission.
+
+### How the written handoff is scored
+
+The note is worth 8 points: four criteria at 2 points each, all or nothing within a criterion, so a
+candidate loses exactly the criteria their note does not evidence.
+
+| Criterion | Earned by | Disqualified by |
+| --- | --- | --- |
+| Facts | naming INV-8841 **and** the bank-detail change **and** calling it unverified | — |
+| Payment status | hold / held / holding / withhold / exclude | "release the refund", "release it" (unless negated) |
+| Next action with owner | "will" plus an action (call, contact, verify, confirm, escalate…) | — |
+| Timing | "update" plus a time today | — |
+
+Matching is whole-word, case- and punctuation-insensitive, and negation-aware: "we will **not**
+release it" satisfies the status criterion while "release it" fails it. A negation is scoped to its
+own clause, so a negation intended for one phrase cannot suppress a different phrase's disqualifier.
+
+**Known limits, stated rather than hidden:**
+
+1. This measures content, not quality. A well-formed but shallow note earns its 8 points; a thoughtful
+   note that never promises an update time loses 2.
+2. A negation that *follows* the word it retracts ("hold it? no, do not hold") is not detected. No
+   realistic note is written that way, and tuning against invented phrasing would be fitting the
+   marker set to the test rather than to candidates.
+3. Markers are language-dependent: a candidate who writes isiZulu or Afrikaans prose around the
+   document codes is not accredited by these markers, even when their reasoning is right. **This is the
+   strongest argument for either multilingual markers or returning to a human mark**, and it belongs in
+   the SME review.
 
 Item types, opaque option ids (`o1`…`o8`), per-item instructions, `format: "rand"` / `"count"` answer
 boxes, the amount read-back, and `display: "documents"` all mirror the AP battery. The scenario uses
@@ -210,12 +238,12 @@ content.
 
 | Check | Result |
 | --- | --- |
-| `npm test` | **350 passed, 0 failed** |
+| `npm test` | **353 passed, 0 failed** (the new tests cover the negation scope, the earnable-marker rule and the audit ordering) |
 | `npm run build` | Pass |
-| Migrations | `0004` and `0005` apply cleanly to a fresh SQLite database; checked by executing every migration in order |
+| Migrations | `0004` and `0005` apply cleanly in order to a fresh SQLite database. **Not applied to any remote database** — see section 3. |
 | Private package self-check (`build.mjs`) | Validator pass; weights 20/60/20 enforced; perfect sheet = **100/100** with no critical flag and nothing pending; handoff checks: compliant 8, no time 6, no owner 6, releases the refund 6, blank 0; a signed amount is refused; `R2 300,00`, `2,300.00` and `2300` all read to the same cents; the candidate payload leaks no criterion |
 | Private end-to-end (`verify-local.mjs`) | **PASS, 26 checks** — sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **100/100 with nothing pending**, an amount typed as `R 6410,00` still scores, the candidate is not told how the handoff is marked, the report reproduces 100/100 and lists the handoff's four criteria with the markers that earned them, a paper with a vague handoff scores 92 with only the handoff losing points, **marking by hand returns 404**, a hiring decision is recorded without moving the score (100/100), and a decision without a real reason is refused |
-| Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; the runner renders the written-handoff textarea, the single-code input and the level labels, and tells the candidate the note is checked for facts, action and time rather than style; no key material in the DOM |
+| Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; the runner renders the written-handoff textarea, the single-code input and the level labels, and tells the candidate the note is checked for facts, action and time rather than style; the report's handoff-evidence panel renders 6/8 with the four criteria, the matched marker and the missing one; no key material in the DOM |
 | Cross-family safety | A new AR battery that reuses AR practice cannot be published (400); a battery reusing any practice table is refused by `assertNoPracticeReuse` |
 
 ### Not verified — do not claim these
@@ -235,6 +263,25 @@ content.
   not by a real reviewer on a real attempt. The admin marking and decision panels render, but no
   browser run confirmed them end to end.
 - **Result email** for an AR attempt was not sent through a live provider.
+
+### Independent review of the automatic handoff scoring (2026-11-05)
+
+The handoff scorer was re-read adversarially after it was written, on the principle that a marker set
+which only passes its own examples has not been tested. Six defects were found and fixed; each is now
+covered by a test that fails without the fix.
+
+| # | Defect | Fix |
+| --- | --- | --- |
+| 1 | `matchMarker` ignored negation, so "do **not** hold it" earned the hold criterion. | Negation is applied wherever a *choice* is read: `any` and `none`. |
+| 2 | The negation window was 28 characters, so a negation meant for one phrase suppressed a different phrase's disqualifier ("do not touch the ledger, release the refund" passed). | The window is scoped to the marker's own clause; a comma, full stop, or "but/and/so" ends it. |
+| 3 | A criterion with disqualifiers only awarded its points to **any** text that avoided the wrong word, including text that said nothing. | A criterion must have a positive marker (`all` or `any`), enforced at build time and refused at scoring time. |
+| 4 | Clause-scoped negation then over-reached the other way: "Do **not** hold the INV-8841 refund" made the invoice number itself "negated", losing the facts criterion. | `all` markers are facts and are presence-only; only choices respect negation. |
+| 5 | A decision wrote the free-text `decided_by` name into the audit trail's `actor_id`, so a caller could write any string there. | The audit actor is the authenticated admin; the typed name stays in `decided_by`. |
+| 6 | The recruiter report ordered audit events by `created_at` alone, which has one-second resolution, so two events in the same second could come back in an arbitrary order. | Ordered by `created_at, rowid`, with a test that pins submit-before-decision. |
+
+Two findings were **not** fixed, and are recorded as limits rather than patched over: a negation that
+follows the word it retracts, and the fact that markers are English-only. Both are described in "Known
+limits" above. Nothing was changed on the strength of an invented example.
 
 ## 7. Risks and decisions needed
 
