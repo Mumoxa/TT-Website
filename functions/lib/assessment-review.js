@@ -79,7 +79,7 @@ export function matchMarker(text, markers) {
 
 /* Scores one criterion, all or nothing.
    - `all`: every phrase must be PRESENT. Negation does not apply: these are facts and words, so
-     "Do not hold the INV-8841 refund" still contains the invoice number it is about.
+     "Do not hold the DOC-1001 refund" still contains the document code it is about.
    - `any`: at least one phrase must be present AND not negated. These are the choices, so
      "do not hold it" must not earn the hold criterion.
    - `none`: any occurrence that is NOT negated disqualifies the criterion.

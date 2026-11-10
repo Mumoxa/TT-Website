@@ -139,7 +139,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                     value={texts[item.id] || ''}
                     onChange={(e) => patchDraft((old) => ({ ...old, structured: { ...old.structured, text: { ...(old.structured?.text || {}), [item.id]: isRef ? e.target.value.toUpperCase() : e.target.value } } }))} />
                   {isRef && String(texts[item.id] || '').trim() !== '' && !/^[A-Za-z]{2,6}-?\d{1,6}[A-Za-z]?$/.test(String(texts[item.id]).trim().replace(/\s+/g, ''))
-                    && <p className="tta-answer-readback is-error" role="alert">Enter one document code only, for example GRN-319. Remove any amount.</p>}
+                    && <p className="tta-answer-readback is-error" role="alert">Enter one document code only, for example ABC-123. Remove any amount.</p>}
                 </div>
               );
             }

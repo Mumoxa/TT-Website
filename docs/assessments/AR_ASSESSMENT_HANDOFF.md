@@ -88,9 +88,9 @@ Recorded rather than papered over:
    blueprint at the owner's direction. It buys full automation and removes the operational step, and
    it costs something that must be stated plainly: a written answer is now judged on the presence of
    evidence, not on the quality of the reasoning or the accuracy of the figures quoted. A candidate
-   who writes "INV-8841 is on hold, bank detail unverified, I will call the contact, update by 13:55"
-   earns 8 even if the surrounding explanation is poor; a candidate who explains the situation
-   beautifully but forgets to promise an update time loses 2. The markers are tuned to the facts the
+   who names the document, states the hold, promises an action and a time earns all 8 even if the
+   surrounding explanation is poor; a candidate who explains the situation beautifully but forgets to
+   promise an update time loses 2. The markers are tuned to the facts the
    note is asked to contain, and every mark names the marker that produced it, so the trade-off is
    visible rather than hidden. **If the owner ever wants a judgement of quality rather than content,
    that is the point where a human mark has to return.**
@@ -190,7 +190,7 @@ candidate loses exactly the criteria their note does not evidence.
 
 | Criterion | Earned by | Disqualified by |
 | --- | --- | --- |
-| Facts | naming INV-8841 **and** the bank-detail change **and** calling it unverified | — |
+| Facts | naming the invoice **and** the bank-detail change **and** calling it unverified | — |
 | Payment status | hold / held / holding / withhold / exclude | "release the refund", "release it" (unless negated) |
 | Next action with owner | "will" plus an action (call, contact, verify, confirm, escalate…) | — |
 | Timing | "update" plus a time today | — |
@@ -242,7 +242,7 @@ content.
 | `npm run build` | Pass |
 | Migrations | `0004` and `0005` apply cleanly in order to a fresh SQLite database. **Not applied to any remote database** — see section 3. |
 | Private package self-check (`build.mjs`) | Validator pass; weights 20/60/20 enforced; perfect sheet = **100/100** with no critical flag and nothing pending; handoff checks: compliant 8, no time 6, no owner 6, releases the refund 6, blank 0; a signed amount is refused; `R2 300,00`, `2,300.00` and `2300` all read to the same cents; the candidate payload leaks no criterion |
-| Private end-to-end (`verify-local.mjs`) | **PASS, 26 checks** — sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **100/100 with nothing pending**, an amount typed as `R 6410,00` still scores, the candidate is not told how the handoff is marked, the report reproduces 100/100 and lists the handoff's four criteria with the markers that earned them, a paper with a vague handoff scores 92 with only the handoff losing points, **marking by hand returns 404**, a hiring decision is recorded without moving the score (100/100), and a decision without a real reason is refused |
+| Private end-to-end (`verify-local.mjs`) | **PASS, 26 checks** — sign-in, draft, read-back identical to the intended payload and key, publish, catalogue metadata only, start, 20-minute server deadline, no key material in the candidate payload, opaque option ids, autosave, submit, **100/100 with nothing pending**, an amount typed as `R 1 234,50` still scores, the candidate is not told how the handoff is marked, the report reproduces 100/100 and lists the handoff's four criteria with the markers that earned them, a paper with a vague handoff scores 92 with only the handoff losing points, **marking by hand returns 404**, a hiring decision is recorded without moving the score (100/100), and a decision without a real reason is refused |
 | Rendering (React `renderToStaticMarkup`, real components) | AR practice renders the receivable table and **not** the payable one; AP practice renders its three original items unchanged; the runner renders the written-handoff textarea, the single-code input and the level labels, and tells the candidate the note is checked for facts, action and time rather than style; the report's handoff-evidence panel renders 6/8 with the four criteria, the matched marker and the missing one; no key material in the DOM |
 | Cross-family safety | A new AR battery that reuses AR practice cannot be published (400); a battery reusing any practice table is refused by `assertNoPracticeReuse` |
 
@@ -275,7 +275,7 @@ covered by a test that fails without the fix.
 | 1 | `matchMarker` ignored negation, so "do **not** hold it" earned the hold criterion. | Negation is applied wherever a *choice* is read: `any` and `none`. |
 | 2 | The negation window was 28 characters, so a negation meant for one phrase suppressed a different phrase's disqualifier ("do not touch the ledger, release the refund" passed). | The window is scoped to the marker's own clause; a comma, full stop, or "but/and/so" ends it. |
 | 3 | A criterion with disqualifiers only awarded its points to **any** text that avoided the wrong word, including text that said nothing. | A criterion must have a positive marker (`all` or `any`), enforced at build time and refused at scoring time. |
-| 4 | Clause-scoped negation then over-reached the other way: "Do **not** hold the INV-8841 refund" made the invoice number itself "negated", losing the facts criterion. | `all` markers are facts and are presence-only; only choices respect negation. |
+| 4 | Clause-scoped negation then over-reached the other way: "Do **not** hold the invoice refund" made the invoice number itself "negated", losing the facts criterion. | `all` markers are facts and are presence-only; only choices respect negation. |
 | 5 | A decision wrote the free-text `decided_by` name into the audit trail's `actor_id`, so a caller could write any string there. | The audit actor is the authenticated admin; the typed name stays in `decided_by`. |
 | 6 | The recruiter report ordered audit events by `created_at` alone, which has one-second resolution, so two events in the same second could come back in an arbitrary order. | Ordered by `created_at, rowid`, with a test that pins submit-before-decision. |
 

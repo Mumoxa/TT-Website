@@ -236,13 +236,13 @@ test('a receivable draft that reuses its own practice cannot be published', asyn
 
 const BLUEPRINT_KEY = { items: {
   ba1: { answer: 'o2' },
-  ba2: { answer: 'GRN-77' },
+  ba2: { answer: 'NOTE-77' },
   bb1: { answer: 800, tolerance: 0.005 },
   bb2: { answer: 'o2' },
   // A written handoff is scored by the server from these markers. No answer, no human, no exact
   // wording: the criteria are the marking scheme.
   bc1: { criteria: [
-    { id: 'r1', label: 'Facts', all: ['INV-8841', 'bank detail'], any: ['unverified', 'not verified'] },
+    { id: 'r1', label: 'Facts', all: ['DOC-1001', 'bank reference'], any: ['unverified', 'not verified'] },
     { id: 'r2', label: 'Status', any: ['hold', 'held', 'holding', 'withhold'], none: ['release the refund', 'release it'] },
     { id: 'r3', label: 'Next action', all: ['will'], any: ['call', 'contact', 'verify', 'confirm'] },
     { id: 'r4', label: 'Timing', all: ['update'], any: ['13:55', '14:00', '15:00'] },
@@ -286,13 +286,13 @@ const BLUEPRINT_SHAPE = {
 };
 
 // A note that satisfies all four criteria, and variants that miss exactly one.
-const GOOD_NOTE = 'The refund on INV-8841 is on hold: the bank detail change is unverified. I will call the contact on record. I will update you by 13:55.';
+const GOOD_NOTE = 'The refund on DOC-1001 is on hold: the bank reference change is unverified. I will call the contact on record. I will update you by 13:55.';
 
 const blueprintPackage = (shape = BLUEPRINT_SHAPE, key = BLUEPRINT_KEY) => ({ question_payload: shape, scoring_key: key });
 let cached = null;
 const validated = () => (cached ??= validateBattery(blueprintPackage()));
 const grade = (answers) => gradeBattery({ payload: BLUEPRINT_SHAPE, key: validated().scoring_key }, answers);
-const ANSWERS = { mcq: { ba1: 'o2', bb2: 'o2' }, structured: { text: { ba2: 'GRN-77', bc1: GOOD_NOTE }, multi: {} }, workbook: { 'Working!B2': '800' } };
+const ANSWERS = { mcq: { ba1: 'o2', bb2: 'o2' }, structured: { text: { ba2: 'NOTE-77', bc1: GOOD_NOTE }, multi: {} }, workbook: { 'Working!B2': '800' } };
 const withText = (extra) => ({ ...ANSWERS, structured: { ...ANSWERS.structured, text: { ...ANSWERS.structured.text, ...extra } } });
 
 test('the blueprint battery validates with weighted sections and a 32-point total', () => {
@@ -325,7 +325,7 @@ test('a ref field scores the document code only, and an amount in that box score
   assert.equal(grade(ANSWERS).items.find((i) => i.id === 'ba2').awarded, 4);
   assert.equal(grade(withText({ ba2: '1200' })).items.find((i) => i.id === 'ba2').awarded, 0);
   // One code, written either way, still scores.
-  for (const typed of ['grn-77', 'GRN 77', ' GRN-77 ', 'grn77']) {
+  for (const typed of ['note-77', 'NOTE 77', ' NOTE-77 ', 'note77']) {
     assert.equal(grade(withText({ ba2: typed })).items.find((i) => i.id === 'ba2').awarded, 4, typed);
   }
 });
@@ -341,12 +341,12 @@ test('the whole form is scored on submission, with nothing left pending', () => 
 test('a handoff earns two points per criterion, and loses only the criterion it misses', () => {
   const awarded = (text) => grade(withText({ bc1: text })).items.find((i) => i.id === 'bc1').awarded;
   assert.equal(awarded(GOOD_NOTE), 8);
-  assert.equal(awarded('The INV-8841 refund is on hold: the bank detail change is unverified. I will call the contact.'), 6, 'no time given');
-  assert.equal(awarded('The INV-8841 refund: the bank detail change is unverified, hold it. Update by 13:55.'), 6, 'no owner action');
+  assert.equal(awarded('The DOC-1001 refund is on hold: the bank reference change is unverified. I will call the contact.'), 6, 'no time given');
+  assert.equal(awarded('The DOC-1001 refund: the bank reference change is unverified, hold it. Update by 13:55.'), 6, 'no owner action');
   // Releasing the refund loses the status criterion; "I will update you" also names no action, so
   // this variant loses two and the test pins exactly that.
-  assert.equal(awarded('The INV-8841 refund: the bank detail change is unverified, so release the refund. I will update you by 13:55.'), 4, 'released the refund, no action');
-  assert.equal(awarded('The INV-8841 refund: the bank detail change is unverified, so release it. I will call the customer and update you by 13:55.'), 6, 'released the refund');
+  assert.equal(awarded('The DOC-1001 refund: the bank reference change is unverified, so release the refund. I will update you by 13:55.'), 4, 'released the refund, no action');
+  assert.equal(awarded('The DOC-1001 refund: the bank reference change is unverified, so release it. I will call the customer and update you by 13:55.'), 6, 'released the refund');
   assert.equal(awarded(''), 0, 'a blank handoff earns nothing');
   assert.equal(awarded('It is fine, will handle it.'), 0, 'one vague sentence earns nothing');
 });
@@ -354,7 +354,7 @@ test('a handoff earns two points per criterion, and loses only the criterion it 
 test('a negative instruction is not read as the wrong decision', () => {
   const awarded = (text) => grade(withText({ bc1: text })).items.find((i) => i.id === 'bc1').awarded;
   // "do not release the refund" is the correct outcome, so the disqualifier must not fire on it.
-  assert.equal(awarded('INV-8841 refund stays on hold: the bank detail change is unverified. I will contact the customer. I will not release the refund before 13:55. I will update you by 13:55.'), 8);
+  assert.equal(awarded('DOC-1001 refund stays on hold: the bank reference change is unverified. I will contact the customer. I will not release the refund before 13:55. I will update you by 13:55.'), 8);
 });
 
 test('a handoff mark names the marker that produced it, so the score can be audited', () => {
@@ -527,7 +527,7 @@ test('an attempt is scored the moment it is submitted, handoff included', async 
   assert.equal(note.id, 'bc1');
   assert.equal(note.earned, 8);
   assert.equal(note.criteria.length, 4);
-  assert.match(String(report.data.question_review.find((q) => q.id === 'bc1').chosen), /INV-8841/);
+  assert.match(String(report.data.question_review.find((q) => q.id === 'bc1').chosen), /DOC-1001/);
 });
 
 test('there is no longer any way to mark a handoff by hand', async () => {

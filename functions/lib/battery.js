@@ -19,7 +19,7 @@ export const BATTERY_FORMAT = 'battery-v2';
 // battery (payable, receivable or any later one); the assessment slug identifies the family.
 export const BATTERY_ENGINE = 'battery-v2';
 export const CATEGORY_WEIGHT = { knowledge: 40, reconciliation: 60 };
-// ref: a document reference (a single code such as GRN-319). note: a short written handoff, scored
+// ref: a document reference (a single code such as ABC-123). note: a short written handoff, scored
 // by the server from evidence markers in its key, on the same zero-or-full rule as any other field.
 const ITEM_TYPES = new Set(['single', 'multi', 'text', 'cell', 'ref', 'note']);
 // Cognitive demand. Only used for reporting and item-analysis targets; it never changes a score.
