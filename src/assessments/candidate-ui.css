@@ -689,3 +689,13 @@
 .ca-sample-answer span { font: 600 0.8rem/1 var(--sans); color: var(--muted); }
 .ca-sample-answer code { flex: 1; padding: 9px 12px; border: 1px solid var(--accent); border-radius: var(--radius); font: 400 0.95rem/1.2 ui-monospace, Consolas, monospace; color: var(--ink-deep); background: var(--white); }
 .ca-sample-task .ca-sample-read { margin: 6px 0 0 58px; font-size: 0.8rem; color: var(--muted); }
+
+/* Optional structured trial-balance response table. */
+.ca-page .tta-answer-table-wrap { overflow-x: auto; margin: 16px 0 24px; }
+.ca-page .tta-answer-table { width: 100%; min-width: 430px; border-collapse: collapse; background: var(--white); }
+.ca-page .tta-answer-table caption { padding: 10px; text-align: left; font-weight: 600; }
+.ca-page .tta-answer-table th, .ca-page .tta-answer-table td { padding: 8px; text-align: left; border: 1px solid var(--line-strong); vertical-align: top; }
+.ca-page .tta-answer-table select, .ca-page .tta-answer-table input { width: 100%; min-width: 100px; min-height: 46px; padding: 8px; font: inherit; color: var(--ink); background: var(--white); border: 1px solid var(--line-strong); }
+.ca-page .tta-answer-table select:focus-visible, .ca-page .tta-answer-table input:focus-visible { outline: 3px solid var(--accent-bright); outline-offset: 2px; }
+.ca-page .tta-table-readback { display: block; font-size: .8rem; color: var(--muted); }
+.ca-page .tta-table-readback.is-error { color: #8a1c14; }

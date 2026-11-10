@@ -174,3 +174,11 @@ Schema changes: apply migrations to the named assessment database only, after a 
 ## 12. Keeping this document current
 
 Update the "Last updated" date and the status table whenever content, deployment or policy changes. Record what was checked, how, and on which date. Use the labels in the header. Do not record secrets, live content or candidate data. Keep the owner decisions in section 8 until they are answered.
+
+### Bookkeeping to Trial Balance — partially implemented, unapproved
+
+A private draft and local package checker are described in `BOOKKEEPING_TO_TRIAL_BALANCE.md`. The shared battery engine and dynamic catalogue are reused; no production publication is implied. Subject-matter, timing, content and privacy review remain required before an owner-authorised release.
+
+### Structured trial-balance response — partially implemented
+
+An optional documents-mode debit/credit and amount table and a newly reconstructed private draft are described in `BOOKKEEPING_TO_TRIAL_BALANCE.md`. The prior private files were not present on continuation. Full journal and ledger construction, browser/accessibility verification, expert review and timing validation remain open; do not publish without owner approval.

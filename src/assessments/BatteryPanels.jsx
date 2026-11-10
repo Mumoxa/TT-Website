@@ -83,7 +83,39 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
         )}
         <section className="tta-battery-section" aria-labelledby={'sec-' + section.id}>
           <h2 id={'sec-' + section.id}>{section.title}</h2>
+          {section.answer_table && (() => {
+            const items = new Map(section.items.map(item => [item.id, item]));
+            return <div className="tta-answer-table-wrap">
+              <p>For each account, choose the balance side and enter its positive amount. Complete both fields for every row.</p>
+              <table className="tta-answer-table">
+                <caption>{section.answer_table.caption}</caption>
+                <thead><tr><th scope="col">Account</th><th scope="col">Balance side</th><th scope="col">Amount (R)</th></tr></thead>
+                <tbody>{section.answer_table.rows.map(row => {
+                  const side = items.get(row.side), amount = items.get(row.amount);
+                  const raw = String(draft.workbook?.[amount.ref] ?? '');
+                  const rb = readBack(amount, raw);
+                  return <tr key={row.side}>
+                    <th scope="row">{row.label}</th>
+                    <td id={'q-' + side.id}><select aria-label={side.prompt} value={singles[side.id] || ''}
+                      onChange={e => patchDraft(old => {
+                        const mcq = { ...old.mcq };
+                        if (e.target.value) mcq[side.id] = e.target.value; else delete mcq[side.id];
+                        return { ...old, mcq };
+                      })}>
+                      <option value="">Choose</option>{side.options.map(option => <option key={option.id} value={option.id}>{option.text}</option>)}
+                    </select></td>
+                    <td id={'q-' + amount.id}><input className="tta-answer-input" type="text" inputMode="decimal" autoComplete="off" spellCheck={false} maxLength={200}
+                      aria-label={amount.prompt} aria-describedby={'readback-' + amount.id} value={raw} placeholder="Amount"
+                      onChange={e => setCell(amount.ref, e.target.value)} />
+                      <span id={'readback-' + amount.id} className={'tta-table-readback' + (rb && !rb.ok ? ' is-error' : '')} aria-live="polite">{rb?.text || ''}</span>
+                    </td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>;
+          })()}
           {section.items.map((item, iIndex) => {
+            if (section.answer_table?.rows.some(row => row.side === item.id || row.amount === item.id)) return null;
             const number = `${sIndex + 1}.${iIndex + 1}`;
             if (item.type === 'single') {
               return (
