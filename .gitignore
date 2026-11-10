@@ -10,6 +10,11 @@ coverage/
 .wrangler/
 .dev.vars
 
+# Private assessment content and marking keys. This repository is PUBLIC:
+# live question wording, options, answers and rubrics live here, outside git,
+# and are published through the admin API only.
+private/
+
 # Python skill tooling
 __pycache__/
 

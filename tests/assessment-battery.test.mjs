@@ -15,7 +15,7 @@ const version = () => { const v = validateBattery(pkg()); return { payload: v.qu
 
 test('synthetic battery validates and reports its engine version', () => {
   const v = validateBattery(pkg());
-  assert.equal(v.engine, 'ap-battery-v2');
+  assert.equal(v.engine, 'battery-v2');
   assert.equal(v.scoring_key.pass_percent, 75);
 });
 
