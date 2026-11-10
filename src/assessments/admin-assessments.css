@@ -137,6 +137,11 @@
 
 .tta-admin-page :is(h1,h2,h3,td,dd,code) {overflow-wrap:anywhere;}
 
+/* Line-matching review: one line per statement or ledger entry; wrong lines marked. */
+.tta-admin-lines { margin: 0; padding: 0; list-style: none; }
+.tta-admin-lines li { padding: 1px 0; white-space: nowrap; }
+.tta-admin-lines li.is-wrong { color: #b42318; font-weight: 600; }
+
 /* Handoff evidence, marking inputs and the decision panel. Sharp corners, hairlines. */
 .tta-handoff-text { margin: 0 0 18px; padding: 14px 16px; background: var(--paper); border-left: 3px solid var(--accent); border-radius: var(--radius); }
 .tta-handoff-text h3 { margin: 0 0 8px; font: 600 0.82rem/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }

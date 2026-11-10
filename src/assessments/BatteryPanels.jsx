@@ -125,6 +125,50 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                 </fieldset>
               );
             }
+            if (item.type === 'match') {
+              const chosen = draft.structured?.match?.[item.id] || {};
+              const done = item.lines.filter((l) => chosen[l.id]).length;
+              const setLine = (lineId, choiceId) => patchDraft((old) => {
+                const all = { ...(old.structured?.match || {}) };
+                const mine = { ...(all[item.id] || {}) };
+                if (choiceId) mine[lineId] = choiceId; else delete mine[lineId];
+                all[item.id] = mine;
+                return { ...old, structured: { ...old.structured, match: all } };
+              });
+              let lastDoc = '';
+              return (
+                <fieldset key={item.id} id={'q-' + item.id} className="tta-question tta-match">
+                  <legend><span className="tta-qnum">{number}</span> {levelTag(item)} {keepReferences(item.prompt)}</legend>
+                  {instructionsFor(item)}
+                  <p className="tta-match-progress" aria-live="polite">{done} of {item.lines.length} lines classified</p>
+                  <div className="tta-match-table" role="table" aria-label={'Lines to classify for question ' + number}>
+                    {item.lines.map((line) => {
+                      const head = line.doc !== lastDoc; lastDoc = line.doc;
+                      const selectId = `m-${item.id}-${line.id}`;
+                      return (
+                        <React.Fragment key={line.id}>
+                          {head && <div className="tta-match-doc" role="row"><span role="columnheader">{line.doc}</span></div>}
+                          <div className={'tta-match-row' + (chosen[line.id] ? ' is-done' : '')} role="row">
+                            <label htmlFor={selectId} className="tta-match-line" role="cell">
+                              <span className="tta-ref">{line.ref}</span>
+                              <span className="tta-match-detail">{line.detail}</span>
+                              {line.amount && <span className="tta-match-amount">{line.amount}</span>}
+                            </label>
+                            <span role="cell">
+                              <select id={selectId} value={chosen[line.id] || ''} onChange={(e) => setLine(line.id, e.target.value)}
+                                aria-label={`${line.doc} line ${line.ref}: how does it compare?`}>
+                                <option value="">Choose…</option>
+                                {item.choices.map((c) => <option key={c.id} value={c.id}>{c.text}</option>)}
+                              </select>
+                            </span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              );
+            }
             if (item.type === 'text' || item.type === 'ref') {
               // A document code is one short token: no spaces, upper case, never an amount.
               const isRef = item.type === 'ref';

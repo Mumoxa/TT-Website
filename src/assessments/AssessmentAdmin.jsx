@@ -177,7 +177,12 @@ function ResultReport({ report, onBack, onRecorded }) {
       <div className="tta-admin-table-scroll"><table className="tta-admin-table">
         <thead><tr><th>Question</th><th>Candidate's answer</th><th>Expected answer</th><th>Outcome</th></tr></thead>
         <tbody>{(report.question_review || []).map((q, i) => <tr key={i}>
-          <td>{q.prompt}</td><td>{q.chosen}</td><td>{q.expected}</td><td>{q.correct ? 'Correct' : 'Incorrect'}</td>
+          {q.lines
+            ? <><td>{q.prompt}</td>
+                <td><ul className="tta-admin-lines">{q.lines.map((l) => <li key={l.id} className={l.ok ? undefined : 'is-wrong'}>{l.ref}: {l.given || 'Not answered'}{l.ok ? '' : ' ✗'}</li>)}</ul></td>
+                <td><ul className="tta-admin-lines">{q.lines.map((l) => <li key={l.id}>{l.ref}: {l.correct}</li>)}</ul></td>
+                <td>{q.awarded} of {q.lines.length} lines correct</td></>
+            : <><td>{q.prompt}</td><td>{q.chosen}</td><td>{q.expected}</td><td>{q.correct ? 'Correct' : 'Incorrect'}</td></>}
         </tr>)}</tbody>
       </table></div>
     </section>
