@@ -136,3 +136,8 @@
 }
 
 .tta-admin-page :is(h1,h2,h3,td,dd,code) {overflow-wrap:anywhere;}
+
+/* Line-matching review: one line per statement or ledger entry; wrong lines marked. */
+.tta-admin-lines { margin: 0; padding: 0; list-style: none; }
+.tta-admin-lines li { padding: 1px 0; white-space: nowrap; }
+.tta-admin-lines li.is-wrong { color: #b42318; font-weight: 600; }

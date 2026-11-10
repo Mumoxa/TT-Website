@@ -405,6 +405,7 @@ async function batteryReport(db, a, attemptId) {
     question_review: graded.items.map((i) => ({
       id: i.id, section: i.section, category: i.category, prompt: i.prompt, chosen: i.given ?? 'Not answered',
       expected: i.correctAnswer, correct: i.correct, awarded: i.awarded, points: i.points,
+      ...(i.lines ? { lines: i.lines } : {}),
     })),
     result: a.overall_score === null ? null : {
       overall_score: a.overall_score, knowledge_score: a.knowledge_score, reconciliation_score: a.reconciliation_score,

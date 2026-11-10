@@ -81,3 +81,27 @@ test('one point per correct line, and either duplicate reading counts', () => {
 test('line matching passes practice isolation', () => {
   assert.doesNotThrow(() => assertPracticeIsolation(pkg().question_payload, pkg().scoring_key));
 });
+
+test('the admin report shows each line the candidate classified, and which were wrong', async () => {
+  const { onRequest } = await import('../functions/api/assessment/[[path]].js');
+  const { database } = await import('./helpers/assessment-db.mjs');
+  const { screeningFixture } = await import('./helpers/screening-fixture.mjs');
+  const origin = 'https://assessment.example', db = database(), at = new Date().toISOString(), p = pkg();
+  db.sqlite.prepare('INSERT INTO assessment_definitions VALUES (?,?,?,?,600,?,?,?,?)').run('def', 'synthetic-match', 'Talent Tree', 'Synthetic match', 'ver', 'published', at, at);
+  db.sqlite.prepare('INSERT INTO assessment_versions VALUES (?,?,?,?,?,?,?,?)').run('ver', 'def', 'v1', JSON.stringify(p.question_payload), JSON.stringify(p.scoring_key), 'test', at, at);
+  const env = { ASSESSMENT_DB: db, ASSESSMENT_ADMIN_KEY: 'synthetic-admin', ASSESSMENT_ID_HASH_KEY: 'synthetic-key-with-at-least32-characters-for-tests', ASSESSMENT_PII_KEY: btoa('0'.repeat(32)) };
+  const call = async (path, data, cookie) => { const r = await onRequest({ env, request: new Request(origin + '/api/assessment/' + path, { method: data === undefined ? 'GET' : 'POST', headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}), 'CF-Connecting-IP': '192.0.2.9' }, body: data === undefined ? undefined : JSON.stringify(data) }) }); return { status: r.status, data: await r.json(), cookie: r.headers.get('set-cookie')?.split(';')[0] }; };
+  const a = await call('start', { assessment_slug: 'synthetic-match', first_name: 'Synthetic', surname: 'Candidate', email: 'match@example.invalid', consent_acknowledged: true, ...screeningFixture() });
+  assert.equal(a.status, 200, JSON.stringify(a.data));
+  const match = { mx: { l1: 'o1', l2: 'o4', l3: 'o1', l4: 'o3', l5: 'o4' } };
+  assert.equal((await call('submit', { attempt_id: a.data.attempt_id, save_revision: 0, mcq: {}, structured: { text: {}, multi: {}, match }, workbook: {} }, a.cookie)).status, 200);
+  const admin = await call('admin/login', { key: 'synthetic-admin' });
+  const report = await call('admin/report/' + a.data.attempt_id, undefined, admin.cookie);
+  assert.equal(report.status, 200);
+  const row = report.data.question_review.find((q) => q.id === 'mx');
+  assert.equal(row.awarded, 4);
+  assert.deepEqual(row.lines.map((l) => [l.ref, l.given, l.correct, l.ok]), [
+    ['S-100', 'Agrees', 'Agrees', true], ['S-200', 'Timing difference', 'Missing from ledger', false],
+    ['J-1', 'Agrees', 'Agrees', true], ['J-2', 'Posted incorrectly', 'Posted incorrectly', true], ['J-3', 'Timing difference', 'Timing difference', true],
+  ]);
+});
