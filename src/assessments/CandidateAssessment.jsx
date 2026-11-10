@@ -13,6 +13,8 @@ function batteryItemAnswered(item, draft) {
   if (item.type === 'single') return Boolean(draft.mcq?.[item.id]);
   if (item.type === 'multi') return (draft.structured?.multi?.[item.id] || []).length > 0;
   if (item.type === 'text') return String(draft.structured?.text?.[item.id] ?? '').trim() !== '';
+  // Line matching counts as answered once every line is classified.
+  if (item.type === 'match') { const m = draft.structured?.match?.[item.id] || {}; return (item.lines || []).every((l) => m[l.id]); }
   return String(draft.workbook?.[item.ref] ?? '').trim() !== '';
 }
 

@@ -22,6 +22,12 @@ export function assertPracticeIsolation(payload, key) {
       if (!scoring || !Object.hasOwn(scoring, 'answer')) throw new Error('Incomplete published scoring key.');
       if (prompts.has(normalize(item.prompt))) overlap();
       if ((item.options || []).some(option => options.has(normalize(option.text)))) overlap();
+      if (item.type === 'match') {
+        // Line matching: check the choice wording and the line wording against practice content.
+        if ((item.choices || []).some(choice => options.has(normalize(choice.text)) || answers.has(canonicalAnswer(choice.text)))) overlap();
+        if ((item.lines || []).some(line => prompts.has(normalize(line.detail)))) overlap();
+        continue;
+      }
       const values = Array.isArray(scoring.answer) ? scoring.answer : [scoring.answer];
       for (const value of values) {
         let text = value;
