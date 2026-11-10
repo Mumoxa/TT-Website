@@ -194,7 +194,16 @@ function Features() {
   );
 }
 
+// The catalogue lists more than one assessment family, so the illustrative task is not tied to
+// payables terminology. It stays an explicitly labelled sample with figures of its own.
+const SHOWCASE_SAMPLE = {
+  docTitle: 'Statement of account (sample)',
+  rows: [['S-1', 'Invoice', '1,200.00'], ['S-2', 'Invoice', '850.00'], ['S-3', 'Credit note', '−150.00']],
+  question: 'What balance does this statement show as due?',
+};
+
 function Showcase() {
+  const sample = SHOWCASE_SAMPLE;
   return (
     <section className="ca-section" aria-labelledby="ca-showcase-heading">
       <div className="ca-shell ca-showcase">
@@ -202,19 +211,17 @@ function Showcase() {
           <div className="ca-device" role="group" aria-label="Illustrative practical task with sample figures">
             <div className="ca-device-bar" aria-hidden="true"><i /><i /><i /><span>Practical task</span></div>
             <div className="ca-sheet ca-sample">
-              <p className="ca-sample-doc">Supplier statement (sample)</p>
+              <p className="ca-sample-doc">{sample.docTitle}</p>
               <div className="ca-sheet-scroll">
                 <table>
                   <thead><tr><th scope="col">Ref</th><th scope="col">Description</th><th scope="col" className="is-num">Amount (R)</th></tr></thead>
                   <tbody>
-                    <tr><td>S-1</td><td>Invoice</td><td className="is-num">1,200.00</td></tr>
-                    <tr><td>S-2</td><td>Invoice</td><td className="is-num">850.00</td></tr>
-                    <tr><td>S-3</td><td>Credit note</td><td className="is-num">−150.00</td></tr>
+                    {sample.rows.map(([ref, description, amount]) => <tr key={ref}><td>{ref}</td><td>{description}</td><td className="is-num">{amount}</td></tr>)}
                   </tbody>
                 </table>
               </div>
               <div className="ca-sample-task">
-                <p><strong>What balance does the supplier say you owe?</strong></p>
+                <p><strong>{sample.question}</strong></p>
                 <div className="ca-sample-answer"><span>Answer</span><code>R1 900,00</code></div>
                 <p className="ca-sample-read">Read as R1,900.00</p>
               </div>

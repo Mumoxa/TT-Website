@@ -11,6 +11,7 @@
 import {normalizeScreening, ScreeningValidationError} from '../../../src/assessments/screening.js';
 import {identityHash,encryptId,maskId,publicScreening,PrivacyConfigurationError} from '../../lib/candidate-privacy.js';
 import {assertPracticeIsolation} from '../../lib/practice-isolation.js';
+import {practiceForSlug} from '../../../src/assessments/practice-tables.js';
 import {candidateResult} from '../../lib/candidate-results.js';
 import { assessmentCatalog } from '../../lib/assessment-catalog.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
@@ -25,6 +26,7 @@ import { newAttemptTimes } from '../../lib/assessment-core.js';
 import { DEFAULT_ASSESSMENT_SECONDS } from '../../lib/assessment-deadlines.js';
 import { notifyPendingResults } from '../../lib/assessment-email.js';
 import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
+import { combineScores } from '../../lib/assessment-review.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -208,7 +210,7 @@ async function startAttempt(request, db, env) {
   const open=typeof data.assessment_slug==='string' && /^[a-z0-9-]{3,60}$/.test(data.assessment_slug);
   let invited;
   if(open){
-    const definition=await db.prepare("SELECT id AS definition_id,client_name,title,status AS assessment_status,duration_seconds,current_version_id FROM assessment_definitions WHERE slug=? AND status='published' AND current_version_id IS NOT NULL").bind(data.assessment_slug).first();
+    const definition=await db.prepare("SELECT id AS definition_id,slug,client_name,title,status AS assessment_status,duration_seconds,current_version_id FROM assessment_definitions WHERE slug=? AND status='published' AND current_version_id IS NOT NULL").bind(data.assessment_slug).first();
     if(!definition)return failure('This assessment is not open right now.',404);
     invited={...definition,id:id()};
   }else{
@@ -219,7 +221,8 @@ async function startAttempt(request, db, env) {
   }
   const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
   const payload=safeParse(version?.question_payload_json,{});
-  if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
+  // Practice is checked against this assessment's own family (slug-scoped), never another's.
+  if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}),practiceForSlug(invited.slug));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
   // Check the public projection before creating a timed attempt; never alias opaque IDs.
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
   const hash=await identityHash(env,invited.definition_id,screening.id_number);
@@ -317,11 +320,11 @@ async function adminPublish(request,db) {
   if(data.content_approved!==true || data.privacy_approved!==true || typeof data.approval_reference!=='string' || data.approval_reference.trim().length<8 || data.approval_reference.length>200) {
     return failure('Assessment content and privacy approvals with a reference are required.',400);
   }
-  const version=await db.prepare('SELECT * FROM assessment_versions WHERE id=?').bind(typeof data.version_id==='string'?data.version_id:'').first();
+  const version=await db.prepare('SELECT v.*, d.slug FROM assessment_versions v JOIN assessment_definitions d ON d.id=v.definition_id WHERE v.id=?').bind(typeof data.version_id==='string'?data.version_id:'').first();
   if(!version)return failure('Assessment draft not found.',404);
   validateAssessmentPackage({question_payload:JSON.parse(version.question_payload_json),scoring_key:JSON.parse(version.scoring_key_json)});
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment identifiers or workbook sources need a branding review before publishing.',400);
-  if(isBatteryPayload(JSON.parse(version.question_payload_json))){try{assertPracticeIsolation(JSON.parse(version.question_payload_json),JSON.parse(version.scoring_key_json));}catch{return failure('Practice content overlaps this assessment. Review practice before publishing.',400);}}
+  if(isBatteryPayload(JSON.parse(version.question_payload_json))){try{assertPracticeIsolation(JSON.parse(version.question_payload_json),JSON.parse(version.scoring_key_json),practiceForSlug(version.slug));}catch{return failure('Practice content overlaps this assessment. Review practice before publishing.',400);}}
   const at=nowIso();
   const metadata=JSON.parse(version.question_payload_json)._metadata||{};
   await db.batch([
@@ -387,8 +390,11 @@ async function batteryReport(db, a, attemptId) {
   const rubric = safeParse(a.scoring_key_json, {});
   const answers = { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}), workbook: safeParse(a.workbook_json, {}) };
   const graded = gradeBattery({ payload: payloadObj, key: rubric }, answers);
+  const reviewed = await decisionAndNotes(db, attemptId, graded);
   const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200').bind(attemptId).all();
-  const auditEvents = await db.prepare('SELECT event_type,actor_type,created_at FROM audit_events WHERE attempt_id=? ORDER BY created_at LIMIT 300').bind(attemptId).all();
+  // Order by insertion as well as time: created_at has one-second resolution, so two events in the
+  // same second would otherwise come back in an arbitrary order.
+  const auditEvents = await db.prepare('SELECT event_type,actor_type,created_at FROM audit_events WHERE attempt_id=? ORDER BY created_at, rowid LIMIT 300').bind(attemptId).all();
   await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
   return apiJson({
     ok: true,
@@ -410,8 +416,44 @@ async function batteryReport(db, a, attemptId) {
       overall_score: a.overall_score, knowledge_score: a.knowledge_score, reconciliation_score: a.reconciliation_score,
       breakdown: safeParse(a.breakdown_json, {}), critical_flags: safeParse(a.critical_flags_json, []),
       interpretation: a.interpretation, graded_at: a.graded_at,
+      // Every point is awarded by the server, so a submitted attempt is always scored.
+      review: { notes: reviewed.notes, combined: reviewed.combined },
+      score_status: reviewed.combined.status,
+      decision: reviewed.decision,
     },
   });
+}
+
+/* The automatic score, the handoff evidence that produced it, and the separate hiring decision.
+   A handoff is not a human mark any more: its per-criterion award and the marker that matched are
+   reported so the score can be audited, and nothing here can change it. */
+async function decisionAndNotes(db, attemptId, graded) {
+  const notes = graded.items.filter((i) => i.note).map((i) => ({ id: i.id, awarded: i.awarded, points: i.points, ...i.note }));
+  const decision = await db.prepare('SELECT decision, reason, decided_by, created_at FROM assessment_decisions WHERE attempt_id=?').bind(attemptId).first() || null;
+  return {
+    notes,
+    decision,
+    combined: combineScores({ overall_score: graded.overall_score, auto_scored_max: graded.auto_scored_max }),
+  };
+}
+
+/* The human decision is its own record. It never edits a score. */
+async function adminDecision(request, db, attemptId) {
+  if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
+  const data = await requestJson(request);
+  const decision = data.decision;
+  if (!['advance', 'hold', 'not_advance'].includes(decision)) return failure('Invalid decision.', 400);
+  const reason = String(data.reason || '').trim().slice(0, 1000);
+  const decidedBy = String(data.decided_by || '').trim().slice(0, 120);
+  if (reason.length < 8 || decidedBy.length < 2) return failure('A decision needs a reason and who decided it.', 400);
+  const attempt = await db.prepare('SELECT id FROM attempts WHERE id=?').bind(attemptId).first();
+  if (!attempt) return failure('Assessment result not found.', 404);
+  await db.prepare('INSERT INTO assessment_decisions (id, attempt_id, decision, reason, decided_by, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET decision=?, reason=?, decided_by=?, created_at=?')
+    .bind(id(), attemptId, decision, reason, decidedBy, nowIso(), decision, reason, decidedBy, nowIso()).run();
+  // The audit actor is the authenticated admin, never a name typed into the form: a caller could
+  // otherwise write an arbitrary string into the audit trail. `decided_by` stays in its own column.
+  await audit(db, 'admin', 'assessment-admin', attemptId, 'assessment.decision_recorded');
+  return apiJson({ ok: true, decision });
 }
 
 async function adminReport(db, attemptId) {
@@ -503,6 +545,7 @@ export async function onRequest(context) {
       if (segments.length===3 && segments[1]==='draft' && request.method==='GET') return await adminReadDraft(db,segments[2]);
       if (operation === 'admin/publish' && write) return await adminPublish(request, db);
       if (operation === 'admin/invite' && write) return await adminInvite(request, db);
+      if (segments[1] === 'decision' && segments[2] && write) return await adminDecision(request, db, segments[2]);
       if (segments[1] === 'report' && segments[2] && request.method === 'GET') return await adminReport(db, segments[2]);
       return failure('Admin endpoint not found.', 404);
     }

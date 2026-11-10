@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 // D1 interface over real SQLite: actual constraints, queries and transactions.
 export function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['0001_schema.sql', '0002_result_notifications.sql', '0003_candidate_screening.sql']) {
+  for (const file of ['0001_schema.sql', '0002_result_notifications.sql', '0003_candidate_screening.sql', '0004_reviewer_marking.sql']) {
     sqlite.exec(readFileSync(new URL(`../../migrations/assessments/${file}`, import.meta.url), 'utf8'));
   }
   const db = {

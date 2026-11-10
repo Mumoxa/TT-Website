@@ -14,6 +14,7 @@ This repository is **public**. Do not commit live question wording, answer optio
 3. [OPEN_START_HANDOFF.md](OPEN_START_HANDOFF.md): the current policy (open starts, retained results, repeat attempts, privacy fields).
 4. [BATTERY_V2.md](BATTERY_V2.md): the battery format and grading rules. Parts are out of date; see section 9.
 5. [TALENT_TREE_AP_ASSESSMENT_V1.md](TALENT_TREE_AP_ASSESSMENT_V1.md): the original build contract. It is historical, but its security and acceptance intent still applies.
+6. [AR_ASSESSMENT_HANDOFF.md](AR_ASSESSMENT_HANDOFF.md): the duplicate for accounts receivable — what is shared, what changed, and what is still unapproved.
 
 ## 1. What the product is
 
@@ -22,6 +23,7 @@ This repository is **public**. Do not commit live question wording, answer optio
   - `https://talenttree.co.za/assessments`: catalogue.
   - `https://talenttree.co.za/assessments/ap-clerk-v1`: welcome page for the live assessment.
 - Live assessment: slug `ap-clerk-v1`, title "Accounts Payable Clerk Assessment", client "Talent Tree".
+- Second assessment family, **not published**: slug `ar-clerk-v1`, title "Accounts Receivable Clerk Assessment", client "Talent Tree", 6 sections and 25 activities, 100 points, same 20-minute limit. It is authored to the Talza Assessment Blueprint (weights A 20 / B 60 / C 20). **Every point is awarded by the server, including the written handoff**, which is scored from evidence markers in its key on the same zero-or-full rule as every other field — there is no reviewer marking and no pending state. A hiring decision is recorded separately and never edits a score. It adds two item types (`ref` for a single document code, `note` for the automatically scored handoff). **It needs migrations `0004_reviewer_marking.sql` and `0005_automated_note_scoring.sql`**, neither yet applied to any remote database. Its content is a private draft awaiting SME review; see [AR_ASSESSMENT_HANDOFF.md](AR_ASSESSMENT_HANDOFF.md). Until it is published, `/assessments/ar-clerk-v1` reports that the assessment is not open.
 - Shape (verified against the live catalogue on 2026-11-05, after v4): 6 sections, 23 items, 20-minute limit enforced by the server (`DEFAULT_ASSESSMENT_SECONDS` in `functions/lib/assessment-deadlines.js`).
 - No invitation is needed. Anyone with the link can start. The practice mode writes no records.
 - Scoring: two categories, knowledge (weight 40) and reconciliation (weight 60), giving an overall score out of 100. Marking runs on the server. Formulas are re-evaluated on the server and client-reported values are never trusted.
@@ -44,13 +46,15 @@ These are decisions the owner has made. Do not change them without the owner.
 
 | Kind of truth | Where it lives | Notes |
 |---|---|---|
-| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v13` (verified 2026-11-05). |
+| Live question content and marking key | Production D1 database `tt-assessments`, table `assessment_versions` | **Not in git.** Current live version: `v13` (verified 2026-11-05). The receivable draft is a separate definition (`ar-clerk-v1`) in the same database and is **not published**. |
 | Candidate and recruiter behaviour | `functions/api/assessment/[[path]].js`, `functions/lib/*.js`, `src/assessments/*` | The code is the behaviour. |
 | Battery format and grading | `functions/lib/battery.js` (format `battery-v2`) | `gradeBattery` grades on the server. |
 | Current policy | `docs/assessments/OPEN_START_HANDOFF.md` | Partly superseded; see section 9. |
 | Secrets | Cloudflare Pages secrets | Names only: `ASSESSMENT_ADMIN_KEY` (the code also reads `ADMIN_KEY`; which one is set is **Needs verification**), `ASSESSMENT_ID_HASH_KEY`, `ASSESSMENT_PII_KEY`, `RESEND_API_KEY`. Values are never written in the repository or in documents. |
 | Configuration | Pages environment variables | `ASSESSMENT_FROM_EMAIL`, `ASSESSMENT_RESULTS_TO`. |
 | Schema | `migrations/assessments/0001_schema.sql`, `0002_result_notifications.sql`, `0003_candidate_screening.sql` | Recorded as applied on production and preview in the 2026-11-05 session. **Needs verification** against `d1_migrations`. |
+| Schema (additive) | `0004_reviewer_marking.sql` — `assessment_reviews`, `assessment_review_revisions`, `assessment_decisions` | **Not applied to any remote database.** `assessment_decisions` holds the hiring decision; the two review tables are legacy (reviewer marking is retired, see 0005). Safe to apply ahead of publishing AR. |
+| Schema (additive) | `0005_automated_note_scoring.sql` — adds `assessment_reviews.source`, adds `assessment_note_scores` | **Not applied to any remote database.** Required by the decision route and the handoff evidence. Apply after 0004. |
 | Deployment | GitHub `main` deploys to Cloudflare Pages project `tt-website` (production branch `main`) | Verified from the deployments list on 2026-11-05. |
 | Offers data | D1 database `tt-offers` (binding `DB`) | **Never touch.** Not part of this product. |
 

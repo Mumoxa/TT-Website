@@ -20,6 +20,8 @@ React/Vite website for Talent Tree Consulting.
 - `/specs` — Internal job brief sanitizer (talenttree.co.za/specs) — converts client briefs (PDF, DOCX, XLSX, Google Docs, TXT) into sanitized, branded specs with client names replaced by generic descriptors, contacts removed, links replaced with CV@talenttree.co.za, and TalentTree branding. See `docs/specs.md`.
 - `/offer/<secure-token>` — Confidential employment offer delivery for candidates (secure link; PDF released only after the confidentiality undertaking is accepted). See `docs/confidential-offers.md`.
 - `/admin/offers` — Internal offer creation + acceptance verification tool (ADMIN_KEY gate). See `docs/confidential-offers.md`.
+- `/assessments` and `/assessments/<slug>` — Public candidate assessments (catalogue and welcome). Accounts Payable (`ap-clerk-v1`) is live; Accounts Receivable (`ar-clerk-v1`) is a private draft awaiting review and is **not published**. See `docs/assessments/PRODUCT_HANDOFF.md` and `docs/assessments/AR_ASSESSMENT_HANDOFF.md`. Question content and marking keys live only in the protected assessment D1 database, never in this public repository.
+- `/assessment` — Assessment runner, and `/admin/assessments` — recruiter list, report and private authoring surface (assessment admin key).
 
 ## Local development
 

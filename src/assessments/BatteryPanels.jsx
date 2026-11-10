@@ -32,6 +32,10 @@ const keepReferences = (text) => splitReferences(text).map((part, i) => (part.is
   ? <span key={i} className="tta-ref">{part.text}</span>
   : <React.Fragment key={i}>{part.text}</React.Fragment>));
 const instructionsFor = (item) => (item.instructions ? <p className="tta-item-instructions">{keepReferences(item.instructions)}</p> : null);
+const LEVEL_LABEL = { foundation: 'Foundation', core: 'Core', stretch: 'Stretch' };
+// The level is shown as a plain label, never as a score, and never in place of the prompt.
+const levelTag = (item) => (item.level && LEVEL_LABEL[item.level]
+  ? <span className="tta-level" title="Item demand">{LEVEL_LABEL[item.level]}</span> : null);
 
 export function BatteryPanels({ assessment, draft, patchDraft }) {
   const source = assessment.workbook?.source || {};
@@ -88,7 +92,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             if (item.type === 'single') {
               return (
                 <fieldset key={item.id} id={'q-' + item.id} className="tta-question">
-                  <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
+                  <legend><span className="tta-qnum">{number}</span> {levelTag(item)} {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
                   {item.options.map((option) => (
                     <label className={'tta-choice' + (singles[item.id] === option.id ? ' tta-choice-selected' : '')} key={option.id}>
@@ -104,7 +108,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
               const chosen = multis[item.id] || [];
               return (
                 <fieldset key={item.id} id={'q-' + item.id} className="tta-question">
-                  <legend><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</legend>
+                  <legend><span className="tta-qnum">{number}</span> {levelTag(item)} {keepReferences(item.prompt)}</legend>
                   {instructionsFor(item)}
                   {!/select all that apply/i.test(item.prompt) && <p className="tta-sheet-help">Select all that apply.</p>}
                   {item.options.map((option) => (
@@ -121,13 +125,36 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
                 </fieldset>
               );
             }
-            if (item.type === 'text') {
+            if (item.type === 'text' || item.type === 'ref') {
+              // A document code is one short token: no spaces, upper case, never an amount.
+              const isRef = item.type === 'ref';
               return (
                 <div key={item.id} id={'q-' + item.id} className="tta-question">
-                  <label htmlFor={'t-' + item.id}><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</label>
+                  <label htmlFor={'t-' + item.id}><span className="tta-qnum">{number}</span> {levelTag(item)} {keepReferences(item.prompt)}</label>
                   {instructionsFor(item)}
-                  <input id={'t-' + item.id} type="text" maxLength={200} value={texts[item.id] || ''}
+                  <input id={'t-' + item.id} type="text" maxLength={isRef ? 40 : 200}
+                    className={isRef ? 'tta-answer-input tta-ref-input' : undefined}
+                    inputMode={isRef ? 'text' : undefined} autoComplete="off" spellCheck={false}
+                    placeholder={isRef ? 'For example XX-000' : undefined}
+                    value={texts[item.id] || ''}
+                    onChange={(e) => patchDraft((old) => ({ ...old, structured: { ...old.structured, text: { ...(old.structured?.text || {}), [item.id]: isRef ? e.target.value.toUpperCase() : e.target.value } } }))} />
+                  {isRef && String(texts[item.id] || '').trim() !== '' && !/^[A-Za-z]{2,6}-?\d{1,6}[A-Za-z]?$/.test(String(texts[item.id]).trim().replace(/\s+/g, ''))
+                    && <p className="tta-answer-readback is-error" role="alert">Enter one document code only, for example ABC-123. Remove any amount.</p>}
+                </div>
+              );
+            }
+            if (item.type === 'note') {
+              // A written handoff, scored by the server from evidence markers in its key.
+              const value = texts[item.id] || '';
+              const words = value.trim() ? value.trim().split(/\s+/).length : 0;
+              return (
+                <div key={item.id} id={'q-' + item.id} className="tta-question tta-note-item">
+                  <label htmlFor={'n-' + item.id}><span className="tta-qnum">{number}</span> {levelTag(item)} {keepReferences(item.prompt)}</label>
+                  {instructionsFor(item)}
+                  <textarea id={'n-' + item.id} className="tta-note-input" rows={7} maxLength={1200} value={value}
                     onChange={(e) => patchDraft((old) => ({ ...old, structured: { ...old.structured, text: { ...(old.structured?.text || {}), [item.id]: e.target.value } } }))} />
+                  <p className="tta-answer-result"><span>Saved as: </span><output aria-label="Words written">{words}</output>
+                    <span className="tta-answer-where"> · checked for the facts, the action and the time, not for style</span></p>
                 </div>
               );
             }
@@ -139,7 +166,7 @@ export function BatteryPanels({ assessment, draft, patchDraft }) {
             const cellName = splitRef(item.ref).cell;
             return (
               <div key={item.id} id={'q-' + item.id} className="tta-question tta-cell-item">
-                <label htmlFor={'cell-' + item.id}><span className="tta-qnum">{number}</span> {keepReferences(item.prompt)}</label>
+                <label htmlFor={'cell-' + item.id}><span className="tta-qnum">{number}</span> {levelTag(item)} {keepReferences(item.prompt)}</label>
                 {instructionsFor(item)}
                 <div className="tta-answer-row">
                   {docsMode && <span className="tta-answer-prefix" aria-hidden="true">Answer</span>}
