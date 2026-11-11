@@ -60,3 +60,11 @@ Defects found and fixed during this work:
 - **Validity.** Nothing here shows that a score predicts job performance. The thresholds, category weights and skill bands are design choices, not validated cut scores.
 - **Spreadsheet.** The contract's three-tab layout is built for battery-v2. Excel parity is not: no XLOOKUP, no structured references, and only the functions listed above. Real Excel behaviour on edge cases (text-number coercion, locale formats) is not verified against Excel itself.
 - **Email and secrets.** Result email needs the Resend API key, the verified sender domain, and the Pages secrets (see the runbook).
+
+## Optional structured balance table
+
+Status: **Implemented; synthetic automated tests; browser and accessibility verification needed.**
+
+A documents-mode section may have `answer_table: { caption, rows }`. Each row has a display `label`, `side` naming a `single` item with exactly the two options Debit and Credit, and `amount` naming a `cell` item with `format: "rand"` and a positive numeric answer. Both items must be in that section; table item IDs and amount references cannot be reused. The labels and item prompts must not reveal answers. A table section can contain up to 18 items; other sections remain limited to 12 and the entire battery remains limited to 30.
+
+The table is only a presentation of ordinary scored items. Side and amount are scored independently; the engine does not check whether listed accounts are exhaustive, allow unlisted accounts, award follow-through, or compare entered totals to entered rows. Zero-balance rows are not supported by this table. Explicitly state the case scope and mark these limitations in the assessment's authoring and approval record. The candidate can correct entries before submission; saved choices and cell values use the existing autosave and server grading paths.

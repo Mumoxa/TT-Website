@@ -196,7 +196,21 @@ export function validateBattery(pkg) {
   let count = 0;
   for (const section of payload.sections) {
     if (!isObj(section) || !ID.test(section.id) || typeof section.title !== 'string' || section.title.trim().length < 3 || section.title.length > 120) bad('Invalid section.');
-    if (!Array.isArray(section.items) || section.items.length < 1 || section.items.length > 12) bad('Each section needs 1–12 items.');
+    const sectionLimit = section.answer_table === undefined ? 12 : 18;
+    if (!Array.isArray(section.items) || section.items.length < 1 || section.items.length > sectionLimit) bad(`Each section needs 1–${sectionLimit} items.`);
+    if (section.answer_table !== undefined) {
+      const table = section.answer_table;
+      if (payload.workbook.display !== 'documents' || !isObj(table) || typeof table.caption !== 'string' || table.caption.trim().length < 3 || table.caption.length > 120 || !Array.isArray(table.rows) || table.rows.length < 1 || table.rows.length > 8) bad('Invalid answer table.');
+      const byId = new Map(section.items.filter(isObj).map(item => [item.id, item]));
+      const used = new Set(), refs = new Set();
+      for (const row of table.rows) {
+        if (!isObj(row) || typeof row.label !== 'string' || !row.label.trim() || row.label.length > 120 || used.has(row.side) || used.has(row.amount) || row.side === row.amount) bad('Invalid answer table row.');
+        const side = byId.get(row.side), amount = byId.get(row.amount);
+        if (!side || side.type !== 'single' || !Array.isArray(side.options) || side.options.length !== 2 || side.options.map(o => String(o?.text).trim().toLowerCase()).sort().join('|') !== 'credit|debit' || !amount || amount.type !== 'cell' || amount.format !== 'rand' || typeof amount.ref !== 'string' || !QUALIFIED_REF.test(amount.ref) || refs.has(canonRef(amount.ref))) bad('Answer table requires unique rand cells and debit/credit choices in the same section.');
+        if (typeof key.items[amount.id]?.answer !== 'number' || !Number.isFinite(key.items[amount.id].answer) || key.items[amount.id].answer <= 0) bad('Answer table amounts require positive numeric keys; zero-balance rows need another format.');
+        refs.add(canonRef(amount.ref)); used.add(row.side); used.add(row.amount);
+      }
+    }
     if (section.cap !== undefined && (!Number.isInteger(section.cap) || section.cap < 1 || section.cap > 100)) bad('Section cap must be a whole number of 1–100.');
     for (const item of section.items) {
       if (!isObj(item) || !ID.test(item.id) || seen.has(item.id)) bad('Invalid or duplicate item id.');
@@ -290,6 +304,18 @@ export function validateBattery(pkg) {
       }
     }
   }
+  // A table answer must not silently share its workbook cell with any other item.
+  const tableRefs = new Set();
+  for (const section of payload.sections) for (const row of section.answer_table?.rows || []) {
+    const amount = section.items.find(item => item.id === row.amount);
+    const ref = canonRef(amount.ref);
+    if (tableRefs.has(ref)) bad('Answer table cells must be unique.');
+    tableRefs.add(ref);
+  }
+  for (const ref of tableRefs) {
+    const uses = payload.sections.flatMap(section => section.items).filter(item => item.type === 'cell' && canonRef(item.ref) === ref);
+    if (uses.length !== 1) bad('Answer table cells must be unique.');
+  }
   if (count < 3 || count > MAX_ITEMS) bad('Battery needs 3–30 items.');
   // A declared cap is the component weight, so the authored points must add up to it exactly.
   for (const section of payload.sections) {
@@ -316,6 +342,7 @@ export function publicBattery(payload) {
     sections: payload.sections.map((s) => ({
       id: s.id,
       title: s.title,
+      ...(s.answer_table ? { answer_table: { caption: s.answer_table.caption, rows: s.answer_table.rows.map(row => ({ label: row.label, side: row.side, amount: row.amount })) } } : {}),
       items: s.items.map((item) => {
         const base = { id: item.id, type: item.type, prompt: item.prompt };
         if (item.level) base.level = item.level;
