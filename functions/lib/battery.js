@@ -12,11 +12,22 @@
    Answer keys are only in scoring_key_json (never returned to the candidate). */
 
 import { calculateCell, CELL_REF, QUALIFIED_REF, splitRef } from '../../src/assessments/formulas.js';
+import { scoreNote } from './assessment-review.js';
 
 export const BATTERY_FORMAT = 'battery-v2';
-export const BATTERY_ENGINE = 'ap-battery-v2';
+// Stored as results.scoring_version. Family-neutral, because the same engine grades every
+// battery (payable, receivable or any later one); the assessment slug identifies the family.
+export const BATTERY_ENGINE = 'battery-v2';
 export const CATEGORY_WEIGHT = { knowledge: 40, reconciliation: 60 };
-const ITEM_TYPES = new Set(['single', 'multi', 'text', 'cell']);
+// ref: a document reference (a single code such as ABC-123). note: a short written handoff, scored
+// by the server from evidence markers in its key, on the same zero-or-full rule as any other field.
+const ITEM_TYPES = new Set(['single', 'multi', 'text', 'cell', 'ref', 'note', 'match']);
+// Cognitive demand. Only used for reporting and item-analysis targets; it never changes a score.
+const LEVELS = new Set(['foundation', 'core', 'stretch']);
+// 'match': the candidate classifies each listed line (for example every statement and ledger line) with one of a
+// few shared choices. One point per line, so the result shows the reasoning line by line.
+const LINE_ID = /^l[0-9]{1,2}$/;
+const MAX_MATCH_LINES = 12;
 const DEFAULT_PASS_PERCENT = 75;
 const MAX_ITEMS = 30;
 const MAX_SECTIONS = 6;
@@ -200,14 +211,19 @@ export function validateBattery(pkg) {
         refs.add(canonRef(amount.ref)); used.add(row.side); used.add(row.amount);
       }
     }
+    if (section.cap !== undefined && (!Number.isInteger(section.cap) || section.cap < 1 || section.cap > 100)) bad('Section cap must be a whole number of 1–100.');
     for (const item of section.items) {
       if (!isObj(item) || !ID.test(item.id) || seen.has(item.id)) bad('Invalid or duplicate item id.');
       seen.add(item.id);
       count += 1;
       if (!ITEM_TYPES.has(item.type)) bad('Unknown item type.');
-      if (!Number.isInteger(item.points) || item.points < 1 || item.points > 10) bad('Item points must be 1–10.');
+      if (item.type === 'match') {
+        if (!Array.isArray(item.lines) || item.lines.length < 2 || item.lines.length > MAX_MATCH_LINES) bad(`Match ${item.id} needs 2–${MAX_MATCH_LINES} lines.`);
+        if (item.points !== item.lines.length) bad(`Match ${item.id} scores one point per line, so its points must equal its line count.`);
+      } else if (!Number.isInteger(item.points) || item.points < 1 || item.points > 10) bad('Item points must be 1–10.');
       if (!['knowledge', 'reconciliation'].includes(item.category)) bad('Item category must be knowledge or reconciliation.');
       categories.add(item.category);
+      if (item.level !== undefined && !LEVELS.has(item.level)) bad('Item level must be foundation, core or stretch.');
       if (typeof item.prompt !== 'string' || item.prompt.trim().length < 15 || item.prompt.length > 900) bad('Prompt must be 15–900 characters.');
       if (item.instructions !== undefined && (typeof item.instructions !== 'string' || item.instructions.trim().length > 600)) bad('Instructions must be text of at most 600 characters.');
       const k = key.items[item.id];
@@ -225,8 +241,55 @@ export function validateBattery(pkg) {
           if (!Array.isArray(k.answer) || k.answer.length < 1 || k.answer.length >= item.options.length || k.answer.some((o) => !optionIds.has(o))) bad(`Multi answer for ${item.id} is invalid.`);
         }
         if (k.unsafe !== undefined && (!Array.isArray(k.unsafe) || k.unsafe.some((o) => !optionIds.has(o)))) bad(`Unsafe options for ${item.id} are invalid.`);
+      } else if (item.type === 'match') {
+        if (!Array.isArray(item.choices) || item.choices.length < 2 || item.choices.length > 6) bad(`Match ${item.id} needs 2–6 choices.`);
+        const choiceIds = new Set();
+        for (const c of item.choices) {
+          if (!isObj(c) || !OPAQUE_ID.test(c.id) || choiceIds.has(c.id) || typeof c.text !== 'string' || !c.text.trim() || c.text.length > 80) bad('Invalid match choice.');
+          choiceIds.add(c.id);
+        }
+        const lineIds = new Set();
+        for (const l of item.lines) {
+          if (!isObj(l) || !LINE_ID.test(l.id) || lineIds.has(l.id)) bad('Invalid match line id.');
+          for (const f of ['doc', 'ref', 'detail']) if (typeof l[f] !== 'string' || !l[f].trim() || l[f].length > 160) bad('Invalid match line.');
+          if (l.amount !== undefined && (typeof l.amount !== 'string' || l.amount.length > 40)) bad('Invalid match line amount.');
+          lineIds.add(l.id);
+        }
+        const validMap = (m) => isObj(m) && Object.keys(m).every((lid) => lineIds.has(lid)) && Object.values(m).every((cid) => choiceIds.has(cid));
+        if (!validMap(k.answer) || Object.keys(k.answer).length !== lineIds.size) bad(`Match answer for ${item.id} must classify every line.`);
+        // Alternatives: equally correct readings for some lines (for example which of two identical entries is the duplicate).
+        if (k.alternatives !== undefined && (!Array.isArray(k.alternatives) || k.alternatives.length > 4 || !k.alternatives.every(validMap))) bad(`Match alternatives for ${item.id} are invalid.`);
       } else if (item.type === 'text') {
         if (typeof k.answer !== 'string' || !k.answer.trim() || k.answer.length > 100) bad(`Text answer for ${item.id} is invalid.`);
+      } else if (item.type === 'ref') {
+        // A document code is matched as normalised text. Only the formatting rule can vary.
+        if (typeof k.answer !== 'string' || !k.answer.trim() || k.answer.length > 60) bad(`Reference answer for ${item.id} is invalid.`);
+      } else if (item.type === 'note') {
+        // A written handoff: scored from evidence markers, all or nothing per criterion, so it needs
+        // no answer. Each criterion is worth two points and the criteria must add up to the item.
+        if (k.answer !== undefined) bad(`A note item is scored from its criteria and must not carry an answer (${item.id}).`);
+        if (!Array.isArray(k.criteria) || k.criteria.length < 1 || k.criteria.length > 8) bad(`Note criteria for ${item.id} must be 1–8 entries.`);
+        const criterionIds = new Set();
+        for (const criterion of k.criteria) {
+          if (!isObj(criterion) || typeof criterion.id !== 'string' || !ID.test(criterion.id) || criterionIds.has(criterion.id)) bad('Invalid note criterion.');
+          criterionIds.add(criterion.id);
+          if (typeof criterion.label !== 'string' || criterion.label.trim().length < 3 || criterion.label.length > 160) bad('Invalid note criterion label.');
+          // Every marker must be a plain phrase. An empty or overlong marker would match everything
+          // or nothing, so it is a build error rather than a silent mis-score.
+          const markers = [criterion.all, criterion.any, criterion.none];
+          // A criterion needs a POSITIVE marker to be earnable. Disqualifiers alone would award the
+          // points to any text that avoids the wrong word, including text that says nothing.
+          const positive = [criterion.all, criterion.any].some((list) => Array.isArray(list) && list.length);
+          if (!positive) bad(`Note criterion ${criterion.id} needs at least one positive marker (all or any).`);
+          for (const list of markers) {
+            if (list === undefined) continue;
+            if (!Array.isArray(list) || list.length > 24) bad(`Invalid marker list for ${criterion.id}.`);
+            for (const term of list) {
+              if (typeof term !== 'string' || term.trim().length < 2 || term.length > 60) bad(`Invalid marker for ${criterion.id}.`);
+            }
+          }
+        }
+        if (k.criteria.length * 2 !== item.points) bad(`Note ${item.id} is worth ${item.points} points but has ${k.criteria.length} criteria at 2 points each.`);
       } else if (item.type === 'cell') {
         if (!QUALIFIED_REF.test(item.ref)) bad(`Invalid cell reference for ${item.id}.`);
         const { sheet: itemSheet } = splitRef(item.ref);
@@ -254,6 +317,12 @@ export function validateBattery(pkg) {
     if (uses.length !== 1) bad('Answer table cells must be unique.');
   }
   if (count < 3 || count > MAX_ITEMS) bad('Battery needs 3–30 items.');
+  // A declared cap is the component weight, so the authored points must add up to it exactly.
+  for (const section of payload.sections) {
+    if (!Number.isInteger(section.cap)) continue;
+    const authored = section.items.reduce((n, item) => n + item.points, 0);
+    if (authored !== section.cap) bad(`Section "${section.title}" declares a cap of ${section.cap} but its items total ${authored}.`);
+  }
   // A sheet that is not writable is read-only; every source cell must sit in a declared sheet.
   if (!categories.has('knowledge') || !categories.has('reconciliation')) bad('Battery needs knowledge and reconciliation items.');
   for (const id of Object.keys(key.items)) if (!seen.has(id)) bad(`Key has an answer for unknown item ${id}.`);
@@ -276,8 +345,14 @@ export function publicBattery(payload) {
       ...(s.answer_table ? { answer_table: { caption: s.answer_table.caption, rows: s.answer_table.rows.map(row => ({ label: row.label, side: row.side, amount: row.amount })) } } : {}),
       items: s.items.map((item) => {
         const base = { id: item.id, type: item.type, prompt: item.prompt };
+        if (item.level) base.level = item.level;
+        if (item.hint) base.hint = item.hint;
         if (typeof item.instructions === 'string' && item.instructions.trim()) base.instructions = item.instructions.trim();
         if (item.type === 'single' || item.type === 'multi') base.options = item.options.map((o) => ({ id: o.id, text: o.text }));
+        if (item.type === 'match') {
+          base.choices = item.choices.map((c) => ({ id: c.id, text: c.text }));
+          base.lines = item.lines.map((l) => ({ id: l.id, doc: l.doc, ref: l.ref, detail: l.detail, ...(l.amount ? { amount: l.amount } : {}) }));
+        }
         if (item.type === 'cell') { base.ref = item.ref; if (item.format === 'rand' || item.format === 'count') base.format = item.format; }
         return base;
       }),
@@ -298,7 +373,7 @@ export function publicBattery(payload) {
 export function cleanBatterySubmission(payload, publicBat) {
   const byId = new Map();
   for (const s of publicBat.sections) for (const item of s.items) byId.set(item.id, item);
-  const mcq = {}, text = {}, multi = {};
+  const mcq = {}, text = {}, multi = {}, match = {};
   const data = isObj(payload?.mcq) ? payload.mcq : {};
   for (const [id, value] of Object.entries(data)) {
     const item = byId.get(id);
@@ -306,10 +381,11 @@ export function cleanBatterySubmission(payload, publicBat) {
     mcq[id] = value;
   }
   const structured = isObj(payload?.structured) ? payload.structured : {};
+  // text, ref and note answers share one map. The type decides how the server treats the entry.
   for (const [id, value] of Object.entries(isObj(structured.text) ? structured.text : {})) {
     const item = byId.get(id);
-    if (!item || item.type !== 'text' || typeof value !== 'string') bad('Invalid text answer.');
-    const trimmed = value.trim().slice(0, 200);
+    if (!item || !['text', 'ref', 'note'].includes(item.type) || typeof value !== 'string') bad('Invalid written answer.');
+    const trimmed = value.trim().slice(0, item.type === 'note' ? 1200 : 200);
     if (trimmed) text[id] = trimmed;
   }
   for (const [id, value] of Object.entries(isObj(structured.multi) ? structured.multi : {})) {
@@ -320,21 +396,53 @@ export function cleanBatterySubmission(payload, publicBat) {
     if (chosen.some((o) => !valid.has(o))) bad('Invalid multi-select option.');
     if (chosen.length) multi[id] = chosen;
   }
-  return { mcq, structured: { text, multi } };
+  for (const [id, value] of Object.entries(isObj(structured.match) ? structured.match : {})) {
+    const item = byId.get(id);
+    if (!item || item.type !== 'match' || !isObj(value)) bad('Invalid line-matching answer.');
+    const lines = new Set(item.lines.map((l) => l.id)), choices = new Set(item.choices.map((c) => c.id));
+    const clean = {};
+    for (const [lid, cid] of Object.entries(value)) {
+      if (!lines.has(lid) || !choices.has(cid)) bad('Invalid line-matching choice.');
+      clean[lid] = cid;
+    }
+    if (Object.keys(clean).length) match[id] = clean;
+  }
+  return { mcq, structured: { text, multi, ...(Object.keys(match).length ? { match } : {}) } };
 }
 
 /* Rules the server enforces on saves, derived from the published battery (candidate-facing). */
 export function batteryWorkbookRules(publicBat) {
   const sheets = publicBat.workbook.sheets;
+  // Amount answer boxes (format: 'rand') refuse a signed figure on entry.
+  const amountRefs = new Set();
+  if (Array.isArray(publicBat.sections)) {
+    for (const section of publicBat.sections) {
+      for (const item of section.items || []) {
+        const ref = item.ref || publicBat.activities?.find((act) => act.id === item.id)?.ref;
+        if (item.format === 'rand' && ref) amountRefs.add(canonRef(ref));
+      }
+    }
+  }
   return {
     sourceCanon: new Set(Object.keys(publicBat.workbook.source).map(canonRef)),
     writableSheets: sheets ? new Set(sheets.filter((s) => s.writable).map((s) => s.name.toLowerCase())) : null,
+    amountRefs,
   };
 }
 
 /* Workbook: only candidate working cells on writable sheets. Source cells are rejected, not dropped. */
 export function cleanBatteryWorkbook(cells, rules) {
   if (!isObj(cells) || Object.keys(cells).length > 400) bad('Invalid workbook cells.');
+  // A signed figure is refused on entry, not silently marked wrong at the end (blueprint rule).
+  if (rules.amountRefs) {
+    for (const [ref, raw] of Object.entries(cells)) {
+      const text = String(raw ?? '').trim();
+      if (!rules.amountRefs.has(canonRef(ref)) || !text) continue;
+      if (/^-/.test(text) || /^[−‒–—]/.test(text) || /^\(.*\)$/.test(text)) {
+        bad(`Enter ${ref} as a positive amount, without a minus sign or brackets.`);
+      }
+    }
+  }
   const safe = {};
   for (const [ref, raw] of Object.entries(cells)) {
     if (!QUALIFIED_REF.test(ref)) bad('Invalid workbook cell.');
@@ -352,6 +460,19 @@ export function cleanBatteryWorkbook(cells, rules) {
 
 /* ---- grading --------------------------------------------------------------- */
 
+/* A document code is compared as normalised text. A code mixed with an amount is not a code, so it
+   is reported as a format problem rather than silently marked wrong. */
+const REF_CODE = /^[A-Za-z]{2,6}-?\d{1,6}[A-Za-z]?$/;
+export function parseReference(value) {
+  const text = String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, '');
+  if (!text) return null;
+  return REF_CODE.test(text) ? text.toUpperCase() : null;
+}
+
+/* A code is compared on its letters and digits only, so GRN-77, GRN 77 and grn77 are the same
+   document. The punctuation of a real document number is not something to examine. */
+const refKey = (value) => String(value ?? '').normalize('NFKC').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
 function gradeItem(item, key, answers, merged) {
   const given = answers;
   let correct = false;
@@ -368,10 +489,39 @@ function gradeItem(item, key, answers, merged) {
     const want = [...key.answer].sort().join('|');
     correct = chosen.length > 0 && [...chosen].sort().join('|') === want;
     correctText = key.answer.map((c) => item.options.find((o) => o.id === c)?.text || c).join('; ');
+  } else if (item.type === 'match') {
+    const chosen = isObj(given.match) ? given.match : {};
+    const label = (lid, cid) => { const l = item.lines.find((x) => x.id === lid); const c = item.choices.find((x) => x.id === cid); return `${l ? l.ref : lid}: ${c ? c.text : 'No answer'}`; };
+    const keys = [key.answer, ...(Array.isArray(key.alternatives) ? key.alternatives.map((alt) => ({ ...key.answer, ...alt })) : [])];
+    const score = (k) => item.lines.reduce((n, l) => n + (chosen[l.id] && chosen[l.id] === k[l.id] ? 1 : 0), 0);
+    let best = keys[0];
+    for (const k of keys) if (score(k) > score(best)) best = k;
+    const linesRight = score(best);
+    const answeredLines = item.lines.filter((l) => chosen[l.id]).length;
+    givenText = answeredLines ? item.lines.map((l) => label(l.id, chosen[l.id])).join('; ') : null;
+    correct = linesRight === item.lines.length;
+    correctText = item.lines.map((l) => label(l.id, best[l.id])).join('; ');
+    return { correct, givenText, correctText, unsafeHit: false, awarded: linesRight, lines: item.lines.map((l) => ({ id: l.id, ref: l.ref, doc: l.doc, given: chosen[l.id] ? item.choices.find((c) => c.id === chosen[l.id])?.text : null, correct: item.choices.find((c) => c.id === best[l.id])?.text, ok: chosen[l.id] === best[l.id] })) };
   } else if (item.type === 'text') {
     givenText = given.text ?? null;
     correct = givenText !== null && normaliseText(givenText) === normaliseText(key.answer);
     correctText = key.answer;
+  } else if (item.type === 'ref') {
+    // Normalise the same way the parser does, so "GRN 77" and "GRN-77" are the same code.
+    givenText = String(given.text ?? '').normalize('NFKC').trim().replace(/\s+/g, '') || null;
+    const parsed = givenText === null ? null : parseReference(givenText);
+    correct = parsed !== null && refKey(parsed) === refKey(key.answer);
+    correctText = key.answer;
+  } else if (item.type === 'note') {
+    // Scored by the server from the item's evidence markers. Never keyed on exact wording, so a
+    // candidate is credited for what they said rather than how they said it.
+    givenText = given.text ?? null;
+    const note = scoreNote(key, givenText);
+    return {
+      correct: note.blank ? null : note.earned === note.max,
+      givenText, correctText: 'Scored on published evidence markers',
+      unsafeHit: false, note,
+    };
   } else {
     const shown = calculateCell(merged, item.ref);
     givenText = shown === '' ? null : shown;
@@ -411,9 +561,12 @@ export function gradeBattery(version, answers) {
         single: answers.mcq?.[item.id],
         multi: answers.structured?.multi?.[item.id],
         text: answers.structured?.text?.[item.id],
+        match: answers.structured?.match?.[item.id],
       };
       const g = gradeItem(item, k, given, merged);
-      const awarded = g.correct ? item.points : 0;
+      // Line matching earns one point per correct line. A written handoff earns its criteria independently:
+      // two points per criterion, all or nothing within that criterion. Every other field is all or nothing.
+      const awarded = item.type === 'match' ? g.awarded : g.note ? g.note.earned : (g.correct ? item.points : 0);
       if (g.unsafeHit) flags.push(`Unsafe choice selected in ${section.title}`);
       totals[item.category].earned += awarded;
       totals[item.category].max += item.points;
@@ -421,40 +574,73 @@ export function gradeBattery(version, answers) {
       row.max += item.points;
       items.push({
         id: item.id, section: section.title, category: item.category, type: item.type, prompt: item.prompt,
-        given: g.givenText, correctAnswer: g.correctText, correct: g.givenText === null ? null : g.correct,
+        level: item.level || null,
+        given: g.givenText, correctAnswer: g.correctText,
+        // A note keeps the per-criterion evidence so a recruiter can see why it scored what it did.
+        correct: g.givenText === null ? null : (g.note ? g.note.earned === g.note.max : g.correct),
         awarded, points: item.points, ref: item.type === 'cell' ? item.ref : undefined,
+        ...(item.type === 'match' ? { lines: g.lines } : {}),
+        ...(g.note ? { note: g.note } : {}),
       });
+    }
+    // A declared section cap is the component weight, and the authored points must already add up to
+    // it (enforced by validateBattery). The composite is therefore a plain sum of points.
+    if (Number.isInteger(section.cap)) {
+      row.cap = section.cap;
+      row.auto_max = row.max;
     }
     sectionRows.push(row);
   }
 
-  const k = totals.knowledge, r = totals.reconciliation;
-  if (k.max <= 0 || r.max <= 0) bad('Both categories must carry points.');
-  const knowledgeScore = Math.round((CATEGORY_WEIGHT.knowledge * k.earned) / k.max);
-  const reconciliationScore = Math.round((CATEGORY_WEIGHT.reconciliation * r.earned) / r.max);
-  const exactPercent = (CATEGORY_WEIGHT.knowledge * k.earned) / k.max + (CATEGORY_WEIGHT.reconciliation * r.earned) / r.max;
-  const overall = knowledgeScore + reconciliationScore;
-  const pct = (e, m) => Math.round((e / m) * 1000) / 10;
+  const pct = (e, m) => (m ? Math.round((e / m) * 1000) / 10 : 0);
+
+  // With declared caps the composite is a plain sum of points across the components; without them it
+  // keeps the historic 40/60 category weighting. Every item is scored by the server, so the total is
+  // final on submission.
+  const capped = sectionRows.some((s) => Number.isInteger(s.cap));
+  let autoEarned, autoMax;
+  if (capped) {
+    autoEarned = sectionRows.reduce((total, s) => total + s.earned, 0);
+    autoMax = sectionRows.reduce((total, s) => total + s.max, 0);
+  } else {
+    const k = totals.knowledge, r = totals.reconciliation;
+    if (k.max <= 0 || r.max <= 0) bad('Both categories must carry points.');
+    autoEarned = Math.round((CATEGORY_WEIGHT.knowledge * k.earned) / k.max) + Math.round((CATEGORY_WEIGHT.reconciliation * r.earned) / r.max);
+    autoMax = CATEGORY_WEIGHT.knowledge + CATEGORY_WEIGHT.reconciliation;
+  }
+  const exactPercent = autoMax ? (autoEarned / autoMax) * 100 : 0;
+  // Category scores keep their published 40/60 meaning, scaled from the same awards.
+  const k2 = totals.knowledge, r2 = totals.reconciliation;
+  const knowledgeScore = k2.max ? Math.round((CATEGORY_WEIGHT.knowledge * k2.earned) / k2.max) : 0;
+  const reconciliationScore = r2.max ? Math.round((CATEGORY_WEIGHT.reconciliation * r2.earned) / r2.max) : 0;
+  const overall = autoEarned;
 
   return {
     engine: BATTERY_ENGINE,
     overall_score: overall,
+    auto_scored_max: autoMax,
     knowledge_score: knowledgeScore,
     reconciliation_score: reconciliationScore,
     passed: exactPercent >= passPercent,
     pass_percent: passPercent,
     breakdown: {
       categories: {
-        knowledge: { earned: k.earned, max: k.max, percent: pct(k.earned, k.max) },
-        reconciliation: { earned: r.earned, max: r.max, percent: pct(r.earned, r.max) },
+        knowledge: { earned: k2.earned, max: k2.max, percent: pct(k2.earned, k2.max) },
+        reconciliation: { earned: r2.earned, max: r2.max, percent: pct(r2.earned, r2.max) },
       },
-      sections: sectionRows.map((s) => ({ ...s, percent: s.max ? pct(s.earned, s.max) : 0 })),
+      sections: sectionRows.map((s) => ({ ...s, percent: pct(s.earned, s.max) })),
       items_correct: items.filter((i) => i.correct === true).length,
       items_total: items.length,
+      levels: ['foundation', 'core', 'stretch'].reduce((out, level) => {
+        const rows = items.filter((i) => i.level === level);
+        if (rows.length) out[level] = { earned: rows.reduce((n, i) => n + i.awarded, 0), max: rows.reduce((n, i) => n + i.points, 0) };
+        return out;
+      }, {}),
     },
     critical_flags: [...new Set(flags)],
-    interpretation: `Overall ${overall}/100 (knowledge ${knowledgeScore}/40, reconciliation ${reconciliationScore}/60). `
-      + `This is short practical screening evidence for the tested items only; it does not establish job performance.`,
+    interpretation: `Scored ${overall}/${autoMax}`
+      + '. '
+      + 'This is short practical screening evidence for the tested items only; it does not establish job performance.',
     items,
     workbook_values: Object.fromEntries(Object.keys(merged).map((ref) => [ref, calculateCell(merged, ref)])),
   };

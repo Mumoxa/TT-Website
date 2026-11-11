@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
-import { PRACTICE_ITEMS, PRACTICE_SOURCE, practiceFeedback } from './practice.js';
-import { calculateCell } from './formulas.js';
+import { practiceFeedbackFor } from './practice.js';
+import { AP_PRACTICE } from './practice-tables.js';
 import './spreadsheet.css';
 
-export function AssessmentPractice({ onContinue, onBack }) {
+/* Untimed, unrecorded practice in the three answer formats. The table comes from the assessment's
+   slug so an Accounts Receivable candidate practises receivable-neutral formats, never the
+   Accounts Payable table (or the reverse). Defaults to the payable table for older links. */
+export function AssessmentPractice({ onContinue, onBack, practice = AP_PRACTICE }) {
   const [responses, setResponses] = useState({});
   const [checked, setChecked] = useState({});
+  const items = practice.items;
   function answer(id, value) {
     setResponses(old => ({ ...old, [id]: value }));
     setChecked(old => ({ ...old, [id]: true }));
   }
-  const formula = responses['practice-tokens'] || '';
+  const cellItem = items.find(item => item.type === 'cell');
+  const formula = cellItem ? (responses[cellItem.id] || '') : '';
   return <main className="tta-shell tta-battery tta-practice">
     <div className="tta-section-header"><div className="tta-kicker">Before you start</div><h1>Try the question formats</h1>
       <p>Three practice items. These are not scored or saved. Your assessment timer has not started.</p></div>
-    {PRACTICE_ITEMS.map((item, index) => {
+    {items.map((item, index) => {
       const chosen = responses[item.id];
-      const feedback = checked[item.id] ? practiceFeedback(item.id, chosen) : null;
+      const feedback = checked[item.id] ? practiceFeedbackFor(practice, item.id, chosen) : null;
       return <section key={item.id} className="tta-battery-section">
         {item.type !== 'cell' ? <fieldset className="tta-question">
           <legend><span className="tta-qnum">{index + 1}</span> {item.prompt}</legend>
@@ -31,9 +36,9 @@ export function AssessmentPractice({ onContinue, onBack }) {
           })}
         </fieldset> : <div className="tta-question tta-cell-item">
           <label htmlFor="practice-amount"><span className="tta-qnum">{index + 1}</span> {item.prompt}</label>
-          <div className="tta-doc"><h3>Museum token desk</h3><div className="tta-doc-scroll"><table aria-label="Practice museum token table">
-            <thead><tr><th scope="col">Batch</th><th scope="col" className="is-amount">Tokens issued</th></tr></thead>
-            <tbody>{[2, 3].map(row => <tr key={row}><td>{PRACTICE_SOURCE['A' + row]}</td><td className="is-amount">{PRACTICE_SOURCE['C' + row]}</td></tr>)}</tbody>
+          <div className="tta-doc"><h3>{practice.docTitle}</h3><div className="tta-doc-scroll"><table aria-label={'Practice table: ' + practice.docTitle}>
+            <thead><tr>{practice.docHeaders.map(heading => <th key={heading} scope="col" className={heading === practice.docHeaders[1] ? 'is-amount' : undefined}>{heading}</th>)}</tr></thead>
+            <tbody>{[2, 3].map(row => <tr key={row}><td>{practice.source['A' + row]}</td><td className="is-amount">{practice.source['C' + row]}</td></tr>)}</tbody>
           </table></div></div>
           <div className="tta-answer-row"><span className="tta-answer-prefix" aria-hidden="true">Answer</span>
             <input id="practice-amount" className="tta-answer-input" inputMode="decimal" placeholder="For example 12 500.00" value={formula} maxLength={200}

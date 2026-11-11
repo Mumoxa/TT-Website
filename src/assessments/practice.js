@@ -1,4 +1,6 @@
 // Public examples only. Never used for assessment scoring or candidate persistence.
+// A practice table is {items, source}; `practiceFeedbackFor` evaluates any table, so the accounts
+// payable and accounts receivable practice sets share one implementation.
 import { calculateCell } from './formulas.js';
 
 export const PRACTICE_SOURCE = Object.freeze({
@@ -15,17 +17,22 @@ export const PRACTICE_ITEMS = [
   { id: 'practice-tokens', type: 'cell', prompt: 'Using the table, how many tokens did the museum desk issue in total? Type the amount in the box.', ref: 'C5', answer: 601.85, example: '173.25 + 428.60' },
 ];
 
-export function practiceFeedback(id, response) {
-  const item = PRACTICE_ITEMS.find(value => value.id === id);
+// Immediate feedback for one practice item in the given table. Ids never cross tables.
+export function practiceFeedbackFor(table, id, response) {
+  const item = table.items.find(value => value.id === id);
   if (!item) throw new Error('Unknown practice item.');
   if (item.type === 'cell') {
     // A typed amount or a formula both count, as in the assessment's answer boxes.
     const entry = String(response ?? '').trim();
-    const calculated = entry ? calculateCell({ ...PRACTICE_SOURCE, [item.ref]: entry.replace(/^R\s*/i, '').replace(/\s+/g, '') }, item.ref) : '';
+    const calculated = entry ? calculateCell({ ...table.source, [item.ref]: entry.replace(/^R\s*/i, '').replace(/\s+/g, '') }, item.ref) : '';
     return { correct: entry !== '' && Math.abs(Number(calculated) - item.answer) < 0.000001,
       answer: `${item.example} = ${item.answer.toFixed(2)}.` };
   }
   const selected = item.type === 'single' ? [response] : Array.isArray(response) ? response : [];
   return { correct: selected.length === item.answer.length && new Set(selected).size === selected.length && item.answer.every(value => selected.includes(value)),
     answer: item.answer.map(value => item.options.find(option => option.id === value).text).join(' and ') };
+}
+
+export function practiceFeedback(id, response) {
+  return practiceFeedbackFor({ items: PRACTICE_ITEMS, source: PRACTICE_SOURCE }, id, response);
 }

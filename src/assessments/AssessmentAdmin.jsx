@@ -64,8 +64,72 @@ function Login({ onSuccess }) {
   </section>;
 }
 
-function ResultReport({ report, onBack }) {
+/* The written handoff is scored by the server, so this shows the evidence behind the mark rather
+   than asking anyone to set it. Nothing here is editable. */
+export function HandoffEvidence({ report }) {
+  const notes = report.result?.review?.notes || [];
+  if (!notes.length) return null;
+  return <section className="tta-admin-panel">
+    <h2>Written handoff — scored automatically</h2>
+    <p className="tta-admin-muted">This activity was scored by the server against published evidence markers, on the same zero-or-full rule as every other field. Each criterion is worth two points and shows the marker that earned it.</p>
+    {notes.map((note) => <div key={note.id} className="tta-handoff-evidence">
+      <p className="tta-admin-mark-total"><strong>{note.earned}</strong> of {note.points} points · {note.id}</p>
+      <ul className="tta-criteria-list">
+        {(note.criteria || []).map((c, index) => <li key={c.id} className={c.points ? 'is-earned' : ''}>
+          <span className="tta-criteria-mark">{c.points}/{2}</span>
+          <span className="tta-criteria-label">Criterion {index + 1}</span>
+          {c.matched ? <span className="tta-admin-muted">· matched “{c.matched}”</span> : null}
+          {!c.points && c.missing?.length ? <span className="tta-admin-muted">· no evidence of: {c.missing.join(', ')}</span> : null}
+          {!c.points && c.blocked_by ? <span className="tta-admin-muted">· the note says “{c.blocked_by}”, which contradicts the criterion</span> : null}
+        </li>)}
+      </ul>
+      <details><summary>What the candidate wrote</summary>
+        <pre className="tta-handoff-note">{report.question_review?.find((q) => q.id === note.id)?.chosen || 'Nothing was written for this activity.'}</pre>
+      </details>
+    </div>)}
+  </section>;
+}
+
+/* The hiring decision is a separate record from the score, with its own reason and author. */
+function DecisionPanel({ report, attemptId, onRecorded }) {
+  const current = report.result?.decision;
+  const [decision, setDecision] = useState(current?.decision || '');
+  const [reason, setReason] = useState('');
+  const [decidedBy, setDecidedBy] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  async function save() {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await request('decision/' + attemptId, { method: 'POST', body: { decision, reason: reason.trim(), decided_by: decidedBy.trim() } });
+      setMessage('Decision recorded.');
+      if (onRecorded) await onRecorded();
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  return <section className="tta-admin-panel no-print">
+    <h2>Hiring decision</h2>
+    <p className="tta-admin-muted">The decision is recorded separately and never changes a score. Current: {current ? <><strong>{current.decision.replace('_', ' ')}</strong> by {current.decided_by}</> : 'not recorded'}</p>
+    {current && <p className="tta-admin-muted">{current.reason}</p>}
+    <div className="tta-marking-form">
+      <label>Decision<select value={decision} onChange={(e) => setDecision(e.target.value)}>
+        <option value="">Select</option><option value="advance">Advance to interview</option>
+        <option value="hold">Hold</option><option value="not_advance">Not advance</option>
+      </select></label>
+      <label>Reason<textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={1000} placeholder="At least 8 characters" /></label>
+      <label>Decided by<input value={decidedBy} onChange={(e) => setDecidedBy(e.target.value)} maxLength={120} /></label>
+      {error && <p className="tta-admin-error" role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      <button type="button" onClick={save} disabled={busy || !decision || reason.trim().length < 8 || decidedBy.trim().length < 2}>{busy ? 'Saving…' : 'Record decision'}</button>
+    </div>
+  </section>;
+}
+
+function ResultReport({ report, onBack, onRecorded }) {
   const r = report.result, a = report.attempt;
+  // Wording follows the assessment that was taken, never a hard-coded product family.
+  const receivable = /receivable|debtor/i.test(report.assessment?.title || '');
   const score = r?.overall_score;
   function printReport() { window.print(); }
   const workbook = report.responses?.workbook || {};
@@ -89,14 +153,15 @@ function ResultReport({ report, onBack }) {
     </section>
     <div className="tta-admin-score-row">
       <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
-      <div><small>Technical knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
-      <div><small>Reconciliation</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
+      <div><small>Knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
+      <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
       <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
     </div>
+    <HandoffEvidence report={report} />
     <section className="tta-admin-panel">
       <h2>Assessment interpretation</h2>
       <p>{r?.interpretation || 'The assessment has not yet been scored.'}</p>
-      <p className="tta-admin-muted">A timed work sample is screening evidence, not independent proof of full-function AP competence. Verify practical experience, Sage 300 usage and references.</p>
+      <p className="tta-admin-muted">A timed work sample is screening evidence, not independent proof of full-function {receivable ? 'accounts receivable' : 'accounts payable'} competence. Verify practical experience, {receivable ? 'debtors ledger and collections systems' : 'Sage 300 and creditor systems'} usage and references.</p>
       {!!r?.critical_flags?.length && <div className="tta-admin-flags">
         {r.critical_flags.map((f, i) => <span key={i}>{f}</span>)}
       </div>}
@@ -108,11 +173,16 @@ function ResultReport({ report, onBack }) {
       </dl>
     </section>}
     <section className="tta-admin-panel">
-      <h2>Technical knowledge — question review</h2>
+      <h2>Activity review — knowledge and practical work</h2>
       <div className="tta-admin-table-scroll"><table className="tta-admin-table">
         <thead><tr><th>Question</th><th>Candidate's answer</th><th>Expected answer</th><th>Outcome</th></tr></thead>
         <tbody>{(report.question_review || []).map((q, i) => <tr key={i}>
-          <td>{q.prompt}</td><td>{q.chosen}</td><td>{q.expected}</td><td>{q.correct ? 'Correct' : 'Incorrect'}</td>
+          {q.lines
+            ? <><td>{q.prompt}</td>
+                <td><ul className="tta-admin-lines">{q.lines.map((l) => <li key={l.id} className={l.ok ? undefined : 'is-wrong'}>{l.ref}: {l.given || 'Not answered'}{l.ok ? '' : ' ✗'}</li>)}</ul></td>
+                <td><ul className="tta-admin-lines">{q.lines.map((l) => <li key={l.id}>{l.ref}: {l.correct}</li>)}</ul></td>
+                <td>{q.awarded} of {q.lines.length} lines correct</td></>
+            : <><td>{q.prompt}</td><td>{q.chosen}</td><td>{q.expected}</td><td>{q.correct ? 'Correct' : 'Incorrect'}</td></>}
         </tr>)}</tbody>
       </table></div>
     </section>
@@ -153,6 +223,7 @@ function ResultReport({ report, onBack }) {
       <h2>Audit records</h2>
       <ol>{(report.audit_events||[]).map((event,i)=><li key={i}>{formattedTime(event.created_at)} — {event.event_type} ({event.actor_type})</li>)}</ol>
     </section>
+    <DecisionPanel report={report} attemptId={a.id} onRecorded={onRecorded} />
     <section className="tta-admin-panel no-print">
       <h2>Structured response evidence</h2>
       <pre className="tta-admin-json">{JSON.stringify(report.responses, null, 2)}</pre>
@@ -211,6 +282,19 @@ function Workspace({ onExpired }) {
       setMessage('Draft saved privately. Approval is required before publishing.');await load();
     }catch(e){setError(e.message);}finally{setBusy(false);}
   }
+  // Imports a private package file (never a public one) straight into the JSON field, so a real
+  // assessment does not have to be pasted by hand. The file is read in the browser only.
+  async function importPackage(e) {
+    const file=e.target.files?.[0];if(!file)return;
+    setError('');setMessage('');
+    try {
+      const parsed=JSON.parse(await file.text());
+      if(!parsed.question_payload||!parsed.scoring_key||!parsed.slug)throw new Error('That file is not an assessment package.');
+      setPackageJson(JSON.stringify(parsed,null,2));setDraftVersion('');
+      setMessage('Loaded '+file.name+'. Check the slug and title, then save the private draft.');
+    }catch(err){setError('Could not read that package: '+err.message);}
+    finally{e.target.value='';}
+  }
   async function loadDraft(versionId) {
     setBusy(true);setError('');
     try {const result=await request('draft/'+versionId);setPackageJson(JSON.stringify(result.package,null,2));setDraftVersion(versionId);setContentApproved(false);setPrivacyApproved(false);setApprovalReference('');}
@@ -226,7 +310,7 @@ function Workspace({ onExpired }) {
   async function openReport(id) {
     setBusy(true); setError('');
     try {
-      setActiveReport(await request('report/' + encodeURIComponent(id)));
+      setActiveReport(await request('report/' + encodeURIComponent(id.trim())));
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
@@ -235,7 +319,9 @@ function Workspace({ onExpired }) {
     [a.first_name, a.surname, a.email, a.client_name, a.title].join(' ').toLowerCase().includes(search.toLowerCase()));
 
   if (activeReport) return <main className="tta-admin-shell">
-    <ResultReport report={activeReport} onBack={() => { setActiveReport(null); void load(); }} />
+    <ResultReport report={activeReport}
+      onBack={() => { setActiveReport(null); void load(); }}
+      onRecorded={async () => { setActiveReport(await request('report/' + activeReport.attempt.id)); }} />
   </main>;
 
   return <main className="tta-admin-shell tta-admin-main">
@@ -276,7 +362,7 @@ function Workspace({ onExpired }) {
     </section>}
     {tab === 'invitations' && <section className="tta-admin-panel">
       <h2>Create candidate invitation</h2>
-      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered.</p>
+      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered, and each ID number can start at most 3 times.</p>
       <form onSubmit={invitation} className="tta-admin-form">
         <label>Published assessment
           <select value={selectedDefinition} onChange={(e) => setSelectedDefinition(e.target.value)} required>
@@ -305,6 +391,10 @@ function Workspace({ onExpired }) {
       </div>
       <p>Each question needs an id, prompt, and four options with id/text. scenario requires instructions, supplier and ledger rows (ref, amount, description), and action_options (id/text). The private scoring_key requires mcq answer ids, exactly three discrepancy refs, actions by ref, corrected_balance and optional unsafe_actions. Amounts use signed debits/credits as explained in your instructions. Save a new immutable version after editing.</p>
       <form onSubmit={saveDraft} className="tta-admin-form">
+        <label>Import a private package file
+          <input type="file" accept="application/json,.json" onChange={importPackage} disabled={busy}/>
+        </label>
+        <p className="tta-admin-muted">Load a package kept outside this repository (for example under <code>private/assessments/</code>, which is git-ignored). Never paste live questions into a tracked file.</p>
         <label>Assessment package (JSON)
           <textarea value={packageJson} onChange={(e) => {setPackageJson(e.target.value);setDraftVersion('');}}
             rows={15} placeholder={'{\n  "slug": "ap-clerk-v1",\n  "client_name": "Talent Tree",\n  "title": "Accounts Payable Clerk Assessment",\n  "question_payload": { "questions": [], "scenario": {} },\n  "scoring_key": { "mcq": {}, "discrepancies": [], "actions": {}, "corrected_balance": 0 }\n}'} required />
@@ -345,7 +435,7 @@ function breakdownRows(b) {
     const cat = (c, label) => [label, `${c.earned} / ${c.max} points (${c.percent}%)`];
     return [
       cat(b.categories.knowledge, 'Knowledge'),
-      cat(b.categories.reconciliation, 'Practical reconciliation'),
+      cat(b.categories.reconciliation, 'Practical work'),
       ['Items correct', `${b.items_correct} / ${b.items_total}`],
       ...(b.sections || []).map((s) => [s.title, `${s.earned} / ${s.max} (${s.percent}%)`]),
     ];

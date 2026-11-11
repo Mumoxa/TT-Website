@@ -13,6 +13,8 @@ function batteryItemAnswered(item, draft) {
   if (item.type === 'single') return Boolean(draft.mcq?.[item.id]);
   if (item.type === 'multi') return (draft.structured?.multi?.[item.id] || []).length > 0;
   if (item.type === 'text') return String(draft.structured?.text?.[item.id] ?? '').trim() !== '';
+  // Line matching counts as answered once every line is classified.
+  if (item.type === 'match') { const m = draft.structured?.match?.[item.id] || {}; return (item.lines || []).every((l) => m[l.id]); }
   return String(draft.workbook?.[item.ref] ?? '').trim() !== '';
 }
 
@@ -44,7 +46,7 @@ const inviteFromUrl = () => new URLSearchParams(window.location.search).get('inv
 export default function CandidateAssessment({catalogItem}) {
   const invitationToken = useRef(inviteFromUrl());
   const [phase, setPhase] = useState('loading');
-  const [client, setClient] = useState({ client_name: catalogItem?.client_name || '', title: catalogItem?.title || 'Assessment', duration_seconds: DEFAULT_ASSESSMENT_SECONDS });
+  const [client, setClient] = useState({ client_name: catalogItem?.client_name || '', title: catalogItem?.title || 'Assessment', duration_seconds: DEFAULT_ASSESSMENT_SECONDS, slug: catalogItem?.slug || '' });
   const [attempt, setAttempt] = useState(null);
   const [draft, setDraft] = useState(blankAnswers);
   const [section, setSection] = useState('questions');
@@ -76,7 +78,7 @@ export default function CandidateAssessment({catalogItem}) {
     dirtyRef.current = false;
     setDraft(state);
     setAttempt(data);
-    setClient({ client_name: data.client_name, title: data.title, duration_seconds: DEFAULT_ASSESSMENT_SECONDS });
+    setClient({ client_name: data.client_name, title: data.title, duration_seconds: DEFAULT_ASSESSMENT_SECONDS, slug: data.slug || catalogItem?.slug || '' });
     setPhase(data.status === 'active' ? 'active' : 'complete');
     setSaveStatus('All changes saved');
   }, []);
@@ -245,6 +247,7 @@ export default function CandidateAssessment({catalogItem}) {
   if (phase === 'welcome') {
     const welcomeItem = catalogItem?.title === client.title && catalogItem?.client_name === client.client_name ? catalogItem : null;
     return <AssessmentWelcome client={client.client_name} assessmentTitle={client.title}
+      slug={catalogItem?.slug || client.slug || ''}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
       sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count}
       startInstructions={client.instructions || welcomeItem?.instructions}

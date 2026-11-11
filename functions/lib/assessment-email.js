@@ -88,7 +88,7 @@ function scoreHero(result) {
     <div style="margin-top:8px;font:14px/1.4 ${SANS};color:${C.muted};">Total: ${escapeHtml(total)} / 100</div>
     <div style="margin-top:22px;">
       ${scoreLine('Knowledge', percentOf(result.knowledge_score, 40), escapeHtml(result.knowledge_score) + ' / 40 · ')}
-      ${scoreLine('Practical reconciliation', percentOf(result.reconciliation_score, 60), escapeHtml(result.reconciliation_score) + ' / 60 · ')}
+      ${scoreLine('Practical work', percentOf(result.reconciliation_score, 60), escapeHtml(result.reconciliation_score) + ' / 60 · ')}
     </div>
     ${flagLine}`;
 }
