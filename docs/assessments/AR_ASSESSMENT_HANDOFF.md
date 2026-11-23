@@ -1,7 +1,55 @@
 # Accounts Receivable assessment — duplicate of the payable assessment
 
 Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; every point scored automatically; not published, not piloted, not validated.**
-Last updated: 2026-11-05.
+Last updated: 2026-11-05. **Superseded in part on 2026-11-23 — read section 0 first.**
+
+## 0. 2026-11-23: AR content re-ported from Talza, AP layout, speed and accuracy
+
+Status: **private package built and verified locally; not published, not SME-reviewed, not piloted.**
+
+Owner request: take the Accounts Receivable assessment in Talza (the published "Debtors Administration"
+battery), copy it to this site, and present it with the same palette and UI as the Accounts Payable
+assessment; also measure speed and accuracy.
+
+What was done:
+
+1. **Content.** A new private builder, `private/assessments/ar-clerk-v1/build.mjs` (git-ignored), ports every
+   Talza debtors construct into the battery-v2 layout the AP assessment uses: six sections, four question
+   sections then two practical sections worked from documents on the right, knowledge 40 / practical 60, no
+   section caps, 20 minutes. It has 22 activities, including a line-by-line ledger correction (`match`) and
+   the Talza follow-up message as an automatically scored `note`. It was not copied verbatim: the Talza
+   battery shows a candidate 11 one-point items and no document set, which cannot show a hiring manager that
+   the candidate can do the work. The item-by-item mapping and the reasons are in the private `APPROVAL.md`.
+2. **Same UI and palette.** No UI fork. A battery-v2 package renders through the same runner, documents
+   panel and stylesheet as AP. Checked in Chromium side by side with a local copy of the AP package.
+3. **Speed and accuracy** (public code, applies to every battery, AP included):
+   `functions/lib/speed-accuracy.js`. From the server's own start and close timestamps and the existing
+   grading, the recruiter report and result email now show accuracy on answered work (separate from the
+   score), activities answered, time used of the limit, time per answered activity and a descriptive
+   profile. It never changes a score and is not shown to candidates. **The profile thresholds are design
+   assumptions, labelled as such in the report; re-set them from pilot data.**
+4. **Phone layout fix** (public code, AP and AR): at 390 px the documents panel pushed the whole page
+   sideways (91 px on AP, 200 px on AR) instead of scrolling each table inside its own panel. Fixed in
+   `candidate-ui.css`; page overflow is now 0 on both.
+
+Slug: `ar-clerk-v1`. Importing this package makes it the **latest draft** of that slug, ahead of the earlier
+unpublished private draft (whose builder is not in this working copy). Nothing is published until the owner
+publishes it from `/admin/assessments` (section 5, unchanged).
+
+Verified on 2026-11-23 (local only):
+
+| Check | Result |
+| --- | --- |
+| `build.mjs` self-checks | 19 passed: production validator; practice isolation; brand review; no key material in the candidate payload; no AP party names; correct option the uniquely longest in 2 of 14 choice items; answer positions spread; perfect sheet 100 with no flag; alternative duplicate reading accepted; three amount formats; careless sheet lower with unsafe flags; note criteria |
+| `verify-local.mjs` through the real API | 14 passed: draft, identical read-back, publish, metadata-only catalogue (22 activities, 20 min), start, no key material, 20-minute server limit, 100/100, percentages only for the candidate, 40/60 in the report, speed and accuracy present; an unfinished careful paper reports 100 % accuracy and "Did not finish"; a careless paper reports lower accuracy and 3 unsafe flags |
+| `npm test` | 374 passed, 0 failed |
+| Chromium, local Pages stack | AR welcome, runner and documents render with the AP layout; recruiter report shows the speed and accuracy panel; no page overflow at 390 px for AP or AR |
+
+Not verified: no remote or production behaviour; no SME review; no pilot or timing study; the result email
+was rendered in tests but not sent through a provider; `tests/browser/*` suites were not run.
+
+Talza: the speed and accuracy profile is report code, not the grading engine, so the Talza copy of the
+engine does not need a re-port for scores to stay identical. Talza was not changed.
 
 This document describes how the accounts receivable (AR) assessment was produced by duplicating the
 existing accounts payable (AP) assessment, what was reused, what had to change, and what is still

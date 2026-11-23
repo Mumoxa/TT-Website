@@ -1,4 +1,5 @@
 import { DEFAULT_ASSESSMENT_SECONDS } from '../../functions/lib/assessment-deadlines.js';
+import { formatDuration } from '../../functions/lib/speed-accuracy.js';
 import React, { useEffect, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
@@ -66,6 +67,24 @@ function Login({ onSuccess }) {
 
 /* The written handoff is scored by the server, so this shows the evidence behind the mark rather
    than asking anyone to set it. Nothing here is editable. */
+/* Speed and accuracy, shown next to the score so a recruiter can tell a careful candidate who ran out of time
+   from a fast one who guessed. Computed by the server; it never changes the score. */
+export function SpeedAccuracy({ report }) {
+  const sa = report.speed_accuracy;
+  if (!sa) return null;
+  return <section className="tta-admin-panel" aria-labelledby="tta-speed-accuracy">
+    <h2 id="tta-speed-accuracy">Speed and accuracy</h2>
+    <p className="tta-admin-mark-total"><strong>{sa.profile.label}</strong></p>
+    <dl className="tta-admin-score-breakdown">
+      <div><dt>Accuracy on answered work</dt><dd>{sa.accuracy_percent === null ? 'No answered work' : sa.accuracy_percent + '%'}</dd></div>
+      <div><dt>Activities answered</dt><dd>{sa.answered} of {sa.total} ({sa.completion_percent}%)</dd></div>
+      <div><dt>Time used</dt><dd>{formatDuration(sa.time_used_seconds)} of {formatDuration(sa.time_limit_seconds)}{sa.time_used_percent === null ? '' : ' (' + sa.time_used_percent + '%)'}</dd></div>
+      <div><dt>Average time per answered activity</dt><dd>{sa.seconds_per_answer === null ? '—' : formatDuration(sa.seconds_per_answer)}</dd></div>
+    </dl>
+    <p className="tta-admin-muted">Accuracy counts only the activities the candidate answered, so it is separate from the score. {sa.basis}</p>
+  </section>;
+}
+
 export function HandoffEvidence({ report }) {
   const notes = report.result?.review?.notes || [];
   if (!notes.length) return null;
@@ -155,8 +174,9 @@ function ResultReport({ report, onBack, onRecorded }) {
       <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
       <div><small>Knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
       <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
-      <div><small>Duration</small><strong>{a.closed_at_ms ? Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000))) + ' sec' : '—'}</strong></div>
+      <div><small>Time used</small><strong>{report.speed_accuracy ? formatDuration(report.speed_accuracy.time_used_seconds) + ' of ' + formatDuration(report.speed_accuracy.time_limit_seconds) : a.closed_at_ms ? formatDuration(Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000)))) : '—'}</strong></div>
     </div>
+    <SpeedAccuracy report={report} />
     <HandoffEvidence report={report} />
     <section className="tta-admin-panel">
       <h2>Assessment interpretation</h2>

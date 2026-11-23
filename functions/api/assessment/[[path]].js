@@ -27,6 +27,7 @@ import { DEFAULT_ASSESSMENT_SECONDS } from '../../lib/assessment-deadlines.js';
 import { notifyPendingResults } from '../../lib/assessment-email.js';
 import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
 import { combineScores } from '../../lib/assessment-review.js';
+import { speedAccuracy } from '../../lib/speed-accuracy.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -403,6 +404,11 @@ async function batteryReport(db, a, attemptId) {
     workbook_source: payloadObj.workbook?.source || {},
     reconciliation_review: null,
     workbook_save_history: resultRows(saves),
+    // Speed and accuracy, from the server's own timestamps and the same grading; never changes a score.
+    speed_accuracy: a.status === 'active' ? null : speedAccuracy({
+      items: graded.items, startedAtMs: Number(a.started_at_ms), closedAtMs: Number(a.closed_at_ms),
+      limitSeconds: Math.round((Number(a.expires_at_ms) - Number(a.started_at_ms)) / 1000),
+    }),
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
     screening: publicScreening(a),
     assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format, sheets: payloadObj.workbook?.sheets || null },
