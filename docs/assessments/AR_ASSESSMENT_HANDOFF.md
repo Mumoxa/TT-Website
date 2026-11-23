@@ -5,7 +5,9 @@ Last updated: 2026-11-05. **Superseded in part on 2026-11-23 — read section 0 
 
 ## 0. 2026-11-23: AR content re-ported from Talza, AP layout, speed and accuracy
 
-Status: **private package built and verified locally; not published, not SME-reviewed, not piloted.**
+Status: **LIVE since 2026-11-23 20:06 UTC on owner instruction** (`/assessments/ar-clerk-v1`, version v1). **Not SME-reviewed, not piloted.**
+
+How it went live: PR #71 merged and deployed (`568d640`); migrations `0004` and `0005` applied to production `tt-assessments` and recorded in `d1_migrations`; the package was written to D1 with the same rows the admin draft and publish routes write (definition, version v1, validated key, `assessment.draft_saved` and `assessment.published` audit events). The SHA-256 hashes of the payload and key were checked against the locally validated package before writing. The audit approval reference says: owner instruction to publish now, AR SME review pending. Live checks: catalogue API lists both AP and AR; the AR welcome page renders on desktop and at 390 px with no page overflow. No production attempt was started.
 
 Owner request: take the Accounts Receivable assessment in Talza (the published "Debtors Administration"
 battery), copy it to this site, and present it with the same palette and UI as the Accounts Payable
