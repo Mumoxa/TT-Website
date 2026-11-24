@@ -3,6 +3,24 @@
 Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; every point scored automatically; not published, not piloted, not validated.**
 Last updated: 2026-11-05. **Superseded in part on 2026-11-23 — read section 0 first.**
 
+## 0a. 2026-11-24: changes after go-live
+
+Current live version: **`ar-clerk-v1` v3**. Not SME-reviewed, not piloted.
+
+| Change | Where | Evidence |
+| --- | --- | --- |
+| Question 6.4 no longer free text. The written follow-up email was scored by keyword markers, which gave full marks to keyword-stuffed nonsense and under-scored correct answers (abbreviations, other languages). It is now a fixed-key line-matching item (one point per line), live as v2, with its third choice label shortened in v3 so it is readable in the dropdown. No free-text item remains in the AR form. | Private builder; production D1 (`v2`, `v3`, audit events) | Builder 18 checks; local end-to-end 14 checks; live run scored exactly as predicted (99/100 with one deliberate 6.4 error). |
+| Amount boxes: 180 typed formats (30 per box, including `R12'500`, `12500`, `R12 500`, `R12,500.00`, `12.500,00`, `12500 rand`, `R12500,-`) all scored correct. The "Read as" line uses the same parser. | `functions/lib/battery.js` (unchanged) | Local run against the real package. |
+| 2-month assignment question removed from the candidate form for AP and AR; earlier answers kept and shown only where recorded. | PR #73 | Tests; live form checked in Chromium. |
+| Duplicate result emails: a result is claimed in D1 before it is sent, so two simultaneous requests cannot both send it. | PR #74 | Concurrency test; live run sent one email. |
+| Submit confirmation dialog (answered count, unanswered warning, defaults to going back, shows "Submitting…"); start dialog says a start uses one of three attempts; scrolled content stops below the sticky bar. | PR #76 | Browser suites 30/31 (the answer-table spec fails identically on `main`: its setup call gets 403). |
+| Progress counter counts written-note and document-code items. | PR #72 | Live counter reached 22 of 22. |
+| Test records: the four "Practice / Test Candidate" attempts were deleted from production on owner instruction, with every dependent row; one `assessment.test_records_deleted` audit event records it. | Production D1 | 30 → 26 attempts. |
+
+Release checks run locally with the real AR package (17 of 17 passed): reload keeps answers and the timer; at 0:00 the attempt closes as timed out and is scored from the last save; a failed save is shown and blocks Submit, then recovers; a double-click submits once; full run at 390 px with no overflow; a 4th start with one ID is refused before the timer; keyboard selection of 1.1 stays below the top bar.
+
+Still open: AR SME sign-off of the answer keys (private `APPROVAL.md`); the 20-minute limit is untimed with real candidates; AP Version 2 was not run end to end after these changes (its content exists only in production); screen-reader testing.
+
 ## 0. 2026-11-23: AR content re-ported from Talza, AP layout, speed and accuracy
 
 Status: **LIVE since 2026-11-23 20:06 UTC on owner instruction** (`/assessments/ar-clerk-v1`, version v1). **Not SME-reviewed, not piloted.**
