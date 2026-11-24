@@ -7,7 +7,9 @@ import {apiJson,assessmentContentNeedsBrandReview} from '../functions/lib/assess
 const withheld=String.fromCharCode(115,97,116,117,114,99);
 test('tracked repository files exclude withheld client branding',()=>{
  const files=execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(Boolean);
- const matches=files.filter(file=>path.basename(file)!=='AUDIT_REPORT.md' && fs.readFileSync(file).toString('utf8').toLowerCase().includes(withheld));
+ // A tracked symlink's content is its target path (what git stores); its target files are scanned separately.
+ const trackedContent=file=>fs.lstatSync(file).isSymbolicLink()?fs.readlinkSync(file):fs.readFileSync(file).toString('utf8');
+ const matches=files.filter(file=>path.basename(file)!=='AUDIT_REPORT.md' && trackedContent(file).toLowerCase().includes(withheld));
  assert.deepEqual(matches,[],'Withheld branding remains in: '+matches.join(', '));
 });
 test('assessment API strips withheld branding from legacy private records',async()=>{
