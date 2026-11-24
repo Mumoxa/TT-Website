@@ -43,7 +43,7 @@ test('line matching: classify lines, progress updates, saves, and scores one poi
  await expect(page.getByRole('status').filter({hasText:'All changes saved'})).toBeVisible();
  // A reload keeps the classifications.
  await page.reload();await expect(page.getByLabel('Synthetic ledger line J-1: how does it compare?')).toHaveValue('o4');
- await page.getByRole('button',{name:/Submit assessment/}).click();
+ await page.getByRole('button',{name:/Submit assessment/}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Assessment complete.'})).toBeVisible();
  // Matching section: 3 of 5 points = 60%. Knowledge: 100%.
  await expect(page.locator('li',{hasText:'Synthetic matching'}).getByText('60%')).toBeVisible();

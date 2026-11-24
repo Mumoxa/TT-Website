@@ -109,7 +109,7 @@ for(const width of [390,1280]){
    await page.getByRole('button',{name:'Start assessment',exact:true}).click();await page.getByRole('button',{name:'OK, start the timer',exact:true}).click();
    await expect(page.getByRole('timer')).toBeVisible();
    await expectClean(page,'candidate runner',width);
-   await page.getByRole('button',{name:/Submit assessment/}).click();
+   await page.getByRole('button',{name:/Submit assessment/}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();
    await expect(page.getByRole('heading',{name:'Assessment complete.'})).toBeVisible();
    await expectClean(page,'candidate results',width);
   });

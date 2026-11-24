@@ -27,7 +27,7 @@ test('workbook editing, formulas, paste clipping, undo and saved recovery',async
  await expect(page.getByLabel('Cell B2',{exact:true})).toHaveValue('');await expect(page.getByLabel('Cell C2',{exact:true})).toHaveValue('500');await expect(page.getByLabel('Cell F20',{exact:true})).toHaveValue('1');
  await page.screenshot({path:'.wrangler/browser-results/candidate-desktop.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await page.screenshot({path:'.wrangler/browser-results/candidate-mobile.png',fullPage:true});
- await page.getByRole('button',{name:'Submit assessment'}).click();await expect(page.getByText('Assessment complete.',{exact:true})).toBeVisible();expect(errors).toEqual([]);
+ await page.getByRole('button',{name:'Submit assessment'}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();await expect(page.getByText('Assessment complete.',{exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
 
 test('duplicate tab conflict stops autosave until server recovery is explicit',async({page,context,request})=>{
@@ -39,7 +39,7 @@ test('duplicate tab conflict stops autosave until server recovery is explicit',a
 });
 
 test('admin draft authoring, approval, report and printable formula evidence',async({page,request})=>{
- await start(page,await invitation(request));await page.getByRole('button',{name:'Continue to reconciliation'}).click();await page.getByLabel('Cell C2',{exact:true}).fill('=SUM(B2:B3)');await page.getByRole('button',{name:'Submit assessment'}).click();await expect(page.getByText('Assessment complete.',{exact:true})).toBeVisible();
+ await start(page,await invitation(request));await page.getByRole('button',{name:'Continue to reconciliation'}).click();await page.getByLabel('Cell C2',{exact:true}).fill('=SUM(B2:B3)');await page.getByRole('button',{name:'Submit assessment'}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();await expect(page.getByText('Assessment complete.',{exact:true})).toBeVisible();
  await page.goto('/admin/assessments');await page.getByLabel('Admin access key').fill(key());await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Assessment results',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Assessment setup',exact:true}).click();await page.getByLabel('Assessment package (JSON)',{exact:true}).fill(JSON.stringify({...SYNTHETIC,slug:'author-browser-'+Date.now()}));await page.getByRole('button',{name:'Save private draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');
  await page.getByRole('button',{name:'Results',exact:true}).click();await page.getByRole('button',{name:'View',exact:true}).first().click();await expect(page.getByRole('heading',{name:'Saved cells and formulas',exact:true})).toBeVisible();await expect(page.getByText('=SUM(B2:B3)',{exact:true})).toBeVisible();
