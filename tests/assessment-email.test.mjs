@@ -76,6 +76,34 @@ test('pending results are emailed once and marked sent; failures are retried wit
   assert.equal(row.notify_status, 'http_500');
 });
 
+test('two simultaneous notification runs send one email, not two (production 2026-11-24)', async () => {
+  const db = database();
+  seedGradedAttempt(db);
+  const env = { RESEND_API_KEY: 'k', ASSESSMENT_FROM_EMAIL: 'from@example.invalid', ASSESSMENT_RESULTS_TO: 'christo@talenttree.co.za' };
+  let sends = 0;
+  // The provider call is slow enough for a second request to read the same pending row before the first marks it sent.
+  const slowSend = async () => { sends += 1; await new Promise((r) => setTimeout(r, 30)); return new Response('{}', { status: 200 }); };
+  await Promise.all([notifyPendingResults(env, db, slowSend), notifyPendingResults(env, db, slowSend)]);
+  assert.equal(sends, 1);
+  const row = db.sqlite.prepare("SELECT notify_status, notified_at FROM results WHERE id='r1'").get();
+  assert.equal(row.notify_status, 'sent');
+  assert.ok(row.notified_at);
+});
+
+test('a claim left by a worker that died mid-send is retried once it is stale, and a fresh claim is not', async () => {
+  const db = database();
+  seedGradedAttempt(db);
+  const env = { RESEND_API_KEY: 'k', ASSESSMENT_FROM_EMAIL: 'from@example.invalid', ASSESSMENT_RESULTS_TO: 'christo@talenttree.co.za' };
+  let sends = 0;
+  const send = async () => { sends += 1; return new Response('{}', { status: 200 }); };
+  db.sqlite.prepare("UPDATE results SET notify_status=? WHERE id='r1'").run('sending:' + Date.now());
+  await notifyPendingResults(env, db, send);
+  assert.equal(sends, 0);
+  db.sqlite.prepare("UPDATE results SET notify_status=? WHERE id='r1'").run('sending:' + (Date.now() - 11 * 60 * 1000));
+  await notifyPendingResults(env, db, send);
+  assert.equal(sends, 1);
+});
+
 test('missing configuration does not consume the retry budget', async () => {
   const db = database();
   seedGradedAttempt(db);

@@ -301,16 +301,30 @@ async function loadResultForEmail(db, attemptId) {
 
 /* Sends notifications for graded results not yet emailed. Never throws: failures are
    recorded on the result row and retried on later calls, up to MAX_RETRIES. */
+// A notification claim older than this is treated as abandoned (the worker died mid-send) and retried.
+const CLAIM_STALE_MS = 10 * 60 * 1000;
+
 export async function notifyPendingResults(env, db, fetchImpl = fetch, limit = 5) {
+  const now = Date.now();
+  const staleBefore = now - CLAIM_STALE_MS;
   const pending = await db.prepare(
-    "SELECT r.attempt_id FROM results r JOIN attempts a ON a.id=r.attempt_id " +
+    "SELECT r.attempt_id, r.notify_status FROM results r JOIN attempts a ON a.id=r.attempt_id " +
     "WHERE r.notified_at IS NULL AND r.notify_attempts < ? AND a.status IN ('completed','timed_out') " +
+    "AND (r.notify_status NOT LIKE 'sending:%' OR CAST(substr(r.notify_status, 9) AS INTEGER) < ?) " +
     'ORDER BY r.graded_at LIMIT ?'
-  ).bind(MAX_RETRIES, limit).all();
+  ).bind(MAX_RETRIES, staleBefore, limit).all();
   for (const row of pending?.results || []) {
+    // Claim the row before sending. Several requests can run this at the same moment (each assessment
+    // request finishes by notifying), and on 2026-11-24 two of them read the same pending row and both
+    // sent the email. Only the request whose conditional update changes the row may send; a claim left by
+    // a worker that died mid-send becomes claimable again after CLAIM_STALE_MS.
+    const claimed = await db.prepare(
+      'UPDATE results SET notify_status=? WHERE attempt_id=? AND notified_at IS NULL AND notify_status=?'
+    ).bind('sending:' + now, row.attempt_id, row.notify_status).run();
+    if (!claimed?.meta?.changes) continue;
     try {
       const data = await loadResultForEmail(db, row.attempt_id);
-      if (!data) continue;
+      if (!data) { await db.prepare("UPDATE results SET notify_status='pending' WHERE attempt_id=?").bind(row.attempt_id).run(); continue; }
       const sent = await sendResultEmail(env, buildResultEmail(data), fetchImpl);
       if (sent.ok) {
         await db.prepare("UPDATE results SET notified_at=?, notify_status='sent' WHERE attempt_id=?")
@@ -324,8 +338,8 @@ export async function notifyPendingResults(env, db, fetchImpl = fetch, limit = 5
           .bind(sent.reason, row.attempt_id).run();
       }
     } catch {
-      // Log no candidate data; the row keeps notify_status 'pending' and is retried.
-      await db.prepare('UPDATE results SET notify_attempts=notify_attempts+1 WHERE attempt_id=?')
+      // Log no candidate data; the claim is released to 'pending' and the row is retried.
+      await db.prepare("UPDATE results SET notify_attempts=notify_attempts+1, notify_status='pending' WHERE attempt_id=?")
         .bind(row.attempt_id).run();
     }
   }
