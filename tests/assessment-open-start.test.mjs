@@ -50,6 +50,8 @@ test('screening is masked in recruiter report and actual notification; repeat re
  assert.equal(report.status,200);assert.equal(report.data.screening.travel_description,'Synthetic route');assert.equal(report.data.screening.assignment_available,null);assert.equal(report.data.screening.assignment_note,'');assert.equal(report.data.screening.id_number_masked,t.fields.id_number.slice(0,6)+'***'+t.fields.id_number.slice(-4));assert.equal(report.data.attempt.attempt_number,1);
  const second=await t.call('admin/report/'+b.data.attempt_id,undefined,admin.cookie);assert.equal(second.data.attempt.attempt_number,2);
  const list=await t.call('admin/list',undefined,admin.cookie);assert.deepEqual(list.data.attempts.map(x=>x.attempt_number).sort(),[1,2]);
+ // Earlier calls start background notification runs (no waitUntil in tests); let them finish so their claims are released.
+ await new Promise(r=>setTimeout(r,50));
  const sent=[];
  await notifyPendingResults({...t.env,RESEND_API_KEY:'synthetic-provider-key',ASSESSMENT_FROM_EMAIL:'sender@example.invalid',ASSESSMENT_RESULTS_TO:'recruiter@example.invalid'},t.db,async(_url,init)=>{sent.push(JSON.parse(init.body));return new Response('{}',{status:200});});
  assert.equal(sent.length,2);assert.match(sent[1].text,/Attempt 2/);assert.match(sent[0].html,/Screening details/);assert.match(sent[0].text,/Synthetic route/);
