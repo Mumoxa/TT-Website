@@ -156,3 +156,29 @@ test('a battery result email shows categories and item review, never v1 zero fie
   assert.doesNotMatch(body, /Discrepancies identified/);
   assert.doesNotMatch(body, /Knowledge questions/);
 });
+
+test('an assessment family can add result recipients (ASSESSMENT_RESULTS_TO_<FAMILY>); others are unchanged', async () => {
+  const { resultRecipients } = await import('../functions/lib/assessment-email.js');
+  const env = { ASSESSMENT_RESULTS_TO: 'lead@example.invalid', ASSESSMENT_RESULTS_TO_AR: 'second@example.invalid, third@example.invalid' };
+  assert.deepEqual(resultRecipients(env, 'ar-clerk-v1'), ['lead@example.invalid', 'second@example.invalid', 'third@example.invalid']);
+  assert.deepEqual(resultRecipients(env, 'ap-clerk-v2'), ['lead@example.invalid']);
+  assert.deepEqual(resultRecipients(env, ''), ['lead@example.invalid']);
+  // Malformed and duplicate entries are dropped, never sent to.
+  assert.deepEqual(resultRecipients({ ...env, ASSESSMENT_RESULTS_TO_AR: 'not-an-address, LEAD@example.invalid, second@example.invalid' }, 'ar-clerk-v1'), ['lead@example.invalid', 'second@example.invalid']);
+  const calls = [];
+  const send = { RESEND_API_KEY: 'k', ASSESSMENT_FROM_EMAIL: 'from@example.invalid', ...env };
+  await sendResultEmail(send, { subject: 's', html: 'h', text: 't' }, async (url, init) => { calls.push(JSON.parse(init.body)); return new Response('{}', { status: 200 }); }, 'ar-clerk-v1');
+  await sendResultEmail(send, { subject: 's', html: 'h', text: 't' }, async (url, init) => { calls.push(JSON.parse(init.body)); return new Response('{}', { status: 200 }); }, 'ap-clerk-v2');
+  assert.deepEqual(calls[0].to, ['lead@example.invalid', 'second@example.invalid', 'third@example.invalid']);
+  assert.deepEqual(calls[1].to, ['lead@example.invalid']);
+});
+
+test('the notification job sends an AR result to the AR recipients as well as the main one', async () => {
+  const db = database();
+  seedGradedAttempt(db);
+  db.sqlite.prepare("UPDATE assessment_definitions SET slug='ar-clerk-v1' WHERE id='d1'").run();
+  const env = { RESEND_API_KEY: 'k', ASSESSMENT_FROM_EMAIL: 'from@example.invalid', ASSESSMENT_RESULTS_TO: 'lead@example.invalid', ASSESSMENT_RESULTS_TO_AR: 'second@example.invalid' };
+  const to = [];
+  await notifyPendingResults(env, db, async (_url, init) => { to.push(JSON.parse(init.body).to); return new Response('{}', { status: 200 }); });
+  assert.deepEqual(to, [['lead@example.invalid', 'second@example.invalid']]);
+});
