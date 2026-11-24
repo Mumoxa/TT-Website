@@ -140,6 +140,7 @@ authoritative. No automated retention/deletion currently runs.
 Status: implemented and unit-tested with a stubbed provider. **Not verified against the live provider.**
 
 - Recipient: `ASSESSMENT_RESULTS_TO` in `wrangler.toml` (`christo@talenttree.co.za`). Set in both the top-level `[vars]` and `[env.preview.vars]`.
+- Extra recipients per assessment family: `ASSESSMENT_RESULTS_TO_<FAMILY>` in `wrangler.toml` `[vars]`, comma-separated, where the family is the slug prefix in capitals (`ar-clerk-v1` → `ASSESSMENT_RESULTS_TO_AR`). Production sends AR results to `alisa@talenttree.co.za` as well (owner instruction 2026-11-24). Not set for preview, so previews never email extra people.
 - Provider: Resend HTTP API (`https://api.resend.com/emails`). Choosing this vendor needs your approval; it is not yet approved.
 - Secrets to add on the Pages project (never commit values):
   - `RESEND_API_KEY`

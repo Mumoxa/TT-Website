@@ -22,6 +22,8 @@ name = "tt-website"
 # and ASSESSMENT_FROM_EMAIL must be a sender on a domain verified with the provider.
 [vars]
 ASSESSMENT_RESULTS_TO = "christo@talenttree.co.za"
+# Extra recipients for one assessment family (slug prefix), comma-separated. ar-clerk-* results.
+ASSESSMENT_RESULTS_TO_AR = "alisa@talenttree.co.za"
 compatibility_date = "2026-09-08"
 pages_build_output_dir = "dist"
 

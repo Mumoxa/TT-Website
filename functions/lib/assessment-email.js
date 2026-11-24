@@ -4,6 +4,8 @@
      RESEND_API_KEY          secret
      ASSESSMENT_FROM_EMAIL   sender on a domain verified with the provider
      ASSESSMENT_RESULTS_TO   recipient (set in wrangler.toml [vars])
+     ASSESSMENT_RESULTS_TO_<FAMILY>  optional extra recipients for one assessment family, comma-separated;
+                             the family is the slug's first part in capitals (ar-clerk-v1 -> AR)
    Candidate-supplied values are escaped before being placed in HTML.
    v1 results (five MCQs + discrepancy rubric) and battery-v2 results use different breakdowns;
    each is rendered from its own structure, never from the other's fields.
@@ -216,7 +218,22 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
   return {subject:assessmentBrandText(subject),html:assessmentBrandText(html),text:assessmentBrandText(text)};
 }
 
-export async function sendResultEmail(env, message, fetchImpl = fetch) {
+const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+/* Everyone who receives a result: the main recipient, plus any extra recipients configured for the
+   assessment's family. Malformed and duplicate addresses are dropped rather than sent to. */
+export function resultRecipients(env, slug = '') {
+  const family = String(slug).split('-')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const extra = family ? String(env[`ASSESSMENT_RESULTS_TO_${family}`] || '') : '';
+  const seen = new Set(), out = [];
+  for (const raw of [env.ASSESSMENT_RESULTS_TO, ...extra.split(',')]) {
+    const address = String(raw || '').trim();
+    if (!EMAIL.test(address) || seen.has(address.toLowerCase())) continue;
+    seen.add(address.toLowerCase()); out.push(address);
+  }
+  return out;
+}
+
+export async function sendResultEmail(env, message, fetchImpl = fetch, slug = '') {
   if (!env.RESEND_API_KEY || !env.ASSESSMENT_FROM_EMAIL || !env.ASSESSMENT_RESULTS_TO) {
     return { ok: false, reason: 'not_configured' };
   }
@@ -225,7 +242,7 @@ export async function sendResultEmail(env, message, fetchImpl = fetch) {
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: env.ASSESSMENT_FROM_EMAIL,
-      to: [env.ASSESSMENT_RESULTS_TO],
+      to: resultRecipients(env, slug),
       subject: message.subject,
       html: message.html,
       text: message.text,
@@ -238,7 +255,7 @@ export async function sendResultEmail(env, message, fetchImpl = fetch) {
    answers with the same pure function the API uses, so the email matches the saved result. */
 async function loadResultForEmail(db, attemptId) {
   const row = await db.prepare(
-    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
+    'SELECT a.id, d.slug, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
     'v.question_payload_json, v.scoring_key_json, r.overall_score, r.knowledge_score, r.reconciliation_score, ' +
     'r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
@@ -296,6 +313,7 @@ async function loadResultForEmail(db, attemptId) {
     },
     mcqReview,
     speed,
+    slug: row.slug,
   };
 }
 
@@ -325,7 +343,7 @@ export async function notifyPendingResults(env, db, fetchImpl = fetch, limit = 5
     try {
       const data = await loadResultForEmail(db, row.attempt_id);
       if (!data) { await db.prepare("UPDATE results SET notify_status='pending' WHERE attempt_id=?").bind(row.attempt_id).run(); continue; }
-      const sent = await sendResultEmail(env, buildResultEmail(data), fetchImpl);
+      const sent = await sendResultEmail(env, buildResultEmail(data), fetchImpl, data.slug);
       if (sent.ok) {
         await db.prepare("UPDATE results SET notified_at=?, notify_status='sent' WHERE attempt_id=?")
           .bind(new Date().toISOString(), row.attempt_id).run();
