@@ -167,7 +167,9 @@ function ResultReport({ report, onBack, onRecorded }) {
     </div>
     <section className="tta-admin-panel"><h2>Screening details</h2>
       <dl className="tta-admin-score-breakdown">{[
-        ['Contact number',report.screening?.contact_number_masked],['South African ID number',report.screening?.id_number_masked],['Earliest start date',report.screening?.earliest_start_date],['First day confirmed',report.screening?.first_day_confirmed==null?'Not recorded':(report.screening.first_day_confirmed?'Yes':'No')],['Travel mode',report.screening?.travel_mode?.replace(/_/g,' ')],['Route description',report.screening?.travel_description],['Own transport',report.screening?.own_transport],['Available for a 2-month assignment',report.screening?.assignment_available],['Availability note',report.screening?.assignment_note]
+        ['Contact number',report.screening?.contact_number_masked],['South African ID number',report.screening?.id_number_masked],['Earliest start date',report.screening?.earliest_start_date],['First day confirmed',report.screening?.first_day_confirmed==null?'Not recorded':(report.screening.first_day_confirmed?'Yes':'No')],['Travel mode',report.screening?.travel_mode?.replace(/_/g,' ')],['Route description',report.screening?.travel_description],['Own transport',report.screening?.own_transport],
+        // Asked only before 2026-11-24; shown for candidates who answered it.
+        ...(report.screening?.assignment_available ? [['Available for a 2-month assignment',report.screening.assignment_available],['Availability note',report.screening.assignment_note]] : [])
       ].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Not recorded'}</dd></div>)}</dl>
     </section>
     <div className="tta-admin-score-row">

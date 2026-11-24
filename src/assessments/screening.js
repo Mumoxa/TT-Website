@@ -52,7 +52,7 @@ export function normalizeScreening(data,now=new Date()) {
  if(['public_transport','other'].includes(data.travel_mode)&&!travel_description)invalid('Describe the route you will use to reach the site.');
  if(!['public_transport','other'].includes(data.travel_mode))travel_description='';
  if(!['yes','no'].includes(data.own_transport))invalid('Confirm whether you have your own transport.');
- if(!['yes','no'].includes(data.assignment_available))invalid('Confirm whether you are available for a 2-month assignment.');
- const assignment_note=data.assignment_available==='no'?note(data.assignment_note,'The availability note'):'';
- return {contact_number,id_number,earliest_start_date,first_day_confirmed:true,travel_mode:data.travel_mode,travel_description,own_transport:data.own_transport,assignment_available:data.assignment_available,assignment_note};
+ // The 2-month assignment question was removed on 2026-11-24 (owner decision): roles are not all fixed-term.
+ // Any value an old cached page still sends is ignored; the columns stay so earlier answers remain on record.
+ return {contact_number,id_number,earliest_start_date,first_day_confirmed:true,travel_mode:data.travel_mode,travel_description,own_transport:data.own_transport,assignment_available:null,assignment_note:''};
 }

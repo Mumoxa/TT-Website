@@ -98,7 +98,8 @@ function scoreHero(result) {
    is shown as recorded, never guessed. */
 const TRAVEL_LABELS = { own_vehicle: 'Own vehicle', lift: 'Lift from someone', public_transport: 'Public transport', other: 'Other' };
 const YES_NO = { yes: 'Yes', no: 'No' };
-const OPTIONAL_SCREENING = new Set(['travel_description', 'assignment_note']);
+// assignment_available was asked only before 2026-11-24, so it is shown only for candidates who answered it.
+const OPTIONAL_SCREENING = new Set(['travel_description', 'assignment_available', 'assignment_note']);
 function formatStartDate(iso) {
   const date = new Date(`${iso}T00:00:00Z`);
   return Number.isNaN(date.getTime()) ? String(iso) : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
