@@ -19,6 +19,31 @@ function batteryItemAnswered(item, draft) {
   return String(draft.workbook?.[item.ref] ?? '').trim() !== '';
 }
 
+/* Submitting ends the attempt and uses one of a candidate's three starts, so one click must not do it.
+   The dialog shows what is still unanswered, defaults to going back, and stays open with 'Submitting…'
+   until the server confirms, so the candidate always sees that the click did something. */
+function SubmitConfirm({ answered, total, submitting, onConfirm, onCancel }) {
+  const backRef = useRef(null);
+  useEffect(() => { backRef.current?.focus(); }, []);
+  const missing = total == null ? 0 : total - answered;
+  return (
+    <div className="ca-modal-backdrop" onKeyDown={(e) => { if (e.key === 'Escape' && !submitting) onCancel(); }}>
+      <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-submit-title" aria-describedby="ca-submit-text">
+        <h2 id="ca-submit-title">Submit your assessment?</h2>
+        <div id="ca-submit-text">
+          {total != null && <p>You have answered <strong>{answered} of {total}</strong> activities.</p>}
+          {missing > 0 && <p className="ca-modal-note">{missing === 1 ? '1 activity is' : missing + ' activities are'} still unanswered. Unanswered activities score zero.</p>}
+          <p>After you submit you cannot change your answers. This attempt counts as one of your three.</p>
+        </div>
+        <div className="ca-modal-actions">
+          <button ref={backRef} type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={submitting}>Back to the assessment</button>
+          <button type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit now'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const BASE = '/api/assessment';
 const blankAnswers = () => ({
   mcq: {},
@@ -55,6 +80,7 @@ export default function CandidateAssessment({catalogItem}) {
   const [error, setError] = useState('');
   const [saveStatus, setSaveStatus] = useState('All changes saved');
   const [submitting, setSubmitting] = useState(false);
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
   const [conflicted,setConflicted] = useState(false);
   const [expired,setExpired] = useState(false);
   const blockedRef=useRef(false);
@@ -205,7 +231,7 @@ export default function CandidateAssessment({catalogItem}) {
   }, []);
 
   async function submit() {
-    if (submittingRef.current || blockedRef.current || phase !== 'active') return;
+    if (submittingRef.current || blockedRef.current || phase !== 'active') { setConfirmingSubmit(false); return; }
     submittingRef.current=true;
     setSubmitting(true);
     setError('');
@@ -219,6 +245,7 @@ export default function CandidateAssessment({catalogItem}) {
       setAttempt((a) => ({ ...a, ...result }));
       setPhase('complete');
     } catch (e) {
+      setConfirmingSubmit(false);
       setError(e.message);
       if (e.status === 409) { blockedRef.current=true;setConflicted(true);await refreshStatus(); }
     } finally {
@@ -280,9 +307,11 @@ export default function CandidateAssessment({catalogItem}) {
           {error && <div className="tta-error" role="alert">{error}</div>}
           <div className="tta-run-actions">
             <button type="button" className="tta-submit" disabled={submitting || saveStatus.startsWith('Not saved')}
-              onClick={submit}>{submitting ? 'Submitting…' : 'Submit assessment'} <span aria-hidden="true">→</span></button>
+              onClick={() => setConfirmingSubmit(true)}>{submitting ? 'Submitting…' : 'Submit assessment'} <span aria-hidden="true">→</span></button>
           </div>
         </fieldset>
+        {confirmingSubmit && !expired && <SubmitConfirm answered={answeredCount} total={batteryItems.length} submitting={submitting}
+          onConfirm={() => void submit()} onCancel={() => setConfirmingSubmit(false)} />}
       </AssessmentRunnerLayout>
     );
   }
@@ -375,10 +404,12 @@ export default function CandidateAssessment({catalogItem}) {
           <>
             <button type="button" className="tta-back" onClick={() => setSection('questions')}>Back to questions</button>
             <button type="button" className="tta-submit" disabled={submitting || saveStatus.startsWith('Not saved')}
-              onClick={submit}>{submitting ? 'Submitting…' : 'Submit assessment'} <span aria-hidden="true">→</span></button>
+              onClick={() => setConfirmingSubmit(true)}>{submitting ? 'Submitting…' : 'Submit assessment'} <span aria-hidden="true">→</span></button>
           </>
         )}
       </div>
+      {confirmingSubmit && !expired && <SubmitConfirm answered={null} total={null} submitting={submitting}
+        onConfirm={() => void submit()} onCancel={() => setConfirmingSubmit(false)} />}
       </fieldset>
     </AssessmentRunnerLayout>
   );

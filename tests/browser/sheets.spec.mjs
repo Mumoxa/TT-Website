@@ -28,7 +28,7 @@ test('tabs: read-only source tab is locked, the working tab calculates across ta
  await expect(page.getByLabel('Current value of Working!B4')).toHaveText('AGREES');
  await page.getByLabel('First',{exact:true}).check();
  await expect(page.getByRole('status').filter({hasText:'All changes saved'})).toBeVisible();
- await page.getByRole('button',{name:/Submit assessment/}).click();
+ await page.getByRole('button',{name:/Submit assessment/}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Assessment complete.'})).toBeVisible();
  expect(errors).toEqual([]);
 });

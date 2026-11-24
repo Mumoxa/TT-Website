@@ -740,3 +740,7 @@
 .tta-note-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tta-ref-input { max-width: 22ch; font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.04em; text-transform: uppercase; }
 @media (max-width: 640px) { .tta-note-input { min-height: 200px; } }
+
+/* The runner's top bar is sticky, so anything scrolled into view (a focused answer, a link to a task)
+   would stop underneath it. Stop it below the bar instead (WCAG 2.4.11, focus not obscured). */
+.ca-page .ca-runner * { scroll-margin-top: calc(var(--tta-bar) + 16px); }

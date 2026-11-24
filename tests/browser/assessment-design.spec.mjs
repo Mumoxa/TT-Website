@@ -96,7 +96,7 @@ test.describe('brand screenshots at device scale 2',()=>{
     await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
     await page.screenshot({path:`${directory}/runner-${width}.png`,fullPage:true});
     await page.evaluate(()=>window.scrollTo(0,500));await expect(page.getByRole('timer')).toBeInViewport();
-    await page.getByRole('button',{name:'Submit assessment',exact:true}).click();await expect(page.getByRole('heading',{name:'Assessment complete.'})).toBeVisible();
+    await page.getByRole('button',{name:'Submit assessment',exact:true}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();await expect(page.getByRole('heading',{name:'Assessment complete.'})).toBeVisible();
     await page.goto('/admin/assessments');await expect(page.getByLabel('Admin access key')).toBeVisible();
     await page.screenshot({path:`${directory}/admin-sign-in-${width}.png`,fullPage:true});
     await page.getByLabel('Admin access key').fill(key());await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Assessment results',exact:true})).toBeVisible();

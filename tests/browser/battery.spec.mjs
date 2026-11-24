@@ -30,7 +30,7 @@ test('battery: sections render, cells calculate, read-only source is locked, sub
  await expect(page.getByLabel('Current value of B12')).toHaveText('400');
  await expect(page.getByLabel('Current value of B13')).toHaveText('2');
  await expect(page.getByRole('status').filter({hasText:'All changes saved'})).toBeVisible();
- await page.getByRole('button',{name:/Submit assessment/}).click();
+ await page.getByRole('button',{name:/Submit assessment/}).click();await page.getByRole('button',{name:'Submit now',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Assessment complete.'})).toBeVisible();
  expect(errors).toEqual([]);
 
