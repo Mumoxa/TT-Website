@@ -13,6 +13,5 @@ export async function fillScreening(page, fields=screeningFixture()) {
  await page.getByLabel('How will you travel to the site?',{exact:true}).selectOption(fields.travel_mode);
  if(['public_transport','other'].includes(fields.travel_mode))await page.getByLabel('Route description',{exact:true}).fill(fields.travel_description);
  await page.getByLabel('Do you have your own transport?',{exact:true}).selectOption(fields.own_transport);
- await page.getByLabel('Are you available for a 2-month assignment?',{exact:true}).selectOption(fields.assignment_available);
  await tick(page.getByLabel('I agree to this processing.',{exact:true}));
 }

@@ -47,7 +47,7 @@ test('screening is masked in recruiter report and actual notification; repeat re
  const b=await t.call('start',t.fields);await t.call('submit',{attempt_id:b.data.attempt_id,save_revision:0},b.cookie);
  const admin=await t.call('admin/login',{key:t.env.ASSESSMENT_ADMIN_KEY});
  const report=await t.call('admin/report/'+a.data.attempt_id,undefined,admin.cookie);
- assert.equal(report.status,200);assert.equal(report.data.screening.travel_description,'Synthetic route');assert.equal(report.data.screening.assignment_note,'Synthetic availability');assert.equal(report.data.screening.id_number_masked,t.fields.id_number.slice(0,6)+'***'+t.fields.id_number.slice(-4));assert.equal(report.data.attempt.attempt_number,1);
+ assert.equal(report.status,200);assert.equal(report.data.screening.travel_description,'Synthetic route');assert.equal(report.data.screening.assignment_available,null);assert.equal(report.data.screening.assignment_note,'');assert.equal(report.data.screening.id_number_masked,t.fields.id_number.slice(0,6)+'***'+t.fields.id_number.slice(-4));assert.equal(report.data.attempt.attempt_number,1);
  const second=await t.call('admin/report/'+b.data.attempt_id,undefined,admin.cookie);assert.equal(second.data.attempt.attempt_number,2);
  const list=await t.call('admin/list',undefined,admin.cookie);assert.deepEqual(list.data.attempts.map(x=>x.attempt_number).sort(),[1,2]);
  const sent=[];
