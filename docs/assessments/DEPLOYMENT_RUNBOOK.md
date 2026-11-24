@@ -141,6 +141,7 @@ Status: implemented and unit-tested with a stubbed provider. **Not verified agai
 
 - Recipient: `ASSESSMENT_RESULTS_TO` in `wrangler.toml` (`christo@talenttree.co.za`). Set in both the top-level `[vars]` and `[env.preview.vars]`.
 - Extra recipients per assessment family: `ASSESSMENT_RESULTS_TO_<FAMILY>` in `wrangler.toml` `[vars]`, comma-separated, where the family is the slug prefix in capitals (`ar-clerk-v1` → `ASSESSMENT_RESULTS_TO_AR`). Production sends AR results to `alisa@talenttree.co.za` as well (owner instruction 2026-11-24). Not set for preview, so previews never email extra people.
+- **Where production actually reads these from (verified 2026-11-24):** the Pages project's production environment variables (Cloudflare dashboard → tt-website → Settings → Variables), not `wrangler.toml`. The production deployment did not pick up a variable added only to `wrangler.toml`; `ASSESSMENT_RESULTS_TO_AR` had to be added to the project configuration and production redeployed. Keep `wrangler.toml` in step as the record, but change the project variable and redeploy for it to take effect.
 - Provider: Resend HTTP API (`https://api.resend.com/emails`). Choosing this vendor needs your approval; it is not yet approved.
 - Secrets to add on the Pages project (never commit values):
   - `RESEND_API_KEY`
