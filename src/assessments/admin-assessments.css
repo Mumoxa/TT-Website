@@ -168,3 +168,47 @@
 .tta-handoff-evidence details { margin-top: 8px; }
 .tta-handoff-evidence summary { cursor: pointer; font: 600 0.8rem/1.6 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .tta-handoff-evidence .tta-handoff-note { margin-top: 8px; padding: 10px 12px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); }
+
+/* Recruiter report: an editorial cover and a restrained evidence-led hierarchy. */
+.tta-report-print-only { display: none; }
+.tta-admin-report-heading {
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--accent);
+  padding: clamp(24px, 4vw, 48px);
+  margin: 0 0 32px;
+}
+.tta-admin-report-heading .tta-report-logo { display: block; width: 76px; height: 76px; margin-bottom: 28px; }
+.tta-admin-report-heading .tta-admin-kicker { display: block; color: var(--accent); margin-bottom: 12px; }
+.tta-admin-report-heading h1 { margin: 0 0 10px; font: 500 clamp(2rem, 4vw, 3.5rem)/1.08 var(--serif); letter-spacing: -.025em; }
+.tta-admin-report-heading p { margin: 0; }
+.tta-admin-report-heading .tta-report-subtitle { font-size: 1.05rem; line-height: 1.5; }
+.tta-admin-report-heading .tta-report-attempt { margin-top: 22px; font-size: .8rem; font-weight: 700; }
+.tta-admin-report-heading .tta-admin-muted { margin-top: 5px; line-height: 1.6; overflow-wrap: anywhere; }
+.tta-report-summary-label { color: var(--muted); font: 700 .72rem/1.4 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.tta-admin-report .tta-admin-score-row { gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 10px 0 30px; }
+.tta-admin-report .tta-admin-score-row > div { border: 0; padding: 22px; min-width: 0; }
+.tta-admin-report .tta-admin-score-row > div:first-child { background: var(--accent-soft); }
+.tta-admin-report .tta-admin-score-row small { font-weight: 600; }
+.tta-admin-report .tta-admin-score-row strong { overflow-wrap: anywhere; }
+.tta-admin-report .tta-admin-panel { margin-bottom: 16px; }
+.tta-admin-report .tta-admin-panel h2 { line-height: 1.2; }
+.tta-admin-report .tta-admin-score-breakdown > div { background: var(--paper-soft); }
+@media (max-width: 560px) {
+  .tta-admin-report-heading { padding: 24px; }
+  .tta-admin-report-heading .tta-report-logo { margin-bottom: 20px; }
+  .tta-admin-report .tta-admin-score-row > div { padding: 16px; }
+  .tta-admin-report .tta-admin-score-row strong { font-size: 1.45rem; line-height: 1.2; }
+}
+@media print {
+  .tta-report-print-only { display: block; }
+  .tta-admin-main { padding: 0; }
+  .tta-admin-report .tta-admin-panel { padding: 16px 20px; margin: 10px 0; }
+  .tta-report-keep-together { break-inside: avoid; }
+  .tta-admin-report-heading { padding: 18px 22px; margin-bottom: 20px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .tta-admin-report-heading .tta-report-logo { width: 55px; height: 55px; margin-bottom: 10px; }
+  .tta-admin-report-heading h1 { font-size: 26pt; }
+  .tta-admin-report-heading .tta-report-attempt { margin-top: 10px; }
+  .tta-admin-report .tta-admin-score-row { break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .tta-admin-lines li { white-space: normal; overflow-wrap: anywhere; }
+}

@@ -1,7 +1,9 @@
 // Research-only P01 foundation. Not connected to a route or candidate data store.
 // IPIP-50 is public domain; see docs/assessments/provenance/ipip-50-big-five-markers.json.
 // Keep this module server-side. Never send scoring directions with the form.
-import source from '../../docs/assessments/provenance/ipip-50-big-five-markers.json' with {type: 'json'};
+// Wrangler 3's Pages bundler does not parse JSON import attributes. Keep the
+// executable data in a JS module and test it against the provenance record.
+import source from './hpi-personality-source.js';
 
 export const PERSONALITY_SLUG = 'workplace-personality-profile';
 // Fail closed until the candidate runner, consent, encrypted submit and mail queue are integrated.
