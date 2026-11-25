@@ -101,7 +101,7 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
       <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
         <h2 id="ca-brief-title">{personality ? 'Before you begin' : 'Before the timer starts'}</h2>
         <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? 'You will see 50 short statements, five to a screen. For each one, choose how accurately it describes you as you generally are. Most people finish in about 10 minutes. Your answers save as you move between screens.' : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
-        <p className="ca-modal-note">{personality ? `You have up to ${durationMinutes} minutes once you start, which is far more than you need. You can take this questionnaire once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
+        <p className="ca-modal-note">{personality ? `You have ${durationMinutes} minutes once you start. The timer cannot be paused, even if you leave. When time runs out, your saved answers, if any, are submitted. You can take this questionnaire once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
         <div className="ca-modal-actions">
           <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>
           <button ref={okRef} type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={isStarting}>{isStarting ? 'Starting…' : personality ? 'OK, begin' : 'OK, start the timer'}</button>
@@ -135,7 +135,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
       <div className="ca-welcome-intro">
         <h1>{assessmentTitle}</h1>
         {personality ? <dl className="ca-facts">
-          <div><dt>Time</dt><dd>About 10 min</dd></div>
+          <div><dt>Time</dt><dd>About 10 min; up to {durationMinutes} min</dd></div>
           <div><dt>Statements</dt><dd>50</dd></div>
           <div><dt>Answers</dt><dd>No right or wrong</dd></div>
         </dl> : <dl className="ca-facts">

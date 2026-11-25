@@ -16,7 +16,7 @@ function client(initialEnv) {
     const headers={Origin:base,...(cookie?{Cookie:cookie}:{})};
     const response=await onRequest({env,request:new Request(base+'/api/assessment/'+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)}),waitUntil(task){tasks.push(task);}});
     const set=response.headers.get('Set-Cookie'); if(set) cookie=set.split(';')[0];
-    return {status:response.status, body:await response.json()};
+    return {status:response.status, body:await response.json(), setCookie:set};
   };
   // Wait for the request-time notifier (context.waitUntil) so it never races the test's own queue run.
   call.settle=()=>Promise.all(tasks.splice(0));
@@ -35,6 +35,8 @@ test('full candidate cycle: register, answer, resume, submit; scores go only to 
   assert.equal(started.status,200);
   assert.equal(started.body.assessment.format,'personality-v1');
   assert.equal(started.body.assessment.items.length,50);
+  assert.equal(started.body.expires_at_ms-started.body.started_at_ms,3600000);
+  assert.match(started.setCookie, /Max-Age=3900/); // receipt grace does not extend the attempt
   // The browser never receives scoring directions or factors.
   assert.doesNotMatch(JSON.stringify(started.body.assessment),/factor|"key"|"sign"|"[+-]"/);
   assert.deepEqual(started.body.personality,{status:'draft',revision:0,answers:{}});
@@ -53,6 +55,17 @@ test('full candidate cycle: register, answer, resume, submit; scores go only to 
   const resumed=await call('me');
   assert.deepEqual(resumed.body.personality.answers.b1,'o5');
   assert.equal(resumed.body.personality.revision,1);
+  const polled=await call('me?attempt_id='+attemptId+'&view=status');
+  assert.equal(polled.status,200);
+  assert.equal(polled.body.status,'active');
+  assert.equal(polled.body.attempt_id,attemptId);
+  assert.equal(typeof polled.body.server_now_ms,'number');
+  assert.equal(polled.body.expires_at_ms,resumed.body.expires_at_ms);
+  assert.equal(polled.body.assessment,undefined);
+  assert.equal(polled.body.personality,undefined);
+  assert.equal(polled.body.responses,undefined);
+  assert.ok(JSON.stringify(polled.body).length < JSON.stringify(resumed.body).length / 10);
+  assert.equal((await call('me?attempt_id=another-attempt&view=status')).status,409);
   // Answers are never copied into the occupational attempt row.
   const row=db.sqlite.prepare('SELECT mcq_answers_json,structured_answers_json FROM attempts WHERE id=?').get(attemptId);
   assert.equal(row.mcq_answers_json,'{}'); assert.equal(row.structured_answers_json,'{}');
@@ -105,7 +118,7 @@ test('an attempt that closes at the time limit is submitted with its saved answe
   const started=await call('start',start(3));
   await call('save',{attempt_id:started.body.attempt_id,save_revision:0,answers:{b3:'o5'}});
   db.sqlite.prepare('UPDATE attempts SET started_at_ms=?, expires_at_ms=? WHERE id=?').run(Date.now()-5000, Date.now()-1000, started.body.attempt_id);
-  const closed=await call('me');
+  const closed=await call('me?attempt_id='+started.body.attempt_id+'&view=status');
   assert.equal(closed.body.status,'timed_out');
   assert.equal(closed.body.candidate_result,null);
   await call.settle();

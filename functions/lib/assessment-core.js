@@ -8,7 +8,7 @@ import { BATTERY_FORMAT, cleanBatterySubmission, cleanBatteryWorkbook, isBattery
 import { CELL_REF } from '../../src/assessments/formulas.js';
 
 export const ASSESSMENT_COOKIE = 'tt_assessment_session';
-export const SESSION_SECONDS = 60 * 60; // absolute attempt expiry remains 600s
+export const SESSION_SECONDS = 60 * 60; // Cookie lifetime; the server separately enforces each attempt's deadline.
 export const MAX_BODY_BYTES = 90_000;
 export const MAX_WORKBOOK_BYTES = 48_000;
 export const MAX_ANSWER_ITEMS = 100;
@@ -102,9 +102,9 @@ export function isToken(token) { return typeof token === 'string' && /^[a-f0-9]{
 export function id() { return crypto.randomUUID(); }
 export function nowIso() { return new Date().toISOString(); }
 
-export function cookieHeader(request, token) {
+export function cookieHeader(request, token, maxAge = SESSION_SECONDS) {
   const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
-  return ASSESSMENT_COOKIE + '=' + token + '; HttpOnly; SameSite=Strict; Path=/api/assessment; Max-Age=' + SESSION_SECONDS + secure;
+  return ASSESSMENT_COOKIE + '=' + token + '; HttpOnly; SameSite=Strict; Path=/api/assessment; Max-Age=' + maxAge + secure;
 }
 export function getCookie(request) {
   const cookie = (request.headers.get('Cookie') || '').split(';').map((entry) => entry.trim()).find((entry) => entry.startsWith(ASSESSMENT_COOKIE + '='));

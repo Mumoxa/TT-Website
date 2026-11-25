@@ -190,7 +190,9 @@ SA ID number and the screening details. They read the personality notice
 consent. They then answer the 50 IPIP statements, five to a screen, with autosave and resume in
 the same browser, review with blanks allowed, and submit. They see a thank-you page only, never
 scores. One start per ID number for this form version. The attempt window is 60 minutes; at the
-limit, saved answers are submitted as they stand.
+limit, saved answers, if any, are submitted as they stand. A short cookie grace permits the
+browser to retrieve the expiry receipt; it does not extend the server-side deadline. Expired
+attempts are closed on a later request or admin-list access, not by a guaranteed scheduled job.
 
 **Where the data goes.** Answers and the scored result are encrypted in
 `workplace_personality_attempts`, never in `attempts` or `results`, so the AP/AR result email
@@ -220,6 +222,11 @@ starts, saves and submits are refused, while saved answers are kept.
   reviewer's registration (registered industrial psychologist), scope and written record are
   not on file in this repository.
 - Results reach recruiters, so Employment Equity Act s8 applies to this use. The notice
-  wording is marked draft pending POPIA review.
+  wording is marked draft pending POPIA review. The 2026-11-25 QA report states that a
+  production submission recorded `wpp-recruiter-notice-draft-1`. The client notice and
+  server validation share that identifier; the label does not establish approval. Preserve
+  historical consent records and do not relabel this version as approved. An owner must
+  reconcile the observed production availability with the launch gates and record the
+  privacy review/approval; any revised notice requires a new identifier and fresh consent.
 - Retention follows the AP/AR retained-results policy (no fixed deletion period).
 - A screen-reader pass has not been done.

@@ -8,7 +8,7 @@ import {buildPersonalityResultEmail, sendResultEmail} from './assessment-email.j
 import {finalizeClosedPersonalityDrafts, readPersonalityDraft, NOTICE_VERSION} from './workplace-personality-store.js';
 
 export const PERSONALITY_FORMAT = 'personality-v1';
-// Generous window so the questionnaire is effectively untimed; most people need about 10 minutes.
+// The server enforces this 60-minute window; most people need about 10 minutes.
 export const PERSONALITY_SECONDS = 3600;
 // One start per ID number for this form version (the store also enforces one record per ID).
 export const PERSONALITY_MAX_ATTEMPTS = 1;

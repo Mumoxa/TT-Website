@@ -225,14 +225,17 @@ export default function CandidateAssessment({catalogItem}) {
 
   const refreshStatus = useCallback(async () => {
     try {
-      const updated = await api('me?attempt_id='+attemptRef.current.attempt_id, undefined, 'GET');
+      const current = attemptRef.current;
+      const statusOnly = current.assessment?.format === 'personality-v1';
+      const updated = await api('me?attempt_id='+encodeURIComponent(current.attempt_id)+(statusOnly?'&view=status':''), undefined, 'GET');
+      if (attemptRef.current?.attempt_id !== current.attempt_id || attemptRef.current?.status !== 'active') return;
       if (updated.status !== 'active') {
         attemptRef.current = updated;
         setAttempt(updated);
         setPhase('complete');
         return;
       }
-      setAttempt(updated);
+      setAttempt(previous => previous?.attempt_id === updated.attempt_id ? { ...previous, ...updated } : previous);
     } catch (e) {
       setError('Could not confirm the assessment status. ' + e.message);
     }
@@ -303,6 +306,7 @@ export default function CandidateAssessment({catalogItem}) {
       <AssessmentFrame client={client.client_name} title={client.title} eyebrow="Workplace personality profile"
         timer={<AssessmentTimer expiresAt={remainingExpiry} onExpired={() => { void refreshStatus(); }} />}>
         <PersonalityQuestions key={attempt.attempt_id} form={assessment}
+          durationMinutes={Math.ceil((Number(attempt.expires_at_ms) - Number(attempt.started_at_ms)) / 60000)}
           initialAnswers={personality.answers || {}} initialRevision={Number(personality.revision) || 0}
           onSave={async ({ answers, revision }) => {
             const saved = await api('save', { attempt_id: attempt.attempt_id, save_revision: revision, answers });

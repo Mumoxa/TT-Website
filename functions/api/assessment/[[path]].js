@@ -271,7 +271,8 @@ async function startAttempt(request, db, env) {
       await db.prepare("UPDATE attempts SET status='void',closed_at_ms=?,updated_at=? WHERE id=?").bind(Date.now(),nowIso(),attemptId).run();
       return failure(PERSONALITY_ATTEMPT_MESSAGE,403);
     }
-    return apiJson({ok:true,...attemptView(a,{status:'draft',revision:0,answers:{}})},200,{'Set-Cookie':cookieHeader(request,sessionToken)});
+    // Allow a brief receipt window after expiry; the attempt deadline still rejects late saves.
+    return apiJson({ok:true,...attemptView(a,{status:'draft',revision:0,answers:{}})},200,{'Set-Cookie':cookieHeader(request,sessionToken,PERSONALITY_SECONDS + 300)});
   }
   return apiJson({ok:true,...attemptView(a)},200,{'Set-Cookie':cookieHeader(request,sessionToken)});
 }
@@ -634,6 +635,11 @@ export async function onRequest(context) {
     if (operation === 'me' && request.method === 'GET') {
       if(status!=='active')return await completionResponse(db,attempt.id,status);
       const fresh = await candidateAttempt(request,db);
+      // Polling needs only the clock and status. The default full view remains available for resume.
+      if (personality && new URL(request.url).searchParams.get('view') === 'status') {
+        return apiJson({ok: true, attempt_id: fresh.id, status, started_at_ms: fresh.started_at_ms,
+          expires_at_ms: fresh.expires_at_ms, server_now_ms: Date.now()});
+      }
       return apiJson({ ok: true, ...attemptView({ ...fresh, status }, personality ? await personalityDraftView(env, attempt.id, attempt.candidate_id) : null) });
     }
     if (!write) return failure('Method not allowed.', 405);
