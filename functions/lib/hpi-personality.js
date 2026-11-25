@@ -5,13 +5,16 @@
 // Wrangler 3's Pages bundler does not parse JSON import attributes. Keep the
 // executable data in a JS module and test it against the provenance record.
 import source from './hpi-personality-source.js';
+import {REASONING_IDS, REASONING_SECTIONS, publicReasoningItems, validReasoningAnswer, scoreReasoning} from './hpi-reasoning.js';
 
 export const PERSONALITY_SLUG = 'workplace-personality-profile';
 // The runner, notice, encrypted submit and recruiter mail queue are integrated (2026-11-25).
 // ENABLE_HPI_PERSONALITY remains the launch switch.
 export const PERSONALITY_FLOW_READY = true;
-export const VERSION = 'hpi-2026-pilot-2';
-export const ENGINE = 'hpi-raw-v2';
+// wpp-2026-v2 (2026-11-25): 50 statements plus 6 numeric and 6 cognitive reasoning items, 20 minutes.
+// Earlier submissions keep their own form_version (hpi-2026-pilot-2) and stored result.
+export const VERSION = 'wpp-2026-v2';
+export const ENGINE = 'hpi-raw-v3';
 const options = source.response_scale.map((label, i) => ({id: `o${i + 1}`, label}));
 
 export function personalityCatalogue(personalityEnabled = false) {
@@ -41,6 +44,8 @@ export function personalityForm() {
     stages: 1, stage: null,
     instructions: 'Describe yourself as you generally are now, not as you wish to be in the future. Describe yourself as you honestly see yourself, in relation to other people you know of roughly your same age. For each statement, choose how accurately it describes you.',
     items: source.items.map(item => ({id: `b${item.n}`, domain: 'self_description', kind: 'choice', prompt: item.text, options: options.map(o => ({...o}))})),
+    reasoning_sections: REASONING_SECTIONS.map(s => ({...s})),
+    reasoning: publicReasoningItems(),
   };
 }
 
@@ -48,9 +53,10 @@ export function normalizePersonalityAnswers(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid answers');
   const validIds = new Set(source.items.map(item => `b${item.n}`));
   for (const [key, value] of Object.entries(input)) {
+    if (REASONING_IDS.has(key)) { if (!validReasoningAnswer(key, value)) throw new Error('Invalid answer'); continue; }
     if (!validIds.has(key) || (value !== null && !options.some(option => option.id === value))) throw new Error('Invalid answer');
   }
-  return Object.fromEntries(source.items.map(item => [`b${item.n}`, input[`b${item.n}`] ?? null]));
+  return Object.fromEntries([...source.items.map(item => `b${item.n}`), ...REASONING_IDS].map(id => [id, input[id] ?? null]));
 }
 
 export function scorePersonality(input) {
@@ -67,7 +73,8 @@ export function scorePersonality(input) {
       sum: values.length === items.length ? sum : null};
   });
   return {moduleId: 'P01', version: VERSION, engine: ENGINE, status: 'research_only',
-    selectionAllowed: false, attempted: Object.values(answers).filter(value => value !== null).length,
+    selectionAllowed: false, attempted: source.items.filter(item => answers[`b${item.n}`] !== null).length,
+    reasoning: scoreReasoning(answers),
     total: source.items.length, precision: 'not_established', norms: 'not_established',
     scale: '1-5 (mean of item scores)',
     interpretation: 'Your self-description on five broad dimensions. These are not abilities and there is no better or worse position. No norms, types or job-fit judgments are made.', factors};
