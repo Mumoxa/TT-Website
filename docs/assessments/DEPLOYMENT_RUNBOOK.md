@@ -181,29 +181,33 @@ Run once a Pages URL carries the assessment code (preview or production), before
 
 It checks that the public invite route reaches D1, the admin key is accepted and refused correctly, and the admin list queries D1. It prints status codes only. It does not check the results email. Send a test results email through the deployed function separately, using a dummy candidate and a recipient you control.
 
-## Workplace personality research foundation (partial; do not enable)
+## Workplace personality profile (partial; do not enable)
 
-**Confirmed:** `ENABLE_HPI_RESEARCH`, `ENABLE_HPI_PERSONALITY`, and
-`HPI_OPEN_ENROLMENT` default to `false` in both configured environments. There is
-no candidate-facing HPI API or runner and these switches are not wired to one.
-Migration `0006_hpi_research.sql` and unmounted storage primitives are local
-implementation only; they do not make the pilot ready. No individual personality
-result is sent through the occupational result-email flow.
+**Confirmed:** the owner has replaced the candidate-private proposal with an
+AP/AR-style, voluntary, recruiter-recipient flow in `WPP_AGENT_PROMPT_2.md`.
+Only `ENABLE_HPI_PERSONALITY` remains in configuration, defaulting to `false` in
+production and preview; the unused `ENABLE_HPI_RESEARCH` and
+`HPI_OPEN_ENROLMENT` settings were removed. The P01 scoring, encrypted-storage
+primitives and recruiter-email renderer exist, but no P01 candidate flow or email
+queue is connected. An additional internal readiness guard hides the definition
+and start explicitly refuses P01 even if the switch is turned on: this is not a
+launch switch yet. No personality data is sent by the current application.
 
-**Unknown:** the candidate-account identity and access model, notice approval,
-account export and erasure integration, scheduled deletion, and production
-configuration. The AP/AR cookie is scoped to an individual attempt and is not a
-standalone candidate account. Do not use it as proof that private data can be
-returned to its rightful owner throughout the 90-day retention period.
+**Confirmed:** existing AP/AR results and attempt history are retained with no
+fixed deletion period defined in `OPEN_START_HANDOFF.md`. Do not promise a 90-day
+retention period for the new flow. The earlier research-only migration 0006 and
+storage primitives were designed for a 90-day candidate-private model and are not
+integrated. Do not use or apply them remotely for the revised model until a
+migration decision is implemented and reviewed. Notice wording is **draft pending
+legal review**; the revised consent notice is not yet implemented.
 
-**Inference:** a dedicated authenticated identity and approved data-rights lifecycle
-are needed before connecting the research storage to any route. Review the
-migration's `candidates` foreign key against that identity design before applying it
-remotely. `ASSESSMENT_PII_KEY` uses the existing AES-GCM v1 envelope and must never
-be committed. Key rotation and backup deletion remain unresolved.
+**Unknown:** approved notice text, lawful basis, retention policy, a delivery
+workflow for data-rights requests, and production configuration. The recruiter
+email renderer is not wired to the once-only notification queue. Its delivery,
+concurrent submissions and real D1 behavior remain unverified.
 
 **Go/no-go — all unchecked:** registered industrial psychologist review; POPIA
-and legal review; research notice sign-off; full screen-reader pass; named support
-contact; explicit production migration and launch authorisation. The research and
-personality switches must remain **off** until these and the missing implementation,
-security and accessibility checks are complete. Never test against production D1.
+and legal review; notice sign-off; full screen-reader pass; named support contact;
+explicit production authorisation. `ENABLE_HPI_PERSONALITY` must remain **false**
+until all gates and the missing implementation, security and accessibility checks
+are complete. Never test against production D1.

@@ -1,9 +1,10 @@
 import {apiJson} from './assessment-core.js';
+import {PERSONALITY_SLUG, PERSONALITY_FLOW_READY} from './hpi-personality.js';
 
 // Public metadata only. Never spread a database row or a private version payload.
 // A valid slug returns that one published assessment, whatever its position in the listing. Without
 // a slug the listing is capped at 100 items. Only public metadata is ever selected.
-export async function assessmentCatalog(db, slug = null) {
+export async function assessmentCatalog(db, slug = null, env = {}) {
   const exact = typeof slug === 'string' && /^[a-z0-9-]{3,60}$/.test(slug);
   const statement = db.prepare(
     'SELECT d.slug, d.title, d.client_name, d.duration_seconds, v.question_payload_json ' +
@@ -12,7 +13,7 @@ export async function assessmentCatalog(db, slug = null) {
     (exact ? ' AND d.slug=? ORDER BY d.slug' : ' ORDER BY d.title, d.slug LIMIT 100')
   );
   const rows = await (exact ? statement.bind(slug) : statement).all();
-  return apiJson((rows.results || []).map(row => {
+  return apiJson((rows.results || []).filter(row => row.slug !== PERSONALITY_SLUG || (PERSONALITY_FLOW_READY && env.ENABLE_HPI_PERSONALITY === 'true')).map(row => {
     const payload = JSON.parse(row.question_payload_json);
     const sections = payload.format === 'battery-v2' && Array.isArray(payload.sections) ? payload.sections : null;
     return {

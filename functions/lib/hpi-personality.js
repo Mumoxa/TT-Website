@@ -3,6 +3,9 @@
 // Keep this module server-side. Never send scoring directions with the form.
 import source from '../../docs/assessments/provenance/ipip-50-big-five-markers.json' with {type: 'json'};
 
+export const PERSONALITY_SLUG = 'workplace-personality-profile';
+// Fail closed until the candidate runner, consent, encrypted submit and mail queue are integrated.
+export const PERSONALITY_FLOW_READY = false;
 export const VERSION = 'hpi-2026-pilot-2';
 export const ENGINE = 'hpi-raw-v2';
 const options = source.response_scale.map((label, i) => ({id: `o${i + 1}`, label}));

@@ -1,4 +1,6 @@
-# HPIS integration review — initial foundation
+# HPIS integration review — historical foundation
+
+**Confirmed:** The access model described below has been superseded by `docs/assessments/WPP_AGENT_PROMPT_2.md`. The owner now requests recruiter-only results using the AP/AR candidate model. The private-account and 90-day design notes below are retained as historical context, not current requirements.
 
 ## Confirmed
 - The reference blueprint is on `claude/hpis-rebuild-spec`, not main. This review is based on its `docs/assessments/HPIS_REBUILD_SPEC.md`.
