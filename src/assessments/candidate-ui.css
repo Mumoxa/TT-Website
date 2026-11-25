@@ -140,6 +140,9 @@
 }
 .ca-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); border-color: rgba(0, 109, 163, 0.45); }
 .ca-card:hover::before { transform: scaleX(1); }
+.ca-card--planned:hover { transform: none; box-shadow: var(--shadow-soft); border-color: var(--line); }
+.ca-card--planned:hover::before { transform: scaleX(0); }
+.ca-card-description { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
 .ca-card-client { margin: 0; font: 700 var(--fs-100)/1.4 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
 .ca-card h3 { margin: 0; font: 500 var(--fs-700)/1.18 var(--serif); letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .ca-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }

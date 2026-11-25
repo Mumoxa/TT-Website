@@ -180,3 +180,30 @@ Run once a Pages URL carries the assessment code (preview or production), before
     BASE_URL=https://<host> ASSESSMENT_ADMIN_KEY=<key> scripts/post-deploy-check.sh
 
 It checks that the public invite route reaches D1, the admin key is accepted and refused correctly, and the admin list queries D1. It prints status codes only. It does not check the results email. Send a test results email through the deployed function separately, using a dummy candidate and a recipient you control.
+
+## Workplace personality research foundation (partial; do not enable)
+
+**Confirmed:** `ENABLE_HPI_RESEARCH`, `ENABLE_HPI_PERSONALITY`, and
+`HPI_OPEN_ENROLMENT` default to `false` in both configured environments. There is
+no candidate-facing HPI API or runner and these switches are not wired to one.
+Migration `0006_hpi_research.sql` and unmounted storage primitives are local
+implementation only; they do not make the pilot ready. No individual personality
+result is sent through the occupational result-email flow.
+
+**Unknown:** the candidate-account identity and access model, notice approval,
+account export and erasure integration, scheduled deletion, and production
+configuration. The AP/AR cookie is scoped to an individual attempt and is not a
+standalone candidate account. Do not use it as proof that private data can be
+returned to its rightful owner throughout the 90-day retention period.
+
+**Inference:** a dedicated authenticated identity and approved data-rights lifecycle
+are needed before connecting the research storage to any route. Review the
+migration's `candidates` foreign key against that identity design before applying it
+remotely. `ASSESSMENT_PII_KEY` uses the existing AES-GCM v1 envelope and must never
+be committed. Key rotation and backup deletion remain unresolved.
+
+**Go/no-go — all unchecked:** registered industrial psychologist review; POPIA
+and legal review; research notice sign-off; full screen-reader pass; named support
+contact; explicit production migration and launch authorisation. The research and
+personality switches must remain **off** until these and the missing implementation,
+security and accessibility checks are complete. Never test against production D1.

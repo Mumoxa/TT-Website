@@ -134,10 +134,10 @@ function CatalogueSection({ status, assessments }) {
     body = <p className="ca-state" role="status">Loading assessments…</p>;
   } else if (status !== 'ready') {
     body = <div className="ca-state" role="alert"><p>Assessments could not be loaded. Please try again.</p><a className="ca-link" href={window.location.pathname}>Try again</a></div>;
-  } else if (!assessments.length) {
-    body = <div className="ca-state"><p role="status">No assessments are open right now.</p></div>;
   } else {
-    body = <ul className="ca-cards" role="list">
+    body = <>
+    {!assessments.length && <div className="ca-state"><p role="status">No assessments are open right now.</p></div>}
+    <ul className="ca-cards" role="list">
       {assessments.map((item, index) => (
         <Reveal as="li" delay={index * 80} key={item.slug}>
           <article className="ca-card">
@@ -155,13 +155,25 @@ function CatalogueSection({ status, assessments }) {
           </article>
         </Reveal>
       ))}
-    </ul>;
+      <Reveal as="li" key="personality-research">
+        <article className="ca-card ca-card--planned" aria-labelledby="personality-card-title">
+          <p className="ca-card-client">Talent Tree · Research</p>
+          <h3 id="personality-card-title">Workplace personality profile</h3>
+          <p className="ca-card-description">An optional self-description questionnaire exploring five broad dimensions. There are no right or wrong answers.</p>
+          <ul className="ca-chips">
+            <li className="ca-chip">In development</li>
+            <li className="ca-chip">Research only</li>
+          </ul>
+          <div className="ca-card-foot"><span>Not available to take yet. This is not a validated psychometric assessment.</span></div>
+        </article>
+      </Reveal>
+    </ul></>;
   }
   return (
     <section className="ca-section" id="assessments" aria-labelledby="ca-assessments-heading">
       <div className="ca-shell">
         <Reveal className="ca-section-head">
-          <p className="ca-eyebrow">Available assessments</p>
+          <p className="ca-eyebrow">Assessments</p>
           <h2 id="ca-assessments-heading">Choose an assessment</h2>
           <p>Read the instructions for each assessment, try the practice, then start when you are ready.</p>
         </Reveal>
