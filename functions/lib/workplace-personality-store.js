@@ -1,10 +1,10 @@
-// Unmounted P01 persistence layer for the AP/AR attempt model. Not an HTTP API.
-// Callers must check the feature gate, session ownership and the approved notice.
-// Do not wire this to an endpoint until start, email, consent and the UI are integrated.
+// P01 persistence layer for the AP/AR attempt model. Not an HTTP API: the assessment route
+// (functions/api/assessment/[[path]].js) checks the feature gate, session ownership and notice first.
 import {encryptId, decryptPrivate, identityHash} from './candidate-privacy.js';
 import {VERSION, normalizePersonalityAnswers, scorePersonality} from './hpi-personality.js';
 
-export const NOTICE_VERSION = 'wpp-recruiter-notice-draft-1';
+import {PERSONALITY_NOTICE_VERSION} from '../../src/assessments/personality-notice.js';
+export const NOTICE_VERSION = PERSONALITY_NOTICE_VERSION;
 const iso = () => new Date().toISOString();
 const pack = async (env, value) => 'enc:' + await encryptId(env, JSON.stringify(value));
 async function unpack(env, value) {
@@ -58,4 +58,27 @@ export async function writePersonalityAttempt(env, {attemptId, candidateId, revi
 export async function readPersonalityResultForNotification(env, attemptId) {
   const row=await env.ASSESSMENT_DB.prepare("SELECT result_encrypted FROM workplace_personality_attempts WHERE attempt_id=? AND status='submitted'").bind(attemptId).first();
   return row ? unpack(env,row.result_encrypted) : null;
+}
+
+// The candidate's own draft, for resuming in the same session. Never includes the result.
+export async function readPersonalityDraft(env, attemptId, candidateId) {
+  const row=await env.ASSESSMENT_DB.prepare('SELECT status,revision,answers_encrypted FROM workplace_personality_attempts WHERE attempt_id=? AND candidate_id=?').bind(attemptId,candidateId).first();
+  if (!row) return null;
+  return {status:row.status, revision:row.revision, answers: row.answers_encrypted ? await unpack(env,row.answers_encrypted) : {}};
+}
+
+// When an attempt closes on its deadline, saved answers are submitted as they stand (blanks allowed),
+// the same way an AP/AR attempt is graded on time-out. A closed draft with no answers stays a draft
+// and is never emailed.
+export async function finalizeClosedPersonalityDrafts(env, limit = 20) {
+  const db=env.ASSESSMENT_DB;
+  const rows=await db.prepare("SELECT w.attempt_id,w.revision,w.answers_encrypted FROM workplace_personality_attempts w JOIN attempts a ON a.id=w.attempt_id WHERE w.status='draft' AND w.answers_encrypted IS NOT NULL AND a.status IN ('completed','timed_out') LIMIT ?").bind(limit).all();
+  for (const row of rows.results || []) {
+    let answers;
+    try { answers=normalizePersonalityAnswers(await unpack(env,row.answers_encrypted)); } catch { continue; }
+    if (!Object.values(answers).some(value => value !== null)) continue;
+    const at=iso();
+    await db.prepare("UPDATE workplace_personality_attempts SET result_encrypted=?,status='submitted',revision=revision+1,updated_at=?,submitted_at=? WHERE attempt_id=? AND status='draft' AND revision=?")
+      .bind(await pack(env, scorePersonality(answers)), at, at, row.attempt_id, row.revision).run();
+  }
 }

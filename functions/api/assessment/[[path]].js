@@ -14,7 +14,9 @@ import {assertPracticeIsolation} from '../../lib/practice-isolation.js';
 import {practiceForSlug} from '../../../src/assessments/practice-tables.js';
 import {candidateResult} from '../../lib/candidate-results.js';
 import { assessmentCatalog } from '../../lib/assessment-catalog.js';
-import { PERSONALITY_SLUG } from '../../lib/hpi-personality.js';
+import {PERSONALITY_SLUG} from '../../lib/hpi-personality.js';
+import {isPersonalityPayload,isPersonalitySlug,personalityOpen,publicPersonalityAssessment,personalityDraftView,personalityReportData,notifyPendingPersonality,PERSONALITY_SECONDS,PERSONALITY_MAX_ATTEMPTS,PERSONALITY_ATTEMPT_MESSAGE,PERSONALITY_NOTICE_VERSION,PERSONALITY_FORMAT} from '../../lib/workplace-personality-flow.js';
+import {createPersonalityAttempt,writePersonalityAttempt} from '../../lib/workplace-personality-store.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
 import {
   AssessmentInputError, apiJson, assessmentContentNeedsBrandReview, failure, requestJson, sameOrigin, normalizeIdentity, newToken, tokenHash,
@@ -104,8 +106,9 @@ async function candidateAttempt(request, db) {
   ).bind(hash).first();
 }
 
-function attemptView(a) {
+function attemptView(a, personality = null) {
   const version = { question_payload_json: a.question_payload_json };
+  const isPersonality = isPersonalityPayload(safeParse(a.question_payload_json, {}));
   return {
     attempt_id: a.id, status: a.status, attempt_number:a.attempt_number||1,
     first_name: a.first_name, surname: a.surname,
@@ -118,7 +121,8 @@ function attemptView(a) {
       structured: safeParse(a.structured_answers_json, {}),
       workbook: safeParse(a.workbook_json, {}),
     },
-    assessment: publicAssessment(version),
+    assessment: isPersonality ? publicPersonalityAssessment() : publicAssessment(version),
+    ...(isPersonality ? { personality: personality || { status: 'draft', revision: 0, answers: {} } } : {}),
   };
 }
 
@@ -128,6 +132,8 @@ async function gradeAndStore(db, attemptId) {
     'FROM attempts a JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=? AND a.status IN (\'completed\', \'timed_out\')'
   ).bind(attemptId).first();
   if (!a) return;
+  // The personality profile has no occupational score; its result lives in workplace_personality_attempts.
+  if (isPersonalityPayload(safeParse(a.question_payload_json, {}))) return;
   const questions = publicAssessment({ question_payload_json: a.question_payload_json });
   const rubric = safeParse(a.scoring_key_json, {});
   const answers = { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}) };
@@ -221,42 +227,55 @@ async function startAttempt(request, db, env) {
     if(!invited||invited.status!=='issued'||Date.parse(invited.expires_at)<=Date.now()||invited.assessment_status!=='published'||!invited.current_version_id)return failure('This invitation is unavailable or has expired. Contact your recruiter.',403);
     if(invited.intended_email&&invited.intended_email.toLowerCase()!==identity.email)return failure('Please use the email address associated with your invitation.',403);
   }
-  // The P01 runner, encrypted writes and notification pipeline are not integrated yet.
-  // Fail closed even if a definition is accidentally published or the flag is enabled.
-  if (invited.slug === PERSONALITY_SLUG) return failure('This assessment is not open right now.',404);
   const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
   const payload=safeParse(version?.question_payload_json,{});
+  // The personality profile opens only behind ENABLE_HPI_PERSONALITY, and only on its own definition.
+  const personality=isPersonalitySlug(invited.slug)||isPersonalityPayload(payload);
+  if(personality&&(!personalityOpen(env)||!isPersonalitySlug(invited.slug)||!isPersonalityPayload(payload)))return failure('This assessment is not open right now.',404);
+  if(personality&&data.personality_notice_version!==PERSONALITY_NOTICE_VERSION)return failure('Please read and accept the questionnaire notice before starting.',400);
+  if(!personality){
   // Practice is checked against this assessment's own family (slug-scoped), never another's.
   if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}),practiceForSlug(invited.slug));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
   // Check the public projection before creating a timed attempt; never alias opaque IDs.
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
+  }
+  const maxAttempts=personality?PERSONALITY_MAX_ATTEMPTS:MAX_ATTEMPTS_PER_ID;
+  const limitMessage=personality?PERSONALITY_ATTEMPT_MESSAGE:ATTEMPT_LIMIT_MESSAGE;
   const hash=await identityHash(env,invited.definition_id,screening.id_number);
   const used=await db.prepare('SELECT COUNT(*) AS n FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=?').bind(invited.definition_id,hash).first();
-  if(Number(used?.n||0)>=MAX_ATTEMPTS_PER_ID)return failure(ATTEMPT_LIMIT_MESSAGE,403);
+  if(Number(used?.n||0)>=maxAttempts)return failure(limitMessage,403);
   const ciphertext=await encryptId(env,screening.id_number);
-  const start=newAttemptTimes(Date.now(),DEFAULT_ASSESSMENT_SECONDS);
+  const start=newAttemptTimes(Date.now(),personality?PERSONALITY_SECONDS:DEFAULT_ASSESSMENT_SECONDS);
   const candidateId=id(),attemptId=id(),sessionToken=newToken(),sessionHash=await tokenHash(sessionToken),at=nowIso();
   const operations=[];
   if(open)operations.push(db.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,redeemed_at,created_at) VALUES (?,?,?,'redeemed',?,?,?,?)").bind(invited.id,invited.definition_id,await tokenHash(newToken()),at,new Date(start.expires_at_ms).toISOString(),at,at));
   const columns='id,first_name,surname,email,privacy_notice_version,consent_recorded_at,created_at,contact_number,id_number_encrypted,id_number_masked,earliest_start_date,first_day_confirmed,travel_mode,travel_description,own_transport,assignment_available,assignment_note';
-  const values=[candidateId,identity.first_name,identity.surname,identity.email,'open-assessment-retained-results-v2',at,at,screening.contact_number,ciphertext,maskId(screening.id_number),screening.earliest_start_date,1,screening.travel_mode,screening.travel_description,screening.own_transport,screening.assignment_available,screening.assignment_note];
+  const values=[candidateId,identity.first_name,identity.surname,identity.email,personality?PERSONALITY_NOTICE_VERSION:'open-assessment-retained-results-v2',at,at,screening.contact_number,ciphertext,maskId(screening.id_number),screening.earliest_start_date,1,screening.travel_mode,screening.travel_description,screening.own_transport,screening.assignment_available,screening.assignment_note];
   const condition=open?"EXISTS (SELECT id FROM assessment_definitions WHERE id=? AND status='published' AND current_version_id=?)":"EXISTS (SELECT i.id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.status='issued' AND i.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND d.status='published' AND d.current_version_id=?)";
   operations.push(db.prepare('INSERT INTO candidates ('+columns+') SELECT '+values.map(()=>'?').join(',')+' WHERE '+condition).bind(...values,open?invited.definition_id:invited.id,invited.current_version_id));
   // Allocate the next ordinal atomically with the new candidate and attempt graph.
   // The limit is enforced again inside the write, so two simultaneous starts cannot both pass the check above.
-  operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=? HAVING COUNT(*)<?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash,MAX_ATTEMPTS_PER_ID));
+  operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=? HAVING COUNT(*)<?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash,maxAttempts));
   operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,invited.current_version_id,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,candidateId));
   if(!open)operations.push(db.prepare("UPDATE invitations SET status='redeemed',redeemed_at=? WHERE id=? AND status='issued'").bind(at,invited.id));
   await db.batch(operations);
   const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
-  if(!a)return failure(ATTEMPT_LIMIT_MESSAGE,403);
+  if(!a)return failure(limitMessage,403);
   await audit(db,'candidate',candidateId,attemptId,'assessment.started');
+  if(personality){
+    const created=await createPersonalityAttempt(env,{attemptId,candidateId,identityHash:hash,noticeVersion:PERSONALITY_NOTICE_VERSION});
+    if(!created.ok){
+      await db.prepare("UPDATE attempts SET status='void',closed_at_ms=?,updated_at=? WHERE id=?").bind(Date.now(),nowIso(),attemptId).run();
+      return failure(PERSONALITY_ATTEMPT_MESSAGE,403);
+    }
+    return apiJson({ok:true,...attemptView(a,{status:'draft',revision:0,answers:{}})},200,{'Set-Cookie':cookieHeader(request,sessionToken)});
+  }
   return apiJson({ok:true,...attemptView(a)},200,{'Set-Cookie':cookieHeader(request,sessionToken)});
 }
 
 async function completionResponse(db,attemptId,status) {
-  const row=await db.prepare('SELECT a.id,a.started_at_ms,a.expires_at_ms,c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.client_name,d.title,r.overall_score,r.knowledge_score,r.reconciliation_score,r.breakdown_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id LEFT JOIN results r ON r.attempt_id=a.id WHERE a.id=?').bind(attemptId).first();
-  return apiJson({ok:true,attempt_id:attemptId,status,attempt_number:row?.attempt_number||1,first_name:row?.first_name||'',surname:row?.surname||'',client_name:row?.client_name||'Talent Tree',title:row?.title||'Assessment',started_at_ms:row?.started_at_ms,expires_at_ms:row?.expires_at_ms,server_now_ms:Date.now(),candidate_result:candidateResult(row)});
+  const row=await db.prepare('SELECT a.id,a.started_at_ms,a.expires_at_ms,c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.client_name,d.title,v.question_payload_json,r.overall_score,r.knowledge_score,r.reconciliation_score,r.breakdown_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id LEFT JOIN results r ON r.attempt_id=a.id WHERE a.id=?').bind(attemptId).first();
+  return apiJson({ok:true,attempt_id:attemptId,status,attempt_number:row?.attempt_number||1,first_name:row?.first_name||'',surname:row?.surname||'',client_name:row?.client_name||'Talent Tree',title:row?.title||'Assessment',started_at_ms:row?.started_at_ms,expires_at_ms:row?.expires_at_ms,server_now_ms:Date.now(),...(isPersonalityPayload(safeParse(row?.question_payload_json,{}))?{format:PERSONALITY_FORMAT,candidate_result:null}:{candidate_result:candidateResult(row)})});
 }
 
 async function inviteMeta(request, db) {
@@ -327,14 +346,19 @@ async function adminPublish(request,db) {
   }
   const version=await db.prepare('SELECT v.*, d.slug FROM assessment_versions v JOIN assessment_definitions d ON d.id=v.definition_id WHERE v.id=?').bind(typeof data.version_id==='string'?data.version_id:'').first();
   if(!version)return failure('Assessment draft not found.',404);
+  // The personality profile's statements are fixed in code; publishing it only needs the same approvals.
+  const personalityDraft=isPersonalityPayload(safeParse(version.question_payload_json,{}));
+  if(personalityDraft&&!isPersonalitySlug(version.slug))return failure('This draft cannot be published.',400);
+  if(!personalityDraft){
   validateAssessmentPackage({question_payload:JSON.parse(version.question_payload_json),scoring_key:JSON.parse(version.scoring_key_json)});
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment identifiers or workbook sources need a branding review before publishing.',400);
   if(isBatteryPayload(JSON.parse(version.question_payload_json))){try{assertPracticeIsolation(JSON.parse(version.question_payload_json),JSON.parse(version.scoring_key_json),practiceForSlug(version.slug));}catch{return failure('Practice content overlaps this assessment. Review practice before publishing.',400);}}
+  }
   const at=nowIso();
   const metadata=JSON.parse(version.question_payload_json)._metadata||{};
   await db.batch([
     db.prepare('UPDATE assessment_versions SET published_at=COALESCE(published_at,?) WHERE id=?').bind(at,version.id),
-    db.prepare('UPDATE assessment_definitions SET current_version_id=?,status=?,duration_seconds=?,updated_at=?,title=COALESCE(?,title),client_name=COALESCE(?,client_name) WHERE id=?').bind(version.id,'published',DEFAULT_ASSESSMENT_SECONDS,at,metadata.title||null,metadata.client_name||null,version.definition_id),
+    db.prepare('UPDATE assessment_definitions SET current_version_id=?,status=?,duration_seconds=?,updated_at=?,title=COALESCE(?,title),client_name=COALESCE(?,client_name) WHERE id=?').bind(version.id,'published',personalityDraft?PERSONALITY_SECONDS:DEFAULT_ASSESSMENT_SECONDS,at,metadata.title||null,metadata.client_name||null,version.definition_id),
     db.prepare('INSERT INTO audit_events (id,actor_type,actor_id,event_type,safe_metadata_json,created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id(),'admin',version.id,'assessment.published',JSON.stringify({approval_reference:data.approval_reference.trim(),content_approved:true,privacy_approved:true}),at),
   ]);
   return apiJson({ok:true,assessment_id:version.definition_id,version_id:version.id,version_label:version.version_label});
@@ -364,7 +388,8 @@ async function adminInvite(request, db) {
 
 // Email is best-effort and must never delay or fail a candidate response.
 function scheduleNotifications(context, env, db) {
-  const task = notifyPendingResults(env, db).catch(() => {});
+  // The personality queue is separate: its result is never in `results`, so the occupational email never sees it.
+  const task = Promise.all([notifyPendingResults(env, db).catch(() => {}), notifyPendingPersonality(env, db).catch(() => {})]);
   if (context && typeof context.waitUntil === 'function') context.waitUntil(task);
 }
 
@@ -373,7 +398,8 @@ async function adminList(db) {
   const overdue = await db.prepare('SELECT id, status, expires_at_ms FROM attempts WHERE status=? AND expires_at_ms<=? LIMIT 50')
     .bind('active', Date.now()).all();
   for (const a of resultRows(overdue)) await closeAttempt(db, a, Date.now(), null);
-  const missing=await db.prepare("SELECT a.id FROM attempts a LEFT JOIN results r ON r.attempt_id=a.id WHERE a.status IN ('completed','timed_out') AND r.attempt_id IS NULL LIMIT 100").all();
+  // Personality attempts never have a results row by design; exclude them so they cannot crowd out real repairs.
+  const missing=await db.prepare("SELECT a.id FROM attempts a LEFT JOIN results r ON r.attempt_id=a.id WHERE a.status IN ('completed','timed_out') AND r.attempt_id IS NULL AND a.definition_id NOT IN (SELECT id FROM assessment_definitions WHERE slug=?) LIMIT 100").bind(PERSONALITY_SLUG).all();
   for(const a of resultRows(missing))await gradeAndStore(db,a.id);
   const [defs, attempts] = await db.batch([
     db.prepare("SELECT d.id,d.slug,d.client_name,d.title,d.status,d.duration_seconds,d.updated_at, (SELECT v.id FROM assessment_versions v WHERE v.definition_id=d.id ORDER BY v.created_at DESC,v.version_label DESC LIMIT 1) AS latest_version_id FROM assessment_definitions d ORDER BY d.updated_at DESC LIMIT 100"),
@@ -467,7 +493,7 @@ async function adminDecision(request, db, attemptId) {
   return apiJson({ ok: true, decision });
 }
 
-async function adminReport(db, attemptId) {
+async function adminReport(db, attemptId, env = {}) {
   if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
   const a = await db.prepare(
     'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
@@ -479,12 +505,17 @@ async function adminReport(db, attemptId) {
     'LEFT JOIN results r ON r.attempt_id=a.id WHERE a.id=?'
   ).bind(attemptId).first();
   if (!a) return failure('Assessment result not found.', 404);
+  if (isPersonalityPayload(safeParse(a.question_payload_json, {}))) {
+    if (a.status === 'active' && Date.now() >= Number(a.expires_at_ms)) await closeAttempt(db, a, Date.now(), null);
+    await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
+    return apiJson(await personalityReportData(env, db, attemptId));
+  }
   await audit(db, 'admin', null, attemptId, 'assessment.report_viewed');
   if (a.status === 'active' && Date.now() >= Number(a.expires_at_ms)) {
     await closeAttempt(db, a, Date.now(), null);
-    return adminReport(db, attemptId);
+    return adminReport(db, attemptId, env);
   }
-  if(['completed','timed_out'].includes(a.status) && a.overall_score===null){await gradeAndStore(db,a.id);return adminReport(db,attemptId);}
+  if(['completed','timed_out'].includes(a.status) && a.overall_score===null){await gradeAndStore(db,a.id);return adminReport(db,attemptId,env);}
   if (isBatteryPayload(safeParse(a.question_payload_json, {}))) return await batteryReport(db, a, attemptId);
   const saves = await db.prepare('SELECT revision, saved_at_ms FROM workbook_snapshots WHERE attempt_id=? ORDER BY revision ASC LIMIT 200')
     .bind(attemptId).all();
@@ -519,6 +550,26 @@ async function adminReport(db, attemptId) {
       interpretation: a.interpretation, graded_at: a.graded_at,
     },
   });
+}
+
+// Personality answers are stored only in workplace_personality_attempts (encrypted), never in the
+// attempts row. Submitting closes the attempt and returns a receipt with no scores.
+async function savePersonality(context, env, db, attempt, data, submit) {
+  if (data.attempt_id !== attempt.id) return apiJson({ok:false,session_changed:true,message:'This tab belongs to another assessment session.'},409);
+  if (!personalityOpen(env)) return failure('This assessment is not open right now. Your saved answers have been retained.', 409);
+  const written = await writePersonalityAttempt(env, {attemptId: attempt.id, candidateId: attempt.candidate_id, revision: Number(data.save_revision), answers: data.answers || {}, submit});
+  if (written.error === 'invalid') return failure('Invalid answers.', 400);
+  if (written.error === 'empty') return failure('Answer at least one statement before you submit.', 400);
+  if (written.error) return apiJson({ok:false,conflict:true,message:'Another save was completed. Reload your saved answers before continuing.'},409);
+  const now = Date.now();
+  if (!submit) {
+    await db.prepare('UPDATE attempts SET last_saved_at_ms=?, updated_at=? WHERE id=?').bind(now, nowIso(), attempt.id).run();
+    return apiJson({ok:true, save_revision: written.revision, saved_at_ms: now, server_now_ms: now});
+  }
+  await db.prepare("UPDATE attempts SET status='completed', closed_at_ms=?, last_saved_at_ms=?, updated_at=? WHERE id=? AND status='active'").bind(now, now, nowIso(), attempt.id).run();
+  await audit(db, 'candidate', attempt.candidate_id, attempt.id, 'assessment.submitted');
+  scheduleNotifications(context, env, db);
+  return await completionResponse(db, attempt.id, 'completed');
 }
 
 export async function onRequest(context) {
@@ -557,7 +608,7 @@ export async function onRequest(context) {
       if (operation === 'admin/publish' && write) return await adminPublish(request, db);
       if (operation === 'admin/invite' && write) return await adminInvite(request, db);
       if (segments[1] === 'decision' && segments[2] && write) return await adminDecision(request, db, segments[2]);
-      if (segments[1] === 'report' && segments[2] && request.method === 'GET') return await adminReport(db, segments[2]);
+      if (segments[1] === 'report' && segments[2] && request.method === 'GET') return await adminReport(db, segments[2], env);
       return failure('Admin endpoint not found.', 404);
     }
 
@@ -574,14 +625,17 @@ export async function onRequest(context) {
 
     const status = await closeAttempt(db, attempt, Date.now(), null);
     if (status !== 'active') scheduleNotifications(context, env, db);
+    const personality = isPersonalityPayload(safeParse(attempt.question_payload_json, {}));
     if (operation === 'me' && request.method === 'GET') {
       if(status!=='active')return await completionResponse(db,attempt.id,status);
-      return apiJson({ ok: true, ...attemptView({ ...await candidateAttempt(request,db), status }) });
+      const fresh = await candidateAttempt(request,db);
+      return apiJson({ ok: true, ...attemptView({ ...fresh, status }, personality ? await personalityDraftView(env, attempt.id, attempt.candidate_id) : null) });
     }
     if (!write) return failure('Method not allowed.', 405);
     if (status !== 'active') return operation === 'submit' ? await completionResponse(db,attempt.id,status) : failure('Your assessment has closed. Your saved answers have been retained.', 409);
 
     const data = await requestJson(request);
+    if (personality) return await savePersonality(context, env, db, attempt, data, operation === 'submit');
     const response = await saveProgress(db, attempt, data, operation === 'submit');
     if (operation === 'submit') {
       scheduleNotifications(context, env, db);

@@ -8,6 +8,7 @@ import ScreeningFields, {emptyScreening} from './ScreeningFields.jsx';
 import {normalizeScreening} from './screening.js';
 import {AssessmentPractice} from './AssessmentPractice.jsx';
 import {practiceForSlug} from './practice-tables.js';
+import {PERSONALITY_NOTICE, PERSONALITY_NOTICE_VERSION} from './personality-notice.js';
 
 /**
  * Candidate-facing assessment UI. Behaviour (validation, Start payload, timer, autosave,
@@ -79,28 +80,38 @@ function AssessmentPrivacyNotice({ withConsentLine = true }) {
     {withConsentLine && <p>Ticking the box below means you agree to this processing.</p>}
   </section>;
 }
+function PersonalityPrivacyNotice({ withConsentLine = true }) {
+  return <section className="ca-privacy" aria-labelledby="tta-privacy-heading">
+    <h2 id="tta-privacy-heading">How we use your information</h2>
+    {PERSONALITY_NOTICE.map((line, i) => <p key={i}>{line.includes('hello@talenttree.co.za')
+      ? <>{line.split('hello@talenttree.co.za')[0]}<a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>{line.split('hello@talenttree.co.za')[1]}</>
+      : line}</p>)}
+    {withConsentLine && <p>Ticking the box below means you agree to this processing.</p>}
+  </section>;
+}
 const cleanName = value => value.trim().replace(/\s+/g, ' ');
 
 /* Shown after the details are valid and before the attempt starts. The timer starts only on OK. */
-function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting }) {
+function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting, personality = false }) {
   const okRef = React.useRef(null);
   React.useEffect(() => { okRef.current?.focus(); }, []);
   return (
     <div className="ca-modal-backdrop" onKeyDown={(e) => { if (e.key === 'Escape' && !isStarting) onCancel(); }}>
       <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
-        <h2 id="ca-brief-title">Before the timer starts</h2>
-        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`} /></div>
-        <p className="ca-modal-note">The {durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.</p>
+        <h2 id="ca-brief-title">{personality ? 'Before you begin' : 'Before the timer starts'}</h2>
+        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? 'You will see 50 short statements, five to a screen. For each one, choose how accurately it describes you as you generally are. Most people finish in about 10 minutes. Your answers save as you move between screens.' : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
+        <p className="ca-modal-note">{personality ? `You have up to ${durationMinutes} minutes once you start, which is far more than you need. You can take this questionnaire once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
         <div className="ca-modal-actions">
           <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>
-          <button ref={okRef} type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={isStarting}>{isStarting ? 'Starting…' : 'OK, start the timer'}</button>
+          <button ref={okRef} type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={isStarting}>{isStarting ? 'Starting…' : personality ? 'OK, begin' : 'OK, start the timer'}</button>
         </div>
       </div>
     </div>
   );
 }
 
-export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug=''}) {
+export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug='',kind=''}) {
+  const personality = kind === 'personality';
   const catalogue=useAssessmentCatalog(!sectionTitles);
   const matching=catalogue.assessments.find(item=>item.title===assessmentTitle && item.client_name===client);
   const sections=sectionTitles || matching?.section_titles || ['Technical knowledge','Practical reconciliation'];
@@ -114,7 +125,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
   const canStart=Boolean(onStart && !isStarting && cleanName(firstName).length>=2 && cleanName(surname).length>=2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && consent);
   function handleSubmit(event) {
     event.preventDefault();if(!canStart)return;
-    try {const normalized=normalizeScreening(screening);setValidation('');setPending({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true});}
+    try {const normalized=normalizeScreening(screening);setValidation('');setPending({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true,...(personality?{personality_notice_version:PERSONALITY_NOTICE_VERSION}:{})});}
     catch(e){setValidation(e.message);}
   }
   if(view==='practice')return <AssessmentFrame><AssessmentPractice practice={practiceForSlug(slug)} onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
@@ -122,48 +133,58 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
     <main className="ca-welcome" id="main-content">
       <div className="ca-welcome-intro">
         <h1>{assessmentTitle}</h1>
-        <dl className="ca-facts">
+        {personality ? <dl className="ca-facts">
+          <div><dt>Time</dt><dd>About 10 min</dd></div>
+          <div><dt>Statements</dt><dd>50</dd></div>
+          <div><dt>Answers</dt><dd>No right or wrong</dd></div>
+        </dl> : <dl className="ca-facts">
           <div><dt>Time</dt><dd>{durationMinutes} min</dd></div>
           <div><dt>Sections</dt><dd>{sections.length}</dd></div>
           {activities!=null && <div><dt>Questions</dt><dd>{activities}</dd></div>}
-        </dl>
+        </dl>}
         <section aria-labelledby="ca-expect-heading">
           <h2 id="ca-expect-heading">What to expect</h2>
-          <ul className="ca-checklist">
+          {personality ? <ul className="ca-checklist">
+            <li>You will read 50 short statements, such as "Am always prepared." For each one, choose how accurately it describes you, from Very inaccurate to Very accurate.</li>
+            <li>This is a self-description, not a test. There are no right or wrong answers, and no better or worse result.</li>
+            <li>Answer as you generally are now, not as you wish to be. Your first reaction is usually the most accurate.</li>
+            <li>Your answers save as you go. You can leave a statement blank and review everything before you submit.</li>
+            <li>Have your ID number ready. You can take this questionnaire once.</li>
+          </ul> : <ul className="ca-checklist">
             <li>You see the instructions first. The timer starts only when you click OK, and keeps running if you reload or close the page.</li>
             <li>Choose answers, and type amounts in the box under each practical task. You may use a calculator and scrap paper.</li>
             <li>Answers save automatically. You see your results when you submit.</li>
             <li>Use a laptop or desktop and have your ID number ready.</li>
             <li>You can take this assessment up to 3 times. Every start counts, so start when you are ready.</li>
-          </ul>
+          </ul>}
         </section>
       </div>
       <section className="tta-registration ca-registration ca-panel" aria-label={view==='form'?'Candidate details':'Before starting'}>
         {!onStart ? <><p role="status">Choose an assessment to begin.</p><a className="ca-link" href="/assessments">View assessments <span aria-hidden="true">→</span></a></> : view==='welcome' ? <>
           <div className="ca-welcome-actions">
             <button className="ca-btn ca-btn--primary" type="button" onClick={()=>setView('form')}>Continue to details</button>
-            <button className="ca-btn ca-btn--quiet" type="button" onClick={()=>setView('practice')}>Try the practice</button>
+            {!personality && <button className="ca-btn ca-btn--quiet" type="button" onClick={()=>setView('practice')}>Try the practice</button>}
           </div>
-          <p className="tta-form-note">Practice has three untimed questions. It is not scored or saved.</p>
-          <AssessmentPrivacyNotice withConsentLine={false}/>
+          {!personality && <p className="tta-form-note">Practice has three untimed questions. It is not scored or saved.</p>}
+          {personality ? <PersonalityPrivacyNotice withConsentLine={false}/> : <AssessmentPrivacyNotice withConsentLine={false}/>}
           {error && <p className="tta-error" role="alert">{error}</p>}
         </> : <>
           <h2>Your details</h2>
-          <button className="ca-link tta-practice-link" type="button" onClick={()=>setView('practice')}>Try the practice</button>
+          {!personality && <button className="ca-link tta-practice-link" type="button" onClick={()=>setView('practice')}>Try the practice</button>}
           <form onSubmit={handleSubmit}>
             <label htmlFor="tta-first-name">First name</label><input id="tta-first-name" value={firstName} onChange={e=>setFirstName(e.target.value)} autoComplete="given-name" maxLength={100} required/>
             <label htmlFor="tta-last-name">Surname</label><input id="tta-last-name" value={surname} onChange={e=>setSurname(e.target.value)} autoComplete="family-name" maxLength={100} required/>
             <label htmlFor="tta-email">Email address</label><input id="tta-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" maxLength={254} required/>
             <ScreeningFields value={screening} onChange={setScreening}/>
-            <AssessmentPrivacyNotice/>
+            {personality ? <PersonalityPrivacyNotice/> : <AssessmentPrivacyNotice/>}
             <label className="tta-consent"><input type="checkbox" checked={consent} required onChange={e=>setConsent(e.target.checked)}/><span>I agree to this processing.</span></label>
             {(validation||error) && <p className="tta-error" role="alert">{validation||error}</p>}
-            <button className="ca-btn ca-btn--primary ca-btn--block" type="submit" disabled={!canStart}>{isStarting?'Starting assessment…':'Start assessment'} <span className="ca-arrow" aria-hidden="true">↗</span></button>
-            <p className="tta-form-note">The timer has not started. You will see the instructions next, and the timer starts only when you click OK.</p>
+            <button className="ca-btn ca-btn--primary ca-btn--block" type="submit" disabled={!canStart}>{isStarting?(personality?'Starting…':'Starting assessment…'):(personality?'Continue':'Start assessment')} <span className="ca-arrow" aria-hidden="true">↗</span></button>
+            <p className="tta-form-note">{personality ? 'Nothing has started yet. You will see a short briefing next.' : 'The timer has not started. You will see the instructions next, and the timer starts only when you click OK.'}</p>
           </form>
         </>}
       </section>
-      {pending && <StartBriefing instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
+      {pending && <StartBriefing personality={personality} instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
         onCancel={()=>setPending(null)} onConfirm={()=>onStart(pending)} />}
     </main>
   </AssessmentFrame>;
@@ -255,7 +276,7 @@ export function AssessmentRunnerLayout({
   );
 }
 
-export function AssessmentComplete({ client = '', timedOut = false, candidateName, result, attemptNumber=1 }) {
+export function AssessmentComplete({ client = '', timedOut = false, candidateName, result, attemptNumber=1, personality = false }) {
   const sections = result?.sections || [];
   return (
     <AssessmentFrame client={client} eyebrow="Assessment submitted">
@@ -263,9 +284,9 @@ export function AssessmentComplete({ client = '', timedOut = false, candidateNam
         <div className="ca-shell ca-complete-grid">
           <header className="ca-complete-head ca-enter">
             <p className="ca-eyebrow">Submission received</p>
-            <h1>{timedOut ? 'Your time has expired.' : 'Assessment complete.'}</h1>
+            <h1>{personality ? 'Thank you.' : timedOut ? 'Your time has expired.' : 'Assessment complete.'}</h1>
             <p className="ca-lead">{candidateName ? candidateName + ', your ' : 'Your '}
-              {timedOut ? 'saved work' : 'assessment'} has been submitted. Talent Tree will review your results as part of the recruitment process.
+              {personality ? (timedOut ? 'saved answers have' : 'questionnaire has') + ' been submitted. Talent Tree will consider your profile as one part of the recruitment process.' : (timedOut ? 'saved work' : 'assessment') + ' has been submitted. Talent Tree will review your results as part of the recruitment process.'}
             </p>
             <ul className="ca-complete-meta">
               <li>Attempt {attemptNumber}</li>
@@ -273,7 +294,7 @@ export function AssessmentComplete({ client = '', timedOut = false, candidateNam
             </ul>
           </header>
 
-          {result ? (
+          {personality ? null : result ? (
             <section className="ca-result-card" aria-labelledby="ca-results-heading">
               <div className="ca-result-hero">
                 <p className="ca-score-label">Overall score</p>
@@ -301,7 +322,7 @@ export function AssessmentComplete({ client = '', timedOut = false, candidateNam
           <aside className="ca-complete-side" aria-label="Next steps">
             <h2>What happens next</h2>
             <p>Your recruiter will contact you regarding next steps. You may now close this window.</p>
-            <p>Each person can take this assessment up to 3 times. Every start counts, including one that is not submitted.</p>
+            <p>{personality ? 'You do not need to do anything else. The questionnaire can be taken once with each ID number.' : 'Each person can take this assessment up to 3 times. Every start counts, including one that is not submitted.'}</p>
             <a className="ca-btn ca-btn--quiet ca-btn--block" href="/assessments">Back to assessments</a>
           </aside>
         </div>
