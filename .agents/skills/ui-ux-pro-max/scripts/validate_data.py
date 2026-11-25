@@ -107,6 +107,13 @@ OFFICIAL_SOURCE_HOSTS = {
     "greensock.com", "gsap.com", "m3.material.io", "opensource.adobe.com",
     "react.dev", "s2.spectrum.adobe.com", "shopify.dev",
     "design-system.service.gov.uk", "tailwindcss.com", "www.w3.org",
+    # Map and GIS publishers cited by the Maps guidelines.
+    "cheatsheetseries.owasp.org", "docs.mapbox.com",
+    "earthobservatory.nasa.gov", "leafletjs.com", "maplibre.org",
+    "osmfoundation.org", "pro.arcgis.com",
+    # UX research publishers and a government design system cited by the
+    # form error-handling guidelines.
+    "baymard.com", "designsystem.ontario.ca", "www.nngroup.com",
 }
 STACK_OFFICIAL_HOSTS = {
     "react": {"react.dev"},
@@ -340,8 +347,8 @@ def _check_reasoning_contract(products, colors, reasoning, style_ids, patterns, 
             value = row.get(key, "")
             counts[value] = counts.get(value, 0) + 1
         duplicates = sorted(value for value, count in counts.items() if count > 1)
-        if len(rows) != 192:
-            problems.append(f"[reasoning] {label} must contain exactly 192 rows; got {len(rows)}")
+        if len(rows) != 194:
+            problems.append(f"[reasoning] {label} must contain exactly 194 rows; got {len(rows)}")
         if duplicates:
             problems.append(
                 f"[reasoning] duplicate {label} labels: {', '.join(duplicates)}"
@@ -663,7 +670,11 @@ def _check_catalog_summary(summary, licenses, phosphor, problems):
             problems.append(f"[catalog:summary] stale count for {key}")
     snapshots = summary.get("snapshots") if isinstance(summary.get("snapshots"), dict) else {}
     for name in ("google-fonts.csv", "google-font-licenses.json", "icons.csv", "phosphor-icons-upstream.json"):
-        digest = hashlib.sha256((DATA_DIR / name).read_bytes()).hexdigest()
+        # Line endings are normalized so the check matches
+        # generate-catalog-summary.py on CRLF checkouts too.
+        digest = hashlib.sha256(
+            (DATA_DIR / name).read_bytes().replace(b"\r\n", b"\n")
+        ).hexdigest()
         if snapshots.get(name) != {"sha256": digest}:
             problems.append(f"[catalog:summary] stale snapshot for {name}")
     policy = summary.get("promotionPolicy")
