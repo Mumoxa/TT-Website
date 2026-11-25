@@ -156,3 +156,41 @@ test('admin can publish the migration draft only with approvals, and the report 
   assert.doesNotMatch(JSON.stringify(report.body),/"answers"|Am the life of the party/);
   db.sqlite.close();
 });
+
+test('invitation metadata identifies the personality profile so the invited candidate sees its notice', async () => {
+  const {db,env}=personalityDatabase({publish:true});
+  const {tokenHash}=await import('../functions/lib/assessment-core.js');
+  const token='a'.repeat(64), at=new Date().toISOString(), expires=new Date(Date.now()+86400000).toISOString();
+  db.sqlite.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,created_at) VALUES ('inv','6f1c2a90-9b5e-4c1d-8e3a-0d7b5a2f4c11',?,'issued',?,?,?)").run(await tokenHash(token),at,expires,at);
+  const vars={...env,ENABLE_HPI_PERSONALITY:'true'};
+  const meta=await (await onRequest({env:vars,request:new Request(base+'/api/assessment/invite?token='+token)})).json();
+  assert.equal(meta.kind,'personality');
+  assert.equal(meta.duration_seconds,3600);
+  const {assessment_slug,...invited}=start(6);
+  const started=await client(vars)('start',{...invited,invitation_token:token});
+  assert.equal(started.status,200);
+  assert.equal(started.body.assessment.format,'personality-v1');
+  db.sqlite.close();
+});
+
+test('closed drafts with no answers do not block answered ones from being submitted and emailed', async () => {
+  const {db,env}=personalityDatabase({publish:true});
+  const on={...env,ENABLE_HPI_PERSONALITY:'true'};
+  const ids=[];
+  for (let n=0;n<22;n++) {
+    const call=client(on);
+    const s=await call('start',start(20+n));
+    // 21 candidates answer and then clear everything; the last one keeps an answer.
+    await call('save',{attempt_id:s.body.attempt_id,save_revision:0,answers:{b1:'o2'}});
+    await call('save',{attempt_id:s.body.attempt_id,save_revision:1,answers:n<21?{b1:null}:{b1:'o2'}});
+    ids.push(s.body.attempt_id);
+  }
+  db.sqlite.prepare("UPDATE attempts SET status='timed_out', closed_at_ms=?").run(Date.now());
+  const sent=[];
+  const fetchImpl=async(_u,init)=>{sent.push(JSON.parse(init.body));return new Response('{}');};
+  for (let run=0; run<3; run++) await notifyPendingPersonality({...env,...mail},db,fetchImpl);
+  assert.equal(db.sqlite.prepare("SELECT status FROM workplace_personality_attempts WHERE attempt_id=?").get(ids[21]).status,'submitted');
+  assert.equal(sent.length,1);
+  assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM workplace_personality_attempts WHERE notify_status='closed_empty'").get().n,21);
+  db.sqlite.close();
+});

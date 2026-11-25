@@ -286,14 +286,14 @@ export default function CandidateAssessment({catalogItem}) {
       slug={catalogItem?.slug || client.slug || ''}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
       sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count}
-      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || ''}
+      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''}
       hasInvitation={Boolean(invitationToken.current)} onStart={invitationToken.current || catalogItem?.slug ? start : undefined} isStarting={isStarting} error={error} />;
   }
   if (phase === 'complete') {
     return <AssessmentComplete client={client.client_name}
       candidateName={(attempt?.first_name || '') + ' ' + (attempt?.surname || '')}
       timedOut={attempt?.status === 'timed_out'} result={attempt?.candidate_result} attemptNumber={attempt?.attempt_number||1}
-      personality={attempt?.format === 'personality-v1' || attempt?.assessment?.format === 'personality-v1' || catalogItem?.kind === 'personality'} />;
+      personality={attempt?.format === 'personality-v1' || attempt?.assessment?.format === 'personality-v1' || catalogItem?.kind === 'personality' || client.kind === 'personality'} />;
   }
 
   const assessment = attempt.assessment;

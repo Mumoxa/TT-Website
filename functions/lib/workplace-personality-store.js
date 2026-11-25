@@ -72,11 +72,14 @@ export async function readPersonalityDraft(env, attemptId, candidateId) {
 // and is never emailed.
 export async function finalizeClosedPersonalityDrafts(env, limit = 20) {
   const db=env.ASSESSMENT_DB;
-  const rows=await db.prepare("SELECT w.attempt_id,w.revision,w.answers_encrypted FROM workplace_personality_attempts w JOIN attempts a ON a.id=w.attempt_id WHERE w.status='draft' AND w.answers_encrypted IS NOT NULL AND a.status IN ('completed','timed_out') LIMIT ?").bind(limit).all();
+  const rows=await db.prepare("SELECT w.attempt_id,w.revision,w.answers_encrypted FROM workplace_personality_attempts w JOIN attempts a ON a.id=w.attempt_id WHERE w.status='draft' AND w.answers_encrypted IS NOT NULL AND w.notify_status NOT IN ('closed_empty','closed_unreadable') AND a.status IN ('completed','timed_out') LIMIT ?").bind(limit).all();
   for (const row of rows.results || []) {
     let answers;
-    try { answers=normalizePersonalityAnswers(await unpack(env,row.answers_encrypted)); } catch { continue; }
-    if (!Object.values(answers).some(value => value !== null)) continue;
+    // Rows that can never be submitted are marked, so they do not fill every later batch and starve
+    // answered attempts behind them.
+    const skip = status => db.prepare("UPDATE workplace_personality_attempts SET notify_status=? WHERE attempt_id=? AND status='draft'").bind(status,row.attempt_id).run();
+    try { answers=normalizePersonalityAnswers(await unpack(env,row.answers_encrypted)); } catch { await skip('closed_unreadable'); continue; }
+    if (!Object.values(answers).some(value => value !== null)) { await skip('closed_empty'); continue; }
     const at=iso();
     await db.prepare("UPDATE workplace_personality_attempts SET result_encrypted=?,status='submitted',revision=revision+1,updated_at=?,submitted_at=? WHERE attempt_id=? AND status='draft' AND revision=?")
       .bind(await pack(env, scorePersonality(answers)), at, at, row.attempt_id, row.revision).run();

@@ -290,7 +290,9 @@ async function inviteMeta(request, db) {
   // Only the candidate-facing instruction text, shown before the timer starts. Never questions or keys.
   let instructions;
   try { const payload = JSON.parse(i.question_payload_json || '{}'); if (payload.format === 'battery-v2' && typeof payload.instructions === 'string') instructions = payload.instructions.trim().slice(0, 1500) || undefined; } catch { instructions = undefined; }
-  return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: i.duration_seconds, ...(instructions ? { instructions } : {}) });
+  // Invited candidates need to know they are taking the personality profile, so they see its notice and send its version.
+  const personality = isPersonalityPayload(safeParse(i.question_payload_json, {}));
+  return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: i.duration_seconds, ...(personality ? { kind: 'personality' } : {}), ...(instructions ? { instructions } : {}) });
 }
 
 async function requireAdmin(request, env) {
