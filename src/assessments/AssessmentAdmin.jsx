@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
 import { Workbook } from './Workbook.jsx';
+import { PersonalityDossier } from './PersonalityDossier.jsx';
 import './admin-assessments.css';
 
 async function request(path, { method = 'GET', body, login = false } = {}) {
@@ -145,49 +146,8 @@ function DecisionPanel({ report, attemptId, onRecorded }) {
   </section>;
 }
 
-/* Workplace personality profile: the five self-description means only. Plain numbers on a 1 to 5 scale,
-   no bars or colours that read as a ranking, and the same caveat as the recruiter email. */
-function PersonalityReport({ report, onBack }) {
-  const a = report.attempt, p = report.personality || {};
-  return <article className="tta-admin-report">
-    <div className="tta-admin-action-row no-print">
-      <button onClick={onBack} className="tta-admin-outline">← All results</button>
-      <button onClick={() => window.print()}>Print / Save PDF</button>
-    </div>
-    <div className="tta-admin-report-heading">
-      <img className="tta-report-logo" src={talentTreeLogo} alt="Talent Tree Consulting"/>
-      <span className="tta-admin-kicker">Confidential · Self-description</span>
-      <h1>{report.candidate.first_name} {report.candidate.surname}</h1>
-      <p className="tta-report-subtitle">{report.assessment.title} · {report.assessment.client_name}</p>
-      <p className="tta-report-attempt">Attempt {a.attempt_number||1}</p>
-      <p className="tta-admin-muted">{report.candidate.email} · {formattedTime(a.started_at_ms)} · {a.status}</p>
-    </div>
-    <section className="tta-admin-panel tta-report-keep-together">
-      <h2>How to read this</h2>
-      <p>This is a self-description questionnaire. It has not been validated for selection at Talent Tree. There is no better or worse score. Do not use it alone, or as a cut-off, in any hiring decision.</p>
-    </section>
-    <section className="tta-admin-panel tta-report-keep-together">
-      <h2>Self-description on five broad dimensions (1 to 5)</h2>
-      {p.unreadable ? <p role="alert">The stored result could not be read. Check the encryption key configuration.</p>
-        : !p.factors ? <p>{p.status === 'draft' ? 'Not submitted yet. Answers are saved as the candidate works.' : 'No answers were submitted.'}</p>
-        : <><dl className="tta-admin-score-breakdown">{p.factors.map(f => <div key={f.name}><dt>{f.name}</dt><dd>{f.mean == null ? 'Not answered' : f.mean.toFixed(2) + ' / 5'} <small className="tta-admin-muted">({f.answered} of {f.total} answered)</small></dd></div>)}</dl>
-          <p className="tta-admin-muted">{p.attempted} of {p.total} statements answered. Mean of the candidate's own ratings (IPIP-50 Big-Five markers, public domain). Each end of the scale describes a different style, not a better one. The candidate does not see these figures.</p></>}
-    </section>
-    <section className="tta-admin-panel"><h2>Screening details</h2>
-      <dl className="tta-admin-score-breakdown">{[
-        ['Contact number',report.screening?.contact_number_masked],['South African ID number',report.screening?.id_number_masked],['Earliest start date',report.screening?.earliest_start_date],['First day confirmed',report.screening?.first_day_confirmed==null?'Not recorded':(report.screening.first_day_confirmed?'Yes':'No')],['Travel mode',report.screening?.travel_mode?.replace(/_/g,' ')],['Route description',report.screening?.travel_description],['Own transport',report.screening?.own_transport],
-      ].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Not recorded'}</dd></div>)}</dl>
-    </section>
-    <section className="tta-admin-panel">
-      <h2>Audit trail</h2>
-      <ol>{(report.audit_events||[]).map((event,i)=><li key={i}>{formattedTime(event.created_at)} — {event.event_type} ({event.actor_type})</li>)}</ol>
-      <p className="tta-admin-muted">Recruiter email: {p.notified_at ? 'sent ' + p.notified_at : 'not sent yet'}. Notice {report.assessment.notice_version || 'not recorded'} · form {report.assessment.form_version}.</p>
-    </section>
-  </article>;
-}
-
 function ResultReport({ report, onBack, onRecorded }) {
-  if (report.assessment?.format === 'personality-v1') return <PersonalityReport report={report} onBack={onBack} />;
+  if (report.assessment?.format === 'personality-v1') return <PersonalityDossier report={report} onBack={onBack} />;
   const r = report.result, a = report.attempt;
   // Wording follows the assessment that was taken, never a hard-coded product family.
   const receivable = /receivable|debtor/i.test(report.assessment?.title || '');
