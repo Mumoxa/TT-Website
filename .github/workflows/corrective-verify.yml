@@ -32,3 +32,9 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Compile Functions with the Pages build image version
+        run: npx --yes wrangler@3.114.17 pages functions build functions --outdir .wrangler/ci-functions-v3
+
+      - name: Compile Functions with the repository Wrangler version
+        run: npx wrangler pages functions build functions --outdir .wrangler/ci-functions-v4

@@ -152,6 +152,8 @@ function ResultReport({ report, onBack, onRecorded }) {
   const score = r?.overall_score;
   function printReport() { window.print(); }
   const workbook = report.responses?.workbook || {};
+  const savedCells = Object.entries(workbook).filter(([, value]) => value !== '');
+  const actions = Object.entries(report.responses.structured?.actions || {});
   return <article className="tta-admin-report">
     <div className="tta-admin-action-row no-print">
       <button onClick={onBack} className="tta-admin-outline">← All results</button>
@@ -159,11 +161,18 @@ function ResultReport({ report, onBack, onRecorded }) {
     </div>
     <div className="tta-admin-report-heading">
       <img className="tta-report-logo" src={talentTreeLogo} alt="Talent Tree Consulting"/>
-      <span className="tta-admin-kicker">Talent Tree | Assessment evidence</span>
+      <span className="tta-admin-kicker">Confidential · Assessment evidence</span>
       <h1>{report.candidate.first_name} {report.candidate.surname}</h1>
-      <p>{report.assessment.title} · {report.assessment.client_name}</p>
-      <p>Attempt {a.attempt_number||1}</p>
+      <p className="tta-report-subtitle">{report.assessment.title} · {report.assessment.client_name}</p>
+      <p className="tta-report-attempt">Attempt {a.attempt_number||1}</p>
       <p className="tta-admin-muted">{report.candidate.email} · {formattedTime(a.started_at_ms)} · {a.status}</p>
+    </div>
+    <div className="tta-report-summary-label">Assessment overview</div>
+    <div className="tta-admin-score-row">
+      <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
+      <div><small>Knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
+      <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
+      <div><small>Time used</small><strong>{report.speed_accuracy ? formatDuration(report.speed_accuracy.time_used_seconds) + ' of ' + formatDuration(report.speed_accuracy.time_limit_seconds) : a.closed_at_ms ? formatDuration(Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000)))) : '—'}</strong></div>
     </div>
     <section className="tta-admin-panel"><h2>Screening details</h2>
       <dl className="tta-admin-score-breakdown">{[
@@ -172,15 +181,9 @@ function ResultReport({ report, onBack, onRecorded }) {
         ...(report.screening?.assignment_available ? [['Available for a 2-month assignment',report.screening.assignment_available],['Availability note',report.screening.assignment_note]] : [])
       ].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Not recorded'}</dd></div>)}</dl>
     </section>
-    <div className="tta-admin-score-row">
-      <div><small>Overall</small><strong>{score == null ? 'Pending' : score + '/100'}</strong></div>
-      <div><small>Knowledge</small><strong>{r?.knowledge_score ?? '—'}/40</strong></div>
-      <div><small>Practical work</small><strong>{r?.reconciliation_score ?? '—'}/60</strong></div>
-      <div><small>Time used</small><strong>{report.speed_accuracy ? formatDuration(report.speed_accuracy.time_used_seconds) + ' of ' + formatDuration(report.speed_accuracy.time_limit_seconds) : a.closed_at_ms ? formatDuration(Math.min(DEFAULT_ASSESSMENT_SECONDS, Math.max(0, Math.round((a.closed_at_ms - a.started_at_ms) / 1000)))) : '—'}</strong></div>
-    </div>
     <SpeedAccuracy report={report} />
     <HandoffEvidence report={report} />
-    <section className="tta-admin-panel">
+    <section className="tta-admin-panel tta-report-keep-together">
       <h2>Assessment interpretation</h2>
       <p>{r?.interpretation || 'The assessment has not yet been scored.'}</p>
       <p className="tta-admin-muted">A timed work sample is screening evidence, not independent proof of full-function {receivable ? 'accounts receivable' : 'accounts payable'} competence. Verify practical experience, {receivable ? 'debtors ledger and collections systems' : 'Sage 300 and creditor systems'} usage and references.</p>
@@ -208,23 +211,24 @@ function ResultReport({ report, onBack, onRecorded }) {
         </tr>)}</tbody>
       </table></div>
     </section>
-    <section className="tta-admin-panel">
+    <section className="tta-admin-panel tta-report-keep-together">
       <h2>Candidate's reconciliation decisions</h2>
       <p>Selected discrepancy references: {(report.responses.structured?.discrepancies || []).join(', ') || 'None recorded'}</p>
       <p>Corrective actions:</p>
-      <dl className="tta-admin-score-breakdown">
-        {Object.entries(report.responses.structured?.actions || {}).map(([ref, value]) => <div key={ref}><dt>{ref}</dt><dd>{report.assessment.scenario?.action_options?.find((o) => o.id === value)?.text || value}</dd></div>)}
-      </dl>
+      {actions.length ? <dl className="tta-admin-score-breakdown">
+        {actions.map(([ref, value]) => <div key={ref}><dt>{ref}</dt><dd>{report.assessment.scenario?.action_options?.find((o) => o.id === value)?.text || value}</dd></div>)}
+      </dl> : <p className="tta-admin-muted">None recorded.</p>}
       <p>Entered corrected balance: R{report.responses.structured?.corrected_balance ?? '—'}</p>
     </section>
     <section className="tta-admin-panel">
       <h2>Saved spreadsheet working</h2>
-      <p className="tta-admin-muted">Read-only replay of the candidate's last saved cells and formulas; source tabs are reconstructed from the published assessment scenario.</p>
+      <p className="tta-admin-muted no-print">Read-only replay of the candidate's last saved cells and formulas; source tabs are reconstructed from the published assessment scenario.</p>
+      <p className="tta-admin-muted tta-report-print-only">The interactive spreadsheet replay is available in the online report. Saved cell entries and calculated values are listed below.</p>
       {report.assessment.format === 'battery-v2'
         ? <Workbook sheets={report.assessment.sheets || null} source={report.workbook_source || {}} cells={workbook} readOnly />
         : <ReconciliationSpreadsheet scenario={report.assessment.scenario} cells={workbook} readOnly />}
       <p className="tta-admin-muted">Last saved: {formattedTime(a.last_saved_at_ms)} · {report.workbook_save_history?.length || 0} saved workbook revisions</p>
-      {!!report.workbook_save_history?.length && <details className="tta-admin-save-history">
+      {!!report.workbook_save_history?.length && <details className="tta-admin-save-history no-print">
         <summary>View saved revision timeline</summary>
         <ol>{report.workbook_save_history.map((rev) => <li key={rev.revision}>Revision {rev.revision} — {formattedTime(rev.saved_at_ms)}</li>)}</ol>
       </details>}
@@ -232,9 +236,9 @@ function ResultReport({ report, onBack, onRecorded }) {
     <section className="tta-admin-panel">
       <h2>Saved cells and formulas</h2>
       <p>Raw entries and independently recalculated values. Empty cells are omitted; source copies remain editable working only.</p>
-      <table className="tta-admin-evidence"><thead><tr><th>Cell</th><th>Saved entry / formula</th><th>Calculated value</th></tr></thead><tbody>
-        {Object.entries(workbook).filter(([,value])=>value!=='').map(([ref,value])=><tr key={ref}><th>{ref}</th><td>{value}</td><td>{report.workbook_values?.[ref]}</td></tr>)}
-      </tbody></table>
+      {savedCells.length ? <table className="tta-admin-evidence"><thead><tr><th>Cell</th><th>Saved entry / formula</th><th>Calculated value</th></tr></thead><tbody>
+        {savedCells.map(([ref,value])=><tr key={ref}><th>{ref}</th><td>{value}</td><td>{report.workbook_values?.[ref]}</td></tr>)}
+      </tbody></table> : <p className="tta-admin-muted">No saved cell entries recorded.</p>}
     </section>
     <section className="tta-admin-panel">
       <h2>Reconciliation marking evidence</h2>

@@ -104,7 +104,20 @@ test.describe('brand screenshots at device scale 2',()=>{
     await page.screenshot({path:`${directory}/admin-results-${width}.png`,fullPage:true});
     await page.locator('tr',{hasText:email}).first().getByRole('button',{name:'View',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Saved cells and formulas',exact:true})).toBeVisible();
+    const report=page.locator('.tta-admin-report');
+    await expect(report.getByAltText('Talent Tree Consulting')).toBeVisible();
+    await expect(report.getByText('Assessment overview',{exact:true})).toBeVisible();
+    await expect(report.getByRole('heading',{name:'Screening details',exact:true})).toBeVisible();
+    await expect(report.getByText('No saved cell entries recorded.',{exact:true})).toBeVisible();
+    await expect(report.getByText('The interactive spreadsheet replay is available in the online report.',{exact:false})).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.screenshot({path:`${directory}/admin-report-${width}.png`,fullPage:true});
+    await page.emulateMedia({media:'print'});
+    await expect(report.getByRole('button',{name:'Print / Save PDF'})).toBeHidden();
+    await expect(report.getByAltText('Talent Tree Consulting')).toBeVisible();
+    await expect(report.getByText('The interactive spreadsheet replay is available in the online report.',{exact:false})).toBeVisible();
+    await page.screenshot({path:`${directory}/admin-report-print-${width}.png`,fullPage:true});
+    await page.pdf({path:`${directory}/admin-report-${width}.pdf`,format:'A4',printBackground:true});
   });
 });
 
