@@ -1,0 +1,88 @@
+import React, {useEffect, useRef, useState} from 'react';
+import './personality-questions.css';
+
+// Unmounted runner component: the host must supply a server-projected form, a
+// session-bound save/submit implementation and the approved registration/notice flow.
+// It cannot send data or enable the assessment on its own.
+export default function PersonalityQuestions({form, initialAnswers = {}, initialRevision = 0, onSave, onSubmit, onLeave}) {
+  const [answers,setAnswers]=useState(initialAnswers);
+  const [revision,setRevision]=useState(initialRevision);
+  const [screen,setScreen]=useState('intro');
+  const [dirty,setDirty]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const heading=useRef(null);
+  const items=Array.isArray(form?.items) ? form.items : [];
+  const pages=Math.ceil(items.length/5);
+  const answered=items.filter(item=>answers[item.id]!=null).length;
+  useEffect(()=>{heading.current?.focus();},[screen]);
+  useEffect(()=>{
+    if (!dirty) return undefined;
+    const guard=event=>{event.preventDefault();event.returnValue='';};
+    window.addEventListener('beforeunload',guard);
+    return ()=>window.removeEventListener('beforeunload',guard);
+  },[dirty]);
+  if (items.length !== 50 || typeof onSave !== 'function' || typeof onSubmit !== 'function') {
+    return <main className="wpp-shell" id="main-content"><h1>Assessment unavailable</h1><p role="status">This questionnaire is not available yet.</p></main>;
+  }
+  const save = async () => {
+    if (!dirty) return true;
+    setBusy(true);setError('');
+    try {
+      const saved=await onSave({answers,revision});
+      if (!Number.isSafeInteger(saved?.revision) || saved.revision !== revision+1) throw new Error('Save could not be confirmed.');
+      setRevision(saved.revision);setDirty(false);return true;
+    } catch {setError('Your answers are still on this page, but could not be saved. Please try again.');return false;}
+    finally {setBusy(false);}
+  };
+  const go = async destination => {if (!busy && await save()) setScreen(destination);};
+  const finish = async () => {
+    if (busy || answered===0) return;
+    setBusy(true);setError('');
+    try {
+      const response=await onSubmit({answers,revision});
+      if (response?.status !== 'submitted') throw new Error('Submission could not be confirmed.');
+      setDirty(false);setScreen('complete');
+    } catch {setError('Your answers are still on this page, but could not be submitted. Please try again.');}
+    finally {setBusy(false);}
+  };
+  const change=(id,value)=>{setAnswers(previous=>({...previous,[id]:value}));setDirty(true);setError('');};
+  const leave=async()=>{if (!busy && await save() && typeof onLeave==='function') onLeave();};
+  const page=typeof screen==='number' ? screen : null;
+  return <main className="wpp-shell" id="main-content">
+    {screen==='intro' && <section className="wpp-panel">
+      <p className="ca-eyebrow">Workplace personality profile</p>
+      <h1 ref={heading} tabIndex={-1}>Before you begin</h1>
+      <p>{form.instructions}</p>
+      <ul><li>50 statements, five per screen.</li><li>There is no time limit and no right or wrong answers.</li><li>You may leave statements unanswered.</li></ul>
+      <button className="ca-btn ca-btn--primary" onClick={()=>setScreen(0)}>Begin</button>
+    </section>}
+    {page!==null && <>
+      <div className="wpp-toolbar"><span role="status">{busy?'Saving…':dirty?'Changes not saved yet':'All answers saved'}</span><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={leave}>Save and leave</button></div>
+      {error && <p className="wpp-error" role="alert">{error}</p>}
+      <h1 ref={heading} tabIndex={-1}>How accurately does each statement describe you?</h1>
+      <p>Screen {page+1} of {pages} · {answered} of {items.length} answered</p>
+      <nav aria-label="Question screens"><ol className="wpp-index">{Array.from({length:pages},(_,index)=>{
+        const done=items.slice(index*5,index*5+5).every(item=>answers[item.id]!=null);
+        return <li key={index}><button type="button" disabled={busy} aria-current={index===page?'step':undefined} aria-label={`Screen ${index+1}${done?', all answered':''}${index===page?', current':''}`} onClick={()=>go(index)}>{index+1}{done&&<span aria-hidden="true"> ✓</span>}</button></li>;
+      })}</ol></nav>
+      <div className="wpp-questions">{items.slice(page*5,page*5+5).map((item,index)=><fieldset className="wpp-question" key={item.id} disabled={busy}>
+        <legend><span>{page*5+index+1}.</span> {item.prompt}</legend>
+        <div className="wpp-options">{item.options.map(option=><label className="wpp-option" key={option.id}>
+          <input type="radio" name={item.id} value={option.id} checked={answers[item.id]===option.id} onChange={()=>change(item.id,option.id)} />
+          <span>{option.label}</span>
+        </label>)}</div>
+        {answers[item.id]!=null && <button type="button" className="wpp-clear" onClick={()=>change(item.id,null)}>Clear this answer</button>}
+      </fieldset>)}</div>
+      <div className="wpp-actions"><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go(page===0?'intro':page-1)}>Previous</button><button type="button" className="ca-btn ca-btn--primary" disabled={busy} onClick={()=>go(page===pages-1?'review':page+1)}>{page===pages-1?'Review':'Next'}</button></div>
+    </>}
+    {screen==='review' && <section className="wpp-panel">
+      <h1 ref={heading} tabIndex={-1}>Review your answers</h1>
+      <p>{answered} of {items.length} statements answered. Blanks are allowed.</p>
+      {error && <p className="wpp-error" role="alert">{error}</p>}
+      {answered<items.length && <><h2>Not answered</h2><ul className="wpp-blanks">{items.map((item,index)=>answers[item.id]==null && <li key={item.id}><button type="button" disabled={busy} onClick={()=>go(Math.floor(index/5))}>Statement {index+1}</button></li>)}</ul></>}
+      <div className="wpp-actions"><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go(pages-1)}>Back</button><button type="button" className="ca-btn ca-btn--primary" disabled={busy||answered===0} onClick={finish}>{busy?'Submitting…':'Submit'}</button></div>
+    </section>}
+    {screen==='complete' && <section className="wpp-panel"><h1 ref={heading} tabIndex={-1}>Thank you</h1><p>Your questionnaire has been submitted.</p><a className="ca-link" href="/assessments">Back to assessments</a></section>}
+  </main>;
+}

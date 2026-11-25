@@ -161,7 +161,7 @@ function CatalogueSection({ status, assessments }) {
     <section className="ca-section" id="assessments" aria-labelledby="ca-assessments-heading">
       <div className="ca-shell">
         <Reveal className="ca-section-head">
-          <p className="ca-eyebrow">Available assessments</p>
+          <p className="ca-eyebrow">Assessments</p>
           <h2 id="ca-assessments-heading">Choose an assessment</h2>
           <p>Read the instructions for each assessment, try the practice, then start when you are ready.</p>
         </Reveal>

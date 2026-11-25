@@ -218,6 +218,25 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
   return {subject:assessmentBrandText(subject),html:assessmentBrandText(html),text:assessmentBrandText(text)};
 }
 
+// Dedicated P01 renderer; deliberately not wired into the occupational notification queue yet.
+// It accepts only the five factor aggregates and never serializes candidate responses.
+export function buildPersonalityResultEmail({candidate, result}) {
+  const names = ['Extraversion', 'Agreeableness', 'Conscientiousness', 'Emotional Stability', 'Intellect/Imagination'];
+  const factors = names.map((name, index) => {
+    const f = result?.factors?.find(item => item.factor === index + 1);
+    if (!f || !Number.isInteger(f.answered) || f.answered < 0 || f.answered > 10 || f.total !== 10 ||
+        (f.answered === 0 ? f.mean !== null : typeof f.mean !== 'number' || !Number.isFinite(f.mean) || f.mean < 1 || f.mean > 5)) {
+      throw new Error('Invalid personality factor result.');
+    }
+    return {name, answered: f.answered, mean: f.mean === null ? 'Not answered' : f.mean.toFixed(2)};
+  });
+  const disclaimer = 'This is a self-description questionnaire. It has not been validated for selection at Talent Tree. There is no better or worse score. Do not use it alone, or as a cut-off, in any hiring decision.';
+  const fullName = `${candidate?.first_name || ''} ${candidate?.surname || ''}`.trim();
+  const lines = factors.map(f => `${f.name}: ${f.mean}${f.mean === 'Not answered' ? '' : ' / 5'} (${f.answered} of 10 answered)`);
+  const html = `<div style="font:14px/1.6 ${SANS};color:${C.ink};"><h1 style="font:500 28px/1.2 ${SERIF};color:${C.inkDeep};">Workplace personality profile</h1><p>Candidate: ${escapeHtml(fullName)}</p><p>${escapeHtml(disclaimer)}</p><ul>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul></div>`;
+  return {subject: 'Workplace personality profile', html, text: ['Workplace personality profile', `Candidate: ${fullName}`, disclaimer, ...lines].join('\n')};
+}
+
 const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 /* Everyone who receives a result: the main recipient, plus any extra recipients configured for the
    assessment's family. Malformed and duplicate addresses are dropped rather than sent to. */

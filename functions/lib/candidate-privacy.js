@@ -18,6 +18,22 @@ export async function encryptId(env,idNumber) {
  const ciphertext=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,encoder.encode(idNumber));
  return 'v1.'+base64(iv)+'.'+base64(ciphertext);
 }
+// Inverse of encryptId's existing v1 envelope, for server-only private data.
+// Authentication failure and malformed ciphertext are never treated as plaintext.
+export async function decryptPrivate(env, value) {
+ let material;
+ try { material = bytes(env.ASSESSMENT_PII_KEY); } catch { throw new PrivacyConfigurationError('Private storage is not configured.'); }
+ if (material.length !== 32) throw new PrivacyConfigurationError('Private storage is not configured.');
+ const parts = typeof value === 'string' ? value.split('.') : [];
+ if (parts.length !== 3 || parts[0] !== 'v1') throw new Error('Invalid private data envelope.');
+ try {
+  const iv = bytes(parts[1]), ciphertext = bytes(parts[2]);
+  if (iv.length !== 12) throw new Error('Invalid IV');
+  const key = await crypto.subtle.importKey('raw', material, {name:'AES-GCM'}, false, ['decrypt']);
+  const plaintext = await crypto.subtle.decrypt({name:'AES-GCM',iv}, key, ciphertext);
+  return new TextDecoder('utf-8', {fatal:true}).decode(plaintext);
+ } catch { throw new Error('Private data could not be decrypted.'); }
+}
 export function maskId(idNumber) {return idNumber.slice(0,6)+'***'+idNumber.slice(-4);}
 export function maskContact(phone) {
  const digits=String(phone||'').replace(/\D/g,'');

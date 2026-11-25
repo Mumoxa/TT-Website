@@ -14,6 +14,7 @@ import {assertPracticeIsolation} from '../../lib/practice-isolation.js';
 import {practiceForSlug} from '../../../src/assessments/practice-tables.js';
 import {candidateResult} from '../../lib/candidate-results.js';
 import { assessmentCatalog } from '../../lib/assessment-catalog.js';
+import { PERSONALITY_SLUG } from '../../lib/hpi-personality.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
 import {
   AssessmentInputError, apiJson, assessmentContentNeedsBrandReview, failure, requestJson, sameOrigin, normalizeIdentity, newToken, tokenHash,
@@ -216,10 +217,13 @@ async function startAttempt(request, db, env) {
     invited={...definition,id:id()};
   }else{
     if(!isToken(data.invitation_token))return failure('Choose an assessment link to begin.',400);
-    invited=await db.prepare('SELECT i.*,d.client_name,d.title,d.status AS assessment_status,d.duration_seconds,d.current_version_id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.token_sha256=?').bind(await tokenHash(data.invitation_token)).first();
+    invited=await db.prepare('SELECT i.*,d.slug,d.client_name,d.title,d.status AS assessment_status,d.duration_seconds,d.current_version_id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.token_sha256=?').bind(await tokenHash(data.invitation_token)).first();
     if(!invited||invited.status!=='issued'||Date.parse(invited.expires_at)<=Date.now()||invited.assessment_status!=='published'||!invited.current_version_id)return failure('This invitation is unavailable or has expired. Contact your recruiter.',403);
     if(invited.intended_email&&invited.intended_email.toLowerCase()!==identity.email)return failure('Please use the email address associated with your invitation.',403);
   }
+  // The P01 runner, encrypted writes and notification pipeline are not integrated yet.
+  // Fail closed even if a definition is accidentally published or the flag is enabled.
+  if (invited.slug === PERSONALITY_SLUG) return failure('This assessment is not open right now.',404);
   const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
   const payload=safeParse(version?.question_payload_json,{});
   // Practice is checked against this assessment's own family (slug-scoped), never another's.
@@ -533,7 +537,7 @@ export async function onRequest(context) {
       if (limited) return limited;
     }
 
-    if (operation === 'catalog' && request.method === 'GET') return await assessmentCatalog(db, new URL(request.url).searchParams.get('slug'));
+    if (operation === 'catalog' && request.method === 'GET') return await assessmentCatalog(db, new URL(request.url).searchParams.get('slug'), env);
     if (operation === 'invite' && request.method === 'GET') return await inviteMeta(request, db);
     if (operation === 'start' && write) return await startAttempt(request, db, env);
 
