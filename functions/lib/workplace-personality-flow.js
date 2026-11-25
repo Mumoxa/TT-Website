@@ -2,7 +2,7 @@
 // The candidate registers with the same identity and screening details as AP/AR, answers the
 // 50 statements and sees a thank-you screen. Factor results go only to the recruiter email and
 // the admin report. Item responses never leave the server except to the candidate's own session.
-import {personalityForm, PERSONALITY_SLUG, PERSONALITY_FLOW_READY, VERSION} from './hpi-personality.js';
+import {personalityForm, PERSONALITY_SLUG, PERSONALITY_FLOW_READY} from './hpi-personality.js';
 import {decryptPrivate, publicScreening} from './candidate-privacy.js';
 import {buildPersonalityResultEmail, sendResultEmail} from './assessment-email.js';
 import {finalizeClosedPersonalityDrafts, readPersonalityDraft, NOTICE_VERSION} from './workplace-personality-store.js';
@@ -54,7 +54,7 @@ export async function personalityReportData(env, db, attemptId) {
     audit_events: events.results || [],
     candidate: {first_name: row.first_name, surname: row.surname, email: row.email},
     screening: publicScreening(row),
-    assessment: {client_name: row.client_name, title: row.title, version: row.version_label, format: PERSONALITY_FORMAT, form_version: row.form_version || VERSION, notice_version: row.notice_version || null},
+    assessment: {client_name: row.client_name, title: row.title, version: row.version_label, format: PERSONALITY_FORMAT, form_version: row.form_version || null, scoring_version: result?.engine || null, notice_version: row.notice_version || null},
     attempt: {id: row.id, attempt_number: row.attempt_number || 1, status: row.status, started_at_ms: row.started_at_ms, expires_at_ms: row.expires_at_ms, closed_at_ms: row.closed_at_ms, last_saved_at_ms: row.last_saved_at_ms},
     personality: {status: row.wpp_status || 'not_started', submitted_at: row.submitted_at || null, unreadable, notified_at: row.notified_at || null,
       factors: result ? result.factors.map(f => ({name: f.name, mean: f.mean, answered: f.answered, total: f.total})) : null,
