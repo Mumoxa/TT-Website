@@ -1,10 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './personality-questions.css';
 
-// Unmounted runner component: the host must supply a server-projected form, a
-// session-bound save/submit implementation and the approved registration/notice flow.
-// It cannot send data or enable the assessment on its own.
-export default function PersonalityQuestions({form, initialAnswers = {}, initialRevision = 0, onSave, onSubmit, onLeave}) {
+// The host supplies a server-projected form and session-bound save/submit handlers.
+export default function PersonalityQuestions({form, durationMinutes, initialAnswers = {}, initialRevision = 0, onSave, onSubmit, onLeave}) {
   const [answers,setAnswers]=useState(initialAnswers);
   const [revision,setRevision]=useState(initialRevision);
   const [screen,setScreen]=useState('intro');
@@ -77,7 +75,7 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
       <p className="ca-eyebrow">Workplace personality profile</p>
       <h1 ref={heading} tabIndex={-1}>Before you begin</h1>
       <p>{form.instructions}</p>
-      <ul><li>50 statements, five per screen.</li><li>There is no time limit and no right or wrong answers.</li><li>You may leave statements unanswered.</li></ul>
+      <ul><li>50 statements, five per screen.</li><li>You have {durationMinutes} minutes from the start; the timer cannot be paused. When time runs out, your saved answers, if any, are submitted.</li><li>There are no right or wrong answers. You may leave statements unanswered.</li></ul>
       <button className="ca-btn ca-btn--primary" onClick={()=>setScreen(0)}>Begin</button>
     </section>}
     {page!==null && <>
@@ -97,13 +95,17 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
         </label>)}</div>
         {answers[item.id]!=null && <button type="button" className="wpp-clear" onClick={()=>change(item.id,null)}>Clear this answer</button>}
       </fieldset>)}</div>
-      <div className="wpp-actions"><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go(page===0?'intro':page-1)}>Previous</button><button type="button" className="ca-btn ca-btn--primary" disabled={busy} onClick={()=>go(page===pages-1?'review':page+1)}>{page===pages-1?'Review':'Next'}</button></div>
+      <div className="wpp-actions"><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go(page===0?'intro':page-1)}>Previous</button>{page!==pages-1 && <button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go('review')}>Review answers</button>}<button type="button" className="ca-btn ca-btn--primary" disabled={busy} onClick={()=>go(page===pages-1?'review':page+1)}>{page===pages-1?'Review':'Next'}</button></div>
     </>}
     {screen==='review' && <section className="wpp-panel">
       <h1 ref={heading} tabIndex={-1}>Review your answers</h1>
-      <p>{answered} of {items.length} statements answered. Blanks are allowed.</p>
+      <p>{answered} of {items.length} statements answered. Blanks are allowed, but at least one answer is required to submit.</p>
       {error && <p className="wpp-error" role="alert">{error}</p>}
-      {answered<items.length && <><h2>Not answered</h2><ul className="wpp-blanks">{items.map((item,index)=>answers[item.id]==null && <li key={item.id}><button type="button" disabled={busy} onClick={()=>go(Math.floor(index/5))}>Statement {index+1}</button></li>)}</ul></>}
+      <p>Check your responses below. Choose an edit button to return to that screen.</p>
+      <div className="wpp-review">{Array.from({length:pages},(_,pageIndex)=><section className="wpp-review-page" key={pageIndex} aria-labelledby={`wpp-review-${pageIndex}`}>
+        <div className="wpp-review-heading"><h2 id={`wpp-review-${pageIndex}`}>Screen {pageIndex+1}</h2><button type="button" className="ca-btn ca-btn--quiet ca-btn--sm" disabled={busy} onClick={()=>go(pageIndex)}>Edit screen {pageIndex+1}</button></div>
+        <ol start={pageIndex*5+1}>{items.slice(pageIndex*5,pageIndex*5+5).map(item=><li key={item.id}><span>{item.prompt}</span><strong>{item.options.find(option=>option.id===answers[item.id])?.label || 'Not answered'}</strong></li>)}</ol>
+      </section>)}</div>
       <div className="wpp-actions"><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go(pages-1)}>Back</button><button type="button" className="ca-btn ca-btn--primary" disabled={busy||answered===0} onClick={finish}>{busy?'Submitting…':'Submit'}</button></div>
     </section>}
     {screen==='complete' && <section className="wpp-panel"><h1 ref={heading} tabIndex={-1}>Thank you</h1><p>Your questionnaire has been submitted.</p><a className="ca-link" href="/assessments">Back to assessments</a></section>}
