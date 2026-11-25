@@ -1,8 +1,9 @@
 import { DEFAULT_ASSESSMENT_SECONDS } from '../../functions/lib/assessment-deadlines.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AssessmentWelcome, AssessmentRunnerLayout, AssessmentComplete, AssessmentFrame,
+  AssessmentWelcome, AssessmentRunnerLayout, AssessmentComplete, AssessmentFrame, AssessmentTimer,
 } from './AssessmentApp.jsx';
+import PersonalityQuestions from './PersonalityQuestions.jsx';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
 import { BatteryPanels } from './BatteryPanels.jsx';
 import './candidate.css';
@@ -128,7 +129,14 @@ export default function CandidateAssessment({catalogItem}) {
           setPhase('welcome');
           return;
         }
-        if(catalogItem){if(!cancelled){setClient({...catalogItem,duration_seconds:DEFAULT_ASSESSMENT_SECONDS});setPhase('welcome');}return;}
+        if(catalogItem){
+          // The personality profile can be started once per ID number, so a candidate returning to its page
+          // in the same browser resumes the open session instead of being asked to start again.
+          if(catalogItem.kind==='personality'){
+            try{const session=await api('me',undefined,'GET');if(!cancelled&&session.status==='active'&&session.assessment?.format==='personality-v1'){activate(session);return;}}catch{/* no session: show the welcome */}
+          }
+          if(!cancelled){setClient({...catalogItem,duration_seconds:catalogItem.kind==='personality'?catalogItem.duration_minutes*60:DEFAULT_ASSESSMENT_SECONDS});setPhase('welcome');}return;
+        }
         const session = await api('me', undefined, 'GET');
         if (!cancelled) activate(session);
       } catch (e) {
@@ -278,16 +286,39 @@ export default function CandidateAssessment({catalogItem}) {
       slug={catalogItem?.slug || client.slug || ''}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
       sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count}
-      startInstructions={client.instructions || welcomeItem?.instructions}
+      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''}
       hasInvitation={Boolean(invitationToken.current)} onStart={invitationToken.current || catalogItem?.slug ? start : undefined} isStarting={isStarting} error={error} />;
   }
   if (phase === 'complete') {
     return <AssessmentComplete client={client.client_name}
       candidateName={(attempt?.first_name || '') + ' ' + (attempt?.surname || '')}
-      timedOut={attempt?.status === 'timed_out'} result={attempt?.candidate_result} attemptNumber={attempt?.attempt_number||1} />;
+      timedOut={attempt?.status === 'timed_out'} result={attempt?.candidate_result} attemptNumber={attempt?.attempt_number||1}
+      personality={attempt?.format === 'personality-v1' || attempt?.assessment?.format === 'personality-v1' || catalogItem?.kind === 'personality' || client.kind === 'personality'} />;
   }
 
   const assessment = attempt.assessment;
+  if (assessment.format === 'personality-v1') {
+    const personality = attempt.personality || { answers: {}, revision: 0 };
+    return (
+      <AssessmentFrame client={client.client_name} title={client.title} eyebrow="Workplace personality profile"
+        timer={<AssessmentTimer expiresAt={remainingExpiry} onExpired={() => { void refreshStatus(); }} />}>
+        <PersonalityQuestions key={attempt.attempt_id} form={assessment}
+          initialAnswers={personality.answers || {}} initialRevision={Number(personality.revision) || 0}
+          onSave={async ({ answers, revision }) => {
+            const saved = await api('save', { attempt_id: attempt.attempt_id, save_revision: revision, answers });
+            return { revision: saved.save_revision };
+          }}
+          onSubmit={async ({ answers, revision }) => {
+            const done = await api('submit', { attempt_id: attempt.attempt_id, save_revision: revision, answers });
+            attemptRef.current = { ...attemptRef.current, ...done };
+            setAttempt((a) => ({ ...a, ...done }));
+            setPhase('complete');
+            return { status: 'submitted' };
+          }}
+          onLeave={() => { window.location.href = '/assessments'; }} />
+      </AssessmentFrame>
+    );
+  }
   if (assessment.format === 'battery-v2') {
     const batteryItems = assessment.sections.flatMap((section) => section.items);
     const answeredCount = batteryItems.filter((item) => batteryItemAnswered(item, draft)).length;

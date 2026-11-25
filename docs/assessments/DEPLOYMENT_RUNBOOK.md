@@ -181,50 +181,45 @@ Run once a Pages URL carries the assessment code (preview or production), before
 
 It checks that the public invite route reaches D1, the admin key is accepted and refused correctly, and the admin list queries D1. It prints status codes only. It does not check the results email. Send a test results email through the deployed function separately, using a dummy candidate and a recipient you control.
 
-## Workplace personality profile (partial; do not enable)
+## Workplace personality profile
 
-**Confirmed:** the owner has replaced the candidate-private proposal with an
-AP/AR-style, voluntary, recruiter-recipient flow in `WPP_AGENT_PROMPT_2.md`.
-Only `ENABLE_HPI_PERSONALITY` remains in configuration, defaulting to `false` in
-production and preview; the unused `ENABLE_HPI_RESEARCH` and
-`HPI_OPEN_ENROLMENT` settings were removed. The P01 scoring, encrypted-storage
-primitives and recruiter-email renderer exist, but no P01 candidate flow or email
-queue is connected. An additional internal readiness guard hides the definition
-and start explicitly refuses P01 even if the switch is turned on: this is not a
-launch switch yet. No personality data is sent by the current application.
+**Flow (implemented 2026-11-25).** Same entry as AP/AR: the candidate opens
+`/assessments/workplace-personality-profile` and enters name, surname, email, contact number,
+SA ID number and the screening details. They read the personality notice
+(`src/assessments/personality-notice.js`, version `wpp-recruiter-notice-draft-1`) and tick
+consent. They then answer the 50 IPIP statements, five to a screen, with autosave and resume in
+the same browser, review with blanks allowed, and submit. They see a thank-you page only, never
+scores. One start per ID number for this form version. The attempt window is 60 minutes; at the
+limit, saved answers are submitted as they stand.
 
-**Confirmed:** existing AP/AR results and attempt history are retained with no
-fixed deletion period defined in `OPEN_START_HANDOFF.md`. Do not promise a 90-day
-retention period for the new flow. The earlier research-only migration 0006 and
-storage primitives were designed for a 90-day candidate-private model and are not
-integrated. Do not use or apply them remotely for the revised model until a
-migration decision is implemented and reviewed. Notice wording is **draft pending
-legal review**; the revised consent notice is not yet implemented.
+**Where the data goes.** Answers and the scored result are encrypted in
+`workplace_personality_attempts`, never in `attempts` or `results`, so the AP/AR result email
+never sees them. A separate once-only queue (`notifyPendingPersonality`) emails recruiters the
+five factor means, "n of 10 answered", the screening details with the masked ID, and the
+mandatory caveat. Recipients: `ASSESSMENT_RESULTS_TO`, plus the optional
+`ASSESSMENT_RESULTS_TO_WORKPLACE`. The admin report (`/admin/assessments` → View) shows the same
+figures and the audit trail. Audit events carry no answers.
 
-**Unknown:** approved notice text, lawful basis, retention policy, a delivery
-workflow for data-rights requests, and production configuration. The recruiter
-email renderer is not wired to the once-only notification queue. Its delivery,
-concurrent submissions and real D1 behavior remain unverified.
+**Go-live steps, in order:**
+1. Merge to `main`. The Pages git integration deploys the code. With `ENABLE_HPI_PERSONALITY`
+   false, nothing is visible or startable.
+2. Apply migrations `0006`, `0007` and `0009` to production `tt-assessments`. `0009` creates the
+   definition as an unpublished **draft** only.
+3. In `/admin/assessments` → Manage → "Edit latest: Talent Tree — Workplace Personality Profile",
+   tick the content and privacy approvals, enter the approval reference, and publish.
+   That approval is the owner's, recorded in the audit log.
+4. Set the production Pages variable `ENABLE_HPI_PERSONALITY=true` (dashboard → tt-website →
+   Settings → Variables), then redeploy. Production reads Pages variables, not `wrangler.toml`.
+5. Smoke test with a synthetic ID: start, save, submit, and confirm one recruiter email arrives.
 
-**Confirmed (owner report):** the owner reports that a psychologist reviewed the
-profile and gave the go-ahead. The reviewer identity, scope, written record and
-whether the reviewer is a registered industrial psychologist have not been verified
-here. The owner also says Talent Tree's normal POPIA process should be followed;
-that is not evidence of completed review of this particular notice or retention.
+**To switch off:** set `ENABLE_HPI_PERSONALITY=false` and redeploy. The listing disappears and
+starts, saves and submits are refused, while saved answers are kept.
 
-**Confirmed:** `PersonalityQuestions.jsx` is an unmounted questionnaire component;
-it is not a complete candidate journey and does not provide identity, consent or
-network handling. Migration `0007_workplace_personality.sql` and the unmounted
-`workplace-personality-store.js` implement an AP/AR-attempt-linked draft storage
-boundary with encrypted answers and results, per-version identity uniqueness,
-revision checks and metadata-only audit. No route calls it yet. The earlier 0006
-research storage is retained as historical, unused code; neither migration has been
-approved for production. The 0007 table intentionally has no automatic 90-day
-purge, matching the existing retained-results policy pending the POPIA review.
-
-**Go/no-go — open items:** confirm the psychologist's professional registration,
-scope and review record; complete the POPIA/lawful-basis and retention review;
-notice sign-off; screen-reader pass; named support contact; production
-authorisation. `ENABLE_HPI_PERSONALITY` must remain **false** until these and the
-missing implementation, security and accessibility checks are complete. Never
-test against production D1.
+**Open items (owner's responsibility; recorded, not verified here):**
+- The owner reports that a psychologist reviewed the profile and gave the go-ahead. The
+  reviewer's registration (registered industrial psychologist), scope and written record are
+  not on file in this repository.
+- Results reach recruiters, so Employment Equity Act s8 applies to this use. The notice
+  wording is marked draft pending POPIA review.
+- Retention follows the AP/AR retained-results policy (no fixed deletion period).
+- A screen-reader pass has not been done.

@@ -17,7 +17,10 @@
 .wpp-options { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
 .wpp-option { display:flex; align-items:flex-start; gap:8px; padding:12px; border:1px solid var(--line-strong); cursor:pointer; line-height:1.4; font-size:var(--fs-300); }
 .wpp-option:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); font-weight:600; }
-.wpp-option input { flex:none; accent-color:var(--accent); margin:3px 0 0; }
+.wpp-option { min-width:0; align-items:center; }
+/* Override the form-wide text-input sizing so the radio stays a radio and the label keeps the width. */
+.wpp-option input[type='radio'] { flex:none; width:20px; height:20px; min-height:0; padding:0; margin:0; border:0; box-shadow:none; accent-color:var(--accent); }
+.wpp-option span { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
 .wpp-clear { background:none; border:0; padding:12px 0 0; color:var(--accent); text-decoration:underline; cursor:pointer; }
 .wpp-actions { margin-top:24px; }
 .wpp-blanks { display:flex; flex-wrap:wrap; gap:8px; list-style:none; padding:0; }

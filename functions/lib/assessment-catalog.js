@@ -15,6 +15,11 @@ export async function assessmentCatalog(db, slug = null, env = {}) {
   const rows = await (exact ? statement.bind(slug) : statement).all();
   return apiJson((rows.results || []).filter(row => row.slug !== PERSONALITY_SLUG || (PERSONALITY_FLOW_READY && env.ENABLE_HPI_PERSONALITY === 'true')).map(row => {
     const payload = JSON.parse(row.question_payload_json);
+    if (payload.format === 'personality-v1') return {
+      slug: row.slug, title: row.title, client_name: row.client_name, kind: 'personality',
+      duration_minutes: Math.ceil(row.duration_seconds / 60), estimated_minutes: 10,
+      section_titles: ['Self-description'], item_count: 50,
+    };
     const sections = payload.format === 'battery-v2' && Array.isArray(payload.sections) ? payload.sections : null;
     return {
       slug: row.slug,

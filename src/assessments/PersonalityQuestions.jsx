@@ -12,6 +12,8 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const heading=useRef(null);
+  // Latest values for background saves, which must not read a stale render's state.
+  const answersRef=useRef(initialAnswers), revisionRef=useRef(initialRevision), dirtyRef=useRef(false), inflightRef=useRef(null), persistRef=useRef(null);
   const items=Array.isArray(form?.items) ? form.items : [];
   const pages=Math.ceil(items.length/5);
   const answered=items.filter(item=>answers[item.id]!=null).length;
@@ -22,17 +24,37 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
     window.addEventListener('beforeunload',guard);
     return ()=>window.removeEventListener('beforeunload',guard);
   },[dirty]);
+  // Autosave: a change is saved about two seconds after the candidate stops editing, so answers on the
+  // current screen are not lost if the time limit closes the attempt before they move on.
+  useEffect(()=>{
+    if (!dirty) return undefined;
+    const timer=setTimeout(()=>{void persistRef.current?.();},2000);
+    return ()=>clearTimeout(timer);
+  },[answers,dirty]);
   if (items.length !== 50 || typeof onSave !== 'function' || typeof onSubmit !== 'function') {
     return <main className="wpp-shell" id="main-content"><h1>Assessment unavailable</h1><p role="status">This questionnaire is not available yet.</p></main>;
   }
+  // One save at a time; a save requested while another runs waits for it, then saves what is newer.
+  const persist = async () => {
+    if (inflightRef.current) await inflightRef.current.catch(()=>{});
+    if (!dirtyRef.current) return true;
+    const snapshot=answersRef.current, current=revisionRef.current;
+    const request=(async()=>{
+      const saved=await onSave({answers:snapshot,revision:current});
+      if (!Number.isSafeInteger(saved?.revision) || saved.revision !== current+1) throw new Error('Save could not be confirmed.');
+      revisionRef.current=saved.revision;setRevision(saved.revision);
+      if (answersRef.current===snapshot) {dirtyRef.current=false;setDirty(false);}
+      setError('');
+    })();
+    inflightRef.current=request;
+    try {await request;return true;}
+    catch {setError('Your answers are still on this page, but could not be saved. Please try again.');return false;}
+    finally {if (inflightRef.current===request) inflightRef.current=null;}
+  };
+  persistRef.current=persist;
   const save = async () => {
-    if (!dirty) return true;
-    setBusy(true);setError('');
-    try {
-      const saved=await onSave({answers,revision});
-      if (!Number.isSafeInteger(saved?.revision) || saved.revision !== revision+1) throw new Error('Save could not be confirmed.');
-      setRevision(saved.revision);setDirty(false);return true;
-    } catch {setError('Your answers are still on this page, but could not be saved. Please try again.');return false;}
+    setBusy(true);
+    try {return await persist();}
     finally {setBusy(false);}
   };
   const go = async destination => {if (!busy && await save()) setScreen(destination);};
@@ -40,13 +62,14 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
     if (busy || answered===0) return;
     setBusy(true);setError('');
     try {
-      const response=await onSubmit({answers,revision});
+      if (inflightRef.current) await inflightRef.current.catch(()=>{});
+      const response=await onSubmit({answers:answersRef.current,revision:revisionRef.current});
       if (response?.status !== 'submitted') throw new Error('Submission could not be confirmed.');
-      setDirty(false);setScreen('complete');
+      dirtyRef.current=false;setDirty(false);setScreen('complete');
     } catch {setError('Your answers are still on this page, but could not be submitted. Please try again.');}
     finally {setBusy(false);}
   };
-  const change=(id,value)=>{setAnswers(previous=>({...previous,[id]:value}));setDirty(true);setError('');};
+  const change=(id,value)=>{const next={...answersRef.current,[id]:value};answersRef.current=next;dirtyRef.current=true;setAnswers(next);setDirty(true);};
   const leave=async()=>{if (!busy && await save() && typeof onLeave==='function') onLeave();};
   const page=typeof screen==='number' ? screen : null;
   return <main className="wpp-shell" id="main-content">
