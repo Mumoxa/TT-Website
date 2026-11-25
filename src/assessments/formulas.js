@@ -146,6 +146,36 @@ function parse(tokens) {
   return tree;
 }
 
+// Return the individual cell references used by a simple arithmetic formula.
+// This intentionally recognises only the small subset used for method scoring;
+// null means the expression is invalid or outside that subset, not a bad value.
+export function simpleFormulaReferences(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text.startsWith('=') || text.length > 200) return null;
+  try {
+    const tree = parse(tokenize(text.slice(1)));
+    const refs = [];
+    const visit = (node, depth = 0) => {
+      if (depth > MAX_DEPTH) throw new Error('depth');
+      if (node.t === 'lit' && typeof node.v === 'number') return;
+      if (node.t === 'ref' && !node.sheet) { refs.push(node.cell); return; }
+      if (node.t === 'range' && !node.sheet && !node.toSheet) {
+        const start = COLS.indexOf(node.from[0]), end = COLS.indexOf(node.to[0]);
+        const first = Number(node.from.slice(1)), last = Number(node.to.slice(1));
+        if (start > end || first > last || (end - start + 1) * (last - first + 1) > MAX_RANGE_CELLS) throw new Error('range');
+        for (let c = start; c <= end; c++) for (let r = first; r <= last; r++) refs.push(COLS[c] + r);
+        return;
+      }
+      if (node.t === 'neg') return visit(node.a, depth + 1);
+      if (node.t === 'bin' && (node.op === '+' || node.op === '-')) { visit(node.a, depth + 1); visit(node.b, depth + 1); return; }
+      if (node.t === 'call' && node.name === 'SUM') { for (const arg of node.args) visit(arg, depth + 1); return; }
+      throw new Error('unsupported');
+    };
+    visit(tree);
+    return refs;
+  } catch { return null; }
+}
+
 /* ---- values ----------------------------------------------------------------- */
 
 const NUMERIC_TEXT = /^-?\d+(\.\d+)?$/;

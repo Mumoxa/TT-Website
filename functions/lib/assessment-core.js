@@ -115,6 +115,9 @@ export function getCookie(request) {
 function object(value) { return !!value && typeof value === 'object' && !Array.isArray(value); }
 export function validId(value) { return typeof value === 'string' && ID.test(value); }
 export function validateAssessmentPackage(pkg) {
+  // HR is not integrated with the candidate lifecycle yet. Reject even a
+  // hybrid package that also satisfies the legacy assessment schema.
+  if (pkg?.question_payload?.format === 'hr-generalist-v1') throw new AssessmentInputError('This assessment format is not available.');
   if (isBatteryPayload(pkg?.question_payload)) return validateBattery(pkg);
   if (!object(pkg) || !object(pkg.question_payload) || !object(pkg.scoring_key)) throw new AssessmentInputError('Assessment package requires question_payload and scoring_key.');
   const questions = pkg.question_payload.questions;

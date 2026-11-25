@@ -226,6 +226,9 @@ async function startAttempt(request, db, env) {
   if (invited.slug === PERSONALITY_SLUG) return failure('This assessment is not open right now.',404);
   const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
   const payload=safeParse(version?.question_payload_json,{});
+  // HR lacks its candidate runner and review flow. Do not start a timed attempt
+  // even if an HR version was inserted or published outside this API.
+  if(payload.format==='hr-generalist-v1')return failure('This assessment is not open right now.',404);
   // Practice is checked against this assessment's own family (slug-scoped), never another's.
   if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}),practiceForSlug(invited.slug));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
   // Check the public projection before creating a timed attempt; never alias opaque IDs.
@@ -267,7 +270,7 @@ async function inviteMeta(request, db) {
     'FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id ' +
     'LEFT JOIN assessment_versions v ON v.id=d.current_version_id WHERE i.token_sha256=?'
   ).bind(await tokenHash(token)).first();
-  if (!i || i.status !== 'issued' || Date.parse(i.expires_at) <= Date.now()) return failure('Invitation unavailable.', 404);
+  if (!i || i.status !== 'issued' || Date.parse(i.expires_at) <= Date.now() || safeParse(i.question_payload_json,{}).format === 'hr-generalist-v1') return failure('Invitation unavailable.', 404);
   // Only the candidate-facing instruction text, shown before the timer starts. Never questions or keys.
   let instructions;
   try { const payload = JSON.parse(i.question_payload_json || '{}'); if (payload.format === 'battery-v2' && typeof payload.instructions === 'string') instructions = payload.instructions.trim().slice(0, 1500) || undefined; } catch { instructions = undefined; }
@@ -347,9 +350,9 @@ async function adminInvite(request, db) {
   const validDays = Number(data.valid_days || 7);
   if (!EMAIL.test(email) || email.length > 254) return failure('Invalid candidate email.', 400);
   if (!Number.isInteger(validDays) || validDays < 1 || validDays > 30) return failure('Invitation duration must be 1 to 30 days.', 400);
-  const assessment = await db.prepare('SELECT id FROM assessment_definitions WHERE id=? AND status=? AND current_version_id IS NOT NULL')
+  const assessment = await db.prepare('SELECT d.id, v.question_payload_json FROM assessment_definitions d JOIN assessment_versions v ON v.id=d.current_version_id WHERE d.id=? AND d.status=?')
     .bind(assessmentId, 'published').first();
-  if (!assessment) return failure('This assessment is not published.', 404);
+  if (!assessment || safeParse(assessment.question_payload_json,{}).format === 'hr-generalist-v1') return failure('This assessment is not published.', 404);
   const token = newToken();
   const at = nowIso();
   const expires = new Date(Date.now() + validDays * 86400000).toISOString();

@@ -48,6 +48,19 @@ test('real SQL start, autosave and refresh preserve exactly 1200 seconds and pri
   assert.equal((await t.call('admin/report/'+a.data.attempt_id,undefined,a.cookie)).status,401);
 });
 
+test('HR versions cannot start through the legacy runner even if inserted externally',async()=>{
+ const t=await setup(); const pkg=structuredClone(SYNTHETIC.question_payload); pkg.format='hr-generalist-v1';
+ t.db.sqlite.prepare('UPDATE assessment_versions SET question_payload_json=? WHERE id=?').run(JSON.stringify(pkg),'version');
+ const token=await t.invite();
+ assert.equal((await t.call('invite?token='+token)).status,404);
+ const admin=(await t.call('admin/login',{key:t.env.ASSESSMENT_ADMIN_KEY})).cookie;
+ assert.equal((await t.call('admin/invite',{assessment_id:'definition',intended_email:'test@example.invalid'},admin,{'x-tt-assessment-admin':'1'})).status,404);
+ const result=await t.call('start',{invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true,...screeningFixture()});
+ assert.equal(result.status,404);
+ assert.equal(t.db.sqlite.prepare('SELECT count(*) AS n FROM attempts').get().n,0);
+ assert.equal(t.db.sqlite.prepare('SELECT status FROM invitations').get().status,'issued');
+});
+
 test('concurrent duplicate starts create only one candidate and attempt',async()=>{
  const t=await setup();const token=await t.invite();const body={invitation_token:token,first_name:'Synthetic',surname:'Candidate',email:'synthetic@example.invalid',consent_acknowledged:true,...screeningFixture()};
  const outcomes=await Promise.all([t.call('start',body),t.call('start',body)]);
