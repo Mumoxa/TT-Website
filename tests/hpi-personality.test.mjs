@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import source from '../functions/lib/hpi-personality-source.js';
 import {personalityForm, personalityCatalogue, assertPersonalityCatalogue, normalizePersonalityAnswers, scorePersonality} from '../functions/lib/hpi-personality.js';
+
+test('server-side IPIP data matches the provenance record verbatim', () => {
+  const provenance = JSON.parse(readFileSync(new URL('../docs/assessments/provenance/ipip-50-big-five-markers.json', import.meta.url), 'utf8'));
+  assert.deepEqual(source, {factors: provenance.factors, response_scale: provenance.response_scale, items: provenance.items});
+});
 
 test('catalogue is valid and personality is planned by default', () => {
   assert.equal(assertPersonalityCatalogue(), true);

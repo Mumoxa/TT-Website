@@ -21,7 +21,7 @@ name = "tt-website"
 # Non-secret: where candidate result emails are sent. The API key is a secret (RESEND_API_KEY),
 # and ASSESSMENT_FROM_EMAIL must be a sender on a domain verified with the provider.
 [vars]
-# Keep off until the personality flow and its professional, privacy and accessibility gates are complete.
+# Launch switch for the workplace personality profile. Production reads the Pages project variable, not this file (see the runbook).
 ENABLE_HPI_PERSONALITY = "false"
 ASSESSMENT_RESULTS_TO = "christo@talenttree.co.za"
 # Extra recipients for one assessment family (slug prefix), comma-separated. ar-clerk-* results.

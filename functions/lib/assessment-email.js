@@ -218,9 +218,10 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
   return {subject:assessmentBrandText(subject),html:assessmentBrandText(html),text:assessmentBrandText(text)};
 }
 
-// Dedicated P01 renderer; deliberately not wired into the occupational notification queue yet.
-// It accepts only the five factor aggregates and never serializes candidate responses.
-export function buildPersonalityResultEmail({candidate, result}) {
+// P01 recruiter email. Only the five factor aggregates and the screening details are rendered;
+// item responses are never serialized. No types, percentiles, cut-offs or composite score.
+export const PERSONALITY_DISCLAIMER = 'This is a self-description questionnaire. It has not been validated for selection at Talent Tree. There is no better or worse score. Do not use it alone, or as a cut-off, in any hiring decision.';
+export function buildPersonalityResultEmail({candidate, result, screening = null, attemptNumber = 1, submittedAt = '', status = 'completed'}) {
   const names = ['Extraversion', 'Agreeableness', 'Conscientiousness', 'Emotional Stability', 'Intellect/Imagination'];
   const factors = names.map((name, index) => {
     const f = result?.factors?.find(item => item.factor === index + 1);
@@ -230,11 +231,44 @@ export function buildPersonalityResultEmail({candidate, result}) {
     }
     return {name, answered: f.answered, mean: f.mean === null ? 'Not answered' : f.mean.toFixed(2)};
   });
-  const disclaimer = 'This is a self-description questionnaire. It has not been validated for selection at Talent Tree. There is no better or worse score. Do not use it alone, or as a cut-off, in any hiring decision.';
+  const disclaimer = PERSONALITY_DISCLAIMER;
   const fullName = `${candidate?.first_name || ''} ${candidate?.surname || ''}`.trim();
   const lines = factors.map(f => `${f.name}: ${f.mean}${f.mean === 'Not answered' ? '' : ' / 5'} (${f.answered} of 10 answered)`);
-  const html = `<div style="font:14px/1.6 ${SANS};color:${C.ink};"><h1 style="font:500 28px/1.2 ${SERIF};color:${C.inkDeep};">Workplace personality profile</h1><p>Candidate: ${escapeHtml(fullName)}</p><p>${escapeHtml(disclaimer)}</p><ul>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul></div>`;
-  return {subject: 'Workplace personality profile', html, text: ['Workplace personality profile', `Candidate: ${fullName}`, disclaimer, ...lines].join('\n')};
+  const labels={contact_number_masked:'Contact number',id_number_masked:'South African ID number',earliest_start_date:'Earliest start date',first_day_confirmed:'First day confirmed',travel_mode:'Travel mode',travel_description:'Route description',own_transport:'Own transport',assignment_available:'Available for a 2-month assignment',assignment_note:'Availability note'};
+  const screeningRows = screening ? Object.entries(publicScreening(screening))
+    .filter(([key,value])=>!(OPTIONAL_SCREENING.has(key)&&!value))
+    .map(([key,value])=>[labels[key], screeningValue(key,value)]) : [];
+  const answered = Number(result?.attempted) || 0;
+  const subject = `[Assessment] Workplace personality profile — ${fullName}`;
+  // Plain labelled numbers on a 1 to 5 scale. Deliberately no bar, gauge or colour that reads as a ranking.
+  const factorRows = factors.map(f => `<tr><td style="padding:12px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};">${escapeHtml(f.name)}</td><td align="right" style="padding:12px 0;border-bottom:1px solid ${C.line};font:600 15px/1.5 ${SANS};color:${C.inkDeep};font-variant-numeric:tabular-nums;white-space:nowrap;">${escapeHtml(f.mean)}${f.mean === 'Not answered' ? '' : ' <span style="font-weight:400;color:' + C.muted + ';">/ 5</span>'}</td><td align="right" style="padding:12px 0 12px 16px;border-bottom:1px solid ${C.line};font:13px/1.5 ${SANS};color:${C.muted};white-space:nowrap;">${f.answered} of 10 answered</td></tr>`).join('');
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:${C.paper};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.paper};"><tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+  <tr><td style="background:${C.inkDeep};padding:26px 32px 28px;border-radius:4px 4px 0 0;">
+    <div style="font:500 20px/1 ${SERIF};color:#ffffff;">Talent Tree</div>
+    <div style="margin-top:26px;font:700 11px/1.2 ${SANS};letter-spacing:1.8px;text-transform:uppercase;color:${C.accentBright};">Self-description · Attempt ${escapeHtml(attemptNumber)}</div>
+    <h1 style="margin:10px 0 8px;font:500 28px/1.2 ${SERIF};color:#ffffff;">Workplace personality profile</h1>
+    <div style="font:14px/1.6 ${SANS};color:${C.mutedOnDark};">${escapeHtml(fullName)} · ${status === 'timed_out' ? 'Closed at the time limit' : 'Submitted'}${submittedAt ? ' ' + escapeHtml(submittedAt) : ''} · ${answered} of 50 statements answered</div>
+  </td></tr>
+  <tr><td style="background:#ffffff;padding:30px 32px 28px;">
+    <div style="padding:16px 18px;background:${C.paperSoft};border-left:3px solid ${C.accent};font:14px/1.6 ${SANS};color:${C.ink};"><strong>How to read this.</strong> ${escapeHtml(disclaimer)}</div>
+    ${sectionHeading('Self-description on five broad dimensions (1 to 5)')}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${factorRows}</table>
+    <div style="margin-top:8px;font:12px/1.6 ${SANS};color:${C.muted};">Mean of the candidate's own ratings (IPIP-50 Big-Five markers, public domain). Each end of the scale describes a different style, not a better one.</div>
+    ${sectionHeading('Candidate details')}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${detailRow('Candidate', fullName)}
+      ${candidate?.email ? detailRow('Email', candidate.email) : ''}
+      ${screeningRows.map(([label, value]) => detailRow(label, value)).join('')}
+    </table>
+  </td></tr>
+  <tr><td style="padding:18px 32px 0;font:12px/1.6 ${SANS};color:${C.muted};">The candidate does not see these figures. The full record is in the admin platform at /admin/assessments.</td></tr>
+</table></td></tr></table>
+</body></html>`;
+  const text = ['Workplace personality profile', `Candidate: ${fullName}`, ...(candidate?.email ? [`Email: ${candidate.email}`] : []), `Attempt ${attemptNumber} · ${answered} of 50 statements answered`, '', disclaimer, '', ...lines, '', ...screeningRows.map(([label,value]) => `${label}: ${value}`)].join('\n');
+  return {subject: assessmentBrandText(subject), html: assessmentBrandText(html), text: assessmentBrandText(text)};
 }
 
 const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;

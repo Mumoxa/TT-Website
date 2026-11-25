@@ -1,11 +1,15 @@
-// Research-only P01 foundation. Not connected to a route or candidate data store.
+// P01 (IPIP-50) items, public form and scoring. Used by the workplace personality profile flow
+// (workplace-personality-flow.js); the flow opens only when ENABLE_HPI_PERSONALITY is "true".
 // IPIP-50 is public domain; see docs/assessments/provenance/ipip-50-big-five-markers.json.
 // Keep this module server-side. Never send scoring directions with the form.
-import source from '../../docs/assessments/provenance/ipip-50-big-five-markers.json' with {type: 'json'};
+// Wrangler 3's Pages bundler does not parse JSON import attributes. Keep the
+// executable data in a JS module and test it against the provenance record.
+import source from './hpi-personality-source.js';
 
 export const PERSONALITY_SLUG = 'workplace-personality-profile';
-// Fail closed until the candidate runner, consent, encrypted submit and mail queue are integrated.
-export const PERSONALITY_FLOW_READY = false;
+// The runner, notice, encrypted submit and recruiter mail queue are integrated (2026-11-25).
+// ENABLE_HPI_PERSONALITY remains the launch switch.
+export const PERSONALITY_FLOW_READY = true;
 export const VERSION = 'hpi-2026-pilot-2';
 export const ENGINE = 'hpi-raw-v2';
 const options = source.response_scale.map((label, i) => ({id: `o${i + 1}`, label}));
