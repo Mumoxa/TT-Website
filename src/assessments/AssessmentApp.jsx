@@ -36,9 +36,10 @@ function LandingNav() {
         </a>
         <nav aria-label="Assessments site">
           <a href="#assessments">Assessments</a>
+          <a href="#why">Why we assess</a>
           <a href="#how-it-works">How it works</a>
           <a href="#faq">FAQ</a>
-          <a className="ca-btn ca-btn--light ca-btn--sm ca-nav-cta" href="#assessments">Choose an assessment</a>
+          <a className="ca-btn ca-btn--light ca-btn--sm ca-nav-cta" href="#assessments">See the assessments</a>
         </nav>
       </div>
     </header>
