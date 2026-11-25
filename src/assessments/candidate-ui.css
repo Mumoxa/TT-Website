@@ -76,7 +76,6 @@
 .ca-nav nav a.ca-btn::after { display: none; }
 .ca-nav nav a.ca-btn:hover { color: var(--white); }
 .ca-topbar { position: sticky; top: 0; z-index: 40; background: rgba(251, 249, 244, 0.9); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
-.ca-showcase-title { margin: 0 0 28px; font: 500 var(--fs-800)/1.05 var(--serif); letter-spacing: -0.03em; }
 .ca-state-page { padding-block: clamp(72px, 10vw, 128px); display: grid; gap: 14px; justify-items: start; }
 .ca-state-page h1 { margin: 0; font: 500 clamp(2.2rem, 4.5vw, 3.4rem)/1.08 var(--serif); letter-spacing: -0.03em; }
 .ca-state-page p { margin: 0; color: var(--muted); }
@@ -120,7 +119,7 @@
 
 /* ---------- Social proof strip ---------- */
 .ca-trust { background: var(--paper-soft); border-bottom: 1px solid var(--line); }
-.ca-trust-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ca-trust-list { list-style: none; margin: 0 auto; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .ca-trust-list li { display: grid; gap: 6px; padding: 24px 22px; border-left: 1px solid var(--line); }
 .ca-trust-list li:first-child { border-left: 0; padding-left: 0; }
 .ca-trust-list strong { font: 500 1.05rem/1.3 var(--serif); color: var(--ink-deep); }
@@ -138,7 +137,7 @@
   background: linear-gradient(90deg, var(--accent), var(--accent-bright));
   transform: scaleX(0); transform-origin: left; transition: transform var(--slow) var(--ease);
 }
-.ca-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); border-color: rgba(0, 109, 163, 0.45); }
+.ca-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); border-color: rgba(0, 109, 163, 0.45); }
 .ca-card:hover::before { transform: scaleX(1); }
 .ca-card-client { margin: 0; font: 700 var(--fs-100)/1.4 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
 .ca-card h3 { margin: 0; font: 500 var(--fs-700)/1.18 var(--serif); letter-spacing: -0.02em; overflow-wrap: anywhere; }
@@ -146,7 +145,7 @@
 .ca-chip { padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-soft); font: 600 0.78rem/1.2 var(--sans); color: var(--ink); }
 .ca-card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
 .ca-card-foot span { font-size: 0.86rem; color: var(--muted); }
-.ca-card-link { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink-deep); text-decoration: none; }
+.ca-card-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: var(--ink-deep); text-decoration: none; }
 .ca-card-link:hover { color: var(--accent); }
 .ca-card-link:focus-visible { outline: 3px solid var(--accent-bright); outline-offset: 4px; }
 .ca-state { padding: 28px; background: var(--white); border: 1px dashed var(--line-strong); border-radius: var(--radius); }
@@ -163,37 +162,26 @@
 .ca-feature h3 { margin: 0; font: 500 var(--fs-700)/1.2 var(--serif); letter-spacing: -0.015em; }
 .ca-feature p { margin: 0; color: var(--muted); line-height: 1.65; font-size: 0.97rem; }
 
-/* ---------- Product showcase ---------- */
-.ca-showcase { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); gap: clamp(36px, 5vw, 72px); align-items: center; }
-.ca-device { padding: 14px; background: var(--ink-deep); border-radius: 4px; box-shadow: var(--shadow-lift); min-width: 0; }
-.ca-device-bar { display: flex; align-items: center; gap: 8px; padding: 2px 4px 12px; }
-.ca-device-bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); }
-.ca-device-bar span { margin-left: 10px; font-size: 0.75rem; color: var(--muted-on-dark); }
-.ca-sheet { background: var(--white); border-radius: 2px; overflow: hidden; }
-.ca-sheet-formula { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 14px; border-bottom: 1px solid var(--line); font: 500 0.92rem/1.3 var(--sans); }
-.ca-sheet-formula b { min-width: 52px; text-align: center; padding: 4px 6px; background: var(--paper); border: 1px solid var(--line); font-weight: 600; }
-.ca-sheet-formula code { font: 500 0.92rem/1 ui-monospace, Consolas, monospace; color: var(--ink-deep); }
-.ca-sheet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.ca-sheet table { width: 100%; min-width: 460px; border-collapse: collapse; font: 400 0.92rem/1.35 var(--sans); font-variant-numeric: tabular-nums; }
-.ca-sheet th, .ca-sheet td { border: 1px solid #d8e0e5; padding: 10px 12px; text-align: left; white-space: nowrap; }
-.ca-sheet thead th, .ca-sheet tbody th { width: 44px; background: var(--paper-soft); color: var(--muted); font-weight: 600; text-align: center; }
-.ca-sheet td.is-source { background: #f3f6f8; color: var(--muted); }
-.ca-sheet td.is-num { text-align: right; }
-.ca-sheet td.is-selected { outline: 2px solid var(--accent); outline-offset: -2px; font-weight: 600; }
-.ca-sheet td.is-formula { color: var(--accent-deep, #00567e); }
-.ca-caption { margin: 14px 2px 0; font-size: 0.8rem; color: var(--muted-on-dark); }
 .ca-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .ca-points li { padding: 22px 0; border-top: 1px solid var(--line-strong); display: grid; gap: 8px; }
 .ca-points li:last-child { border-bottom: 1px solid var(--line-strong); }
 .ca-points strong { font: 500 1.2rem/1.3 var(--serif); }
 .ca-points span { color: var(--muted); line-height: 1.6; font-size: 0.95rem; }
 
-/* ---------- Benefits ---------- */
-.ca-benefits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(32px, 6vw, 96px); }
-.ca-benefit { display: grid; gap: 12px; padding: 32px 0; border-top: 1px solid var(--line-strong); }
-.ca-benefit-num { font: 500 1.05rem/1 var(--serif); color: var(--accent); font-variant-numeric: tabular-nums; }
-.ca-benefit h3 { margin: 0; font: 500 var(--fs-700)/1.2 var(--serif); letter-spacing: -0.015em; }
-.ca-benefit p { margin: 0; color: var(--muted); line-height: 1.65; max-width: 56ch; }
+
+/* ---------- Why we assess: brand message and the showcase disclaimer ---------- */
+.ca-why { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: clamp(36px, 6vw, 96px); align-items: start; }
+.ca-why-title { margin: 14px 0 0; font: 500 var(--fs-800)/1.05 var(--serif); letter-spacing: -0.03em; max-width: 16ch; }
+.ca-why-lead { margin: 22px 0 32px; color: var(--muted); font-size: 1.05rem; line-height: 1.65; max-width: 52ch; }
+.ca-promise { align-self: center; padding: clamp(28px, 3.5vw, 44px); background: var(--ink-deep); color: var(--muted-on-dark); border-radius: var(--radius); border-top: 3px solid var(--accent-bright); }
+.ca-promise h3 { margin: 0 0 16px; font: 500 var(--fs-700)/1.18 var(--serif); letter-spacing: -0.02em; color: var(--white); }
+.ca-promise p { margin: 0; line-height: 1.65; }
+.ca-promise p + p { margin-top: 14px; }
+
+/* Hero "Open now" list: each row links to its assessment. */
+.ca-glass-link { color: inherit; text-decoration: none; border-radius: 2px; transition: background var(--med) var(--ease); }
+.ca-glass-link strong { transition: color var(--fast) var(--ease); }
+.ca-glass-link:hover strong, .ca-glass-link:focus-visible strong { color: var(--accent-bright); }
 
 /* ---------- FAQ ---------- */
 .ca-faq { max-width: 880px; }
@@ -376,8 +364,6 @@
 /* ---------- Motion ---------- */
 /* Content is always visible. The reveal only settles elements into place as they scroll in,
    so nothing is blank on load, when printed, or when the page is searched. */
-.ca-reveal { transform: translate3d(0, 14px, 0); transition: transform var(--slow) var(--ease); transition-delay: var(--ca-delay, 0ms); }
-.ca-reveal.is-in { transform: none; }
 @keyframes ca-rise { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
 .ca-enter > * { animation: ca-rise var(--slow) var(--ease) both; }
 .ca-enter > *:nth-child(2) { animation-delay: 90ms; }
@@ -386,7 +372,7 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
-  .ca-hero-grid, .ca-showcase, .ca-welcome { grid-template-columns: minmax(0, 1fr); }
+  .ca-hero-grid, .ca-why, .ca-welcome { grid-template-columns: minmax(0, 1fr); }
   .ca-registration { position: static; }
   .ca-runner { grid-template-columns: minmax(0, 1fr); }
   .ca-runner-side { position: static; }
@@ -401,7 +387,6 @@
   .ca-trust-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ca-trust-list li { padding: 18px 16px; }
   .ca-trust-list li:nth-child(odd) { border-left: 0; padding-left: 0; }
-  .ca-benefits { grid-template-columns: minmax(0, 1fr); }
   .ca-card { padding: 24px; }
   .ca-card-foot { flex-wrap: wrap; }
 }
@@ -428,7 +413,6 @@
     animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important; scroll-behavior: auto !important;
   }
-  .ca-reveal { transform: none; }
 }
 
 /* ---------- Completion and results (rebuilt) ---------- */
@@ -681,16 +665,6 @@
 .ca-page .tta-scenario-instructions ul { margin: 0 0 8px; padding-left: 20px; }
 
 /* Catalogue showcase: a sample practical task instead of a spreadsheet. */
-.ca-sample { padding: 0; }
-.ca-sample-doc { margin: 0; padding: 10px 14px; font: 600 0.85rem/1.3 var(--sans); color: var(--ink-deep); background: var(--paper-soft); border-bottom: 1px solid var(--line); }
-.ca-sample table th { width: auto; text-align: left; }
-.ca-sample table th.is-num { text-align: right; }
-.ca-sample-task { padding: 14px; border-top: 1px solid var(--line); }
-.ca-sample-task p { margin: 0 0 8px; font-size: 0.92rem; color: var(--ink); }
-.ca-sample-answer { display: flex; align-items: center; gap: 10px; }
-.ca-sample-answer span { font: 600 0.8rem/1 var(--sans); color: var(--muted); }
-.ca-sample-answer code { flex: 1; padding: 9px 12px; border: 1px solid var(--accent); border-radius: var(--radius); font: 400 0.95rem/1.2 ui-monospace, Consolas, monospace; color: var(--ink-deep); background: var(--white); }
-.ca-sample-task .ca-sample-read { margin: 6px 0 0 58px; font-size: 0.8rem; color: var(--muted); }
 
 /* Optional structured trial-balance response table. */
 .ca-page .tta-answer-table-wrap { overflow-x: auto; margin: 16px 0 24px; }

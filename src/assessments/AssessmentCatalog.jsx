@@ -1,40 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import talentTreeLogo from '../../Talent Tree Logo 2026 (1).png';
 import {AssessmentFrame} from './AssessmentApp.jsx';
 import CandidateAssessment from './CandidateAssessment.jsx';
 import {useAssessmentCatalog} from './catalog-client.js';
-
-/* Scroll reveal: an element fades up once it is 12% visible. Reduced motion and browsers
-   without IntersectionObserver show content immediately. */
-function useReveal() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return undefined;
-    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce || typeof IntersectionObserver === 'undefined') {
-      node.classList.add('is-in');
-      return undefined;
-    }
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) { node.classList.add('is-in'); observer.disconnect(); }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-  return ref;
-}
-
-function Reveal({ as: Tag = 'div', delay = 0, className = '', children, ...rest }) {
-  const ref = useReveal();
-  return (
-    <Tag ref={ref} className={('ca-reveal ' + className).trim()} style={delay ? { '--ca-delay': delay + 'ms' } : undefined} {...rest}>
-      {children}
-    </Tag>
-  );
-}
 
 const Icon = ({ children }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -51,64 +19,53 @@ const ICONS = {
 };
 
 const FEATURES = [
-  { icon: 'sections', title: 'Sections you can see first', body: 'Each welcome page lists the sections and number of activities, so you know the scope before the timer starts.' },
-  { icon: 'workbook', title: 'Practical tasks with workplace documents', body: 'Read documents such as a supplier statement and a ledger, then type each answer in the box under the task. No spreadsheet skills are needed.' },
-  { icon: 'practice', title: 'Practice before you start', body: 'Try the public practice items before you enter any details. Practice is not scored or saved, and the timer stays off.' },
-  { icon: 'autosave', title: 'Answers save as you go', body: 'Changes save automatically. If you reload, your saved work returns and the timer keeps running.' },
-  { icon: 'timer', title: 'A clear timer', body: 'You read the instructions first. The timer starts only when you click OK, and you cannot pause or restart an attempt once it has begun.' },
-  { icon: 'results', title: 'Results when you submit', body: 'You see an overall score and a percentage for each section. There are no answer keys and no pass or fail label.' },
-];
-
-const BENEFITS = [
-  { title: 'Know the scope before you start', body: 'The welcome page shows the time limit, the number of sections and the number of activities, so nothing is a surprise.' },
-  { title: 'Practise the formats first', body: 'Public practice items show you how choosing and typing answers works. Practice is not scored or saved.' },
-  { title: 'Results you can read', body: 'Your overall score and each section’s percentage are shown on screen. The results explain what was tested, not your overall ability.' },
-  { title: 'Your privacy, stated plainly', body: 'The privacy notice sits before the form: who sees your details, that results and attempts are kept, and how to contact us.' },
+  { icon: 'sections', title: 'Shows the scope up front', body: 'Each assessment lists its time, format and number of questions before you enter any details.' },
+  { icon: 'workbook', title: 'Uses everyday workplace documents', body: 'Records, statements and schedules appear on screen beside the tasks. You type or choose each answer.' },
+  { icon: 'practice', title: 'Lets you practise first', body: 'Where an assessment has practice items, try them before you start. Practice is never scored or saved.' },
+  { icon: 'autosave', title: 'Saves every answer as you go', body: 'If you reload or lose your connection, your saved work comes back.' },
+  { icon: 'timer', title: 'Starts the clock only when you do', body: 'You read the instructions first. The timer starts when you click OK and cannot be paused once it runs.' },
+  { icon: 'results', title: 'Sends your work to our recruiters', body: 'Talent Tree recruiters review your assessment with your application. Some assessments also show you a summary when you finish.' },
 ];
 
 const FAQS = [
-  ['Do I need an invitation?', 'No. Open the assessment, read the instructions and start when you are ready. If you were sent an invitation link, that link still works.'],
-  ['How long does it take?', 'Each assessment states its time limit on its welcome page. The timer starts only when you click OK after reading the instructions.'],
-  ['Can I pause or restart?', 'No. Once you start, the timer runs. Your answers save automatically, and if you reload, your saved work returns with the timer still running.'],
-  ['What do I see when I submit?', 'Your overall score and a percentage for each section. You do not see answer keys, and there is no pass or fail label.'],
-  ['Who sees my answers and results?', 'Recruiters at Talent Tree. We retain your results and attempt history. Your ID number is used to link your attempts and is masked in reports.'],
-  ['Can I take an assessment again?', 'Yes, up to 3 times in total. Every start counts, including one that is not submitted, so start when you are ready. Earlier attempts are kept.'],
-  ['What should I have ready?', 'A desktop or laptop, a stable connection and your South African ID number. You may use a calculator and scrap paper. No documents need uploading.'],
-  ['Do I need spreadsheet or Excel skills?', 'No. Practical tasks show the documents you need on screen, and you type each answer in a box. Amounts can be typed with or without R, with spaces, commas or full stops, and you see how each answer was read.'],
+  ['Do I need an invitation?', 'No. Open an assessment, read its instructions and start when you are ready. If a recruiter sent you a link, that link still works.'],
+  ['How long does an assessment take?', 'Each assessment states its time on its own page. Most take between 10 and 20 minutes.'],
+  ['Does my result decide whether I get the job?', 'No. An assessment is a chance to show your skills. Our recruiters read it alongside your experience, your references and a conversation with you.'],
+  ['Can I pause or restart?', 'No. Once you start, the timer runs. Your answers save automatically, and a reload brings your saved work back.'],
+  ['Can I take an assessment again?', 'Each assessment states how many times it can be taken with one ID number. Every start counts, so begin when you are ready.'],
+  ['Who sees my answers?', 'Recruiters at Talent Tree. We keep your results and attempt history. Your ID number links your attempts and is masked in reports.'],
+  ['What should I have ready?', 'A laptop or desktop, a stable connection and your South African ID number. A calculator and scrap paper are allowed.'],
   ['How do I ask about my information?', 'Email hello@talenttree.co.za to see, correct or delete it.'],
 ];
 
-function Hero({ first }) {
-  const glassRows = first
-    ? [
-        ['Duration', `${first.duration_minutes} minutes, timed`],
-        ['Sections', String(first.section_titles.length)],
-        ['Activities', String(first.item_count)],
-      ]
-    : [
-        ['Timing', 'Timed, from when you click OK'],
-        ['Format', 'Questions and practical tasks'],
-        ['Results', 'Shown when you submit'],
-      ];
+function Hero({ status, assessments }) {
+  // At most four rows, so the hero stays one screen however many assessments are open.
+  const open = status === 'ready' ? assessments : [];
+  const shown = open.slice(0, 4), more = open.length - shown.length;
   return (
     <section className="ca-hero" aria-labelledby="ca-hero-title">
       <div className="ca-shell ca-hero-grid">
         <div className="ca-enter">
-          <p className="ca-eyebrow">Talent Tree · Candidate assessment</p>
-          <h1 id="ca-hero-title">Practical skills assessments, <em>step by step.</em></h1>
-          <p className="ca-lead">Answer short workplace questions and complete practical tasks using the documents on screen. Your answers save as you go, and you see your results when you submit.</p>
+          <p className="ca-eyebrow">Talent Tree · Candidate assessments</p>
+          <h1 id="ca-hero-title">Skills assessments <em>for candidates.</em></h1>
+          <p className="ca-lead">Talent Tree recruits for blue-chip companies across South Africa. These short assessments let you show the work-ready skills behind your CV.</p>
           <div className="ca-hero-actions">
-            <a className="ca-btn ca-btn--light" href="#assessments">Choose an assessment <span className="ca-arrow" aria-hidden="true">→</span></a>
-            <a className="ca-btn ca-btn--ghost-dark" href="#how-it-works">How it works</a>
+            <a className="ca-btn ca-btn--light" href="#assessments">See the assessments <span className="ca-arrow" aria-hidden="true">→</span></a>
+            <a className="ca-btn ca-btn--ghost-dark" href="#how-it-works">See how it works</a>
           </div>
-          <p className="ca-hero-note">No invitation is needed. Open an assessment, read the instructions and start when you are ready.</p>
+          <p className="ca-hero-note">Specialist recruiters in South Africa since 2013. No invitation needed.</p>
         </div>
-        <div className="ca-glass ca-glass-card ca-enter" aria-label="At a glance">
-          <h2>At a glance</h2>
-          {glassRows.map(([label, value]) => (
-            <div className="ca-glass-row" key={label}><span>{label}</span><strong>{value}</strong></div>
-          ))}
-          <p className="ca-glass-foot">The figures above come from the published assessment, so they always match the welcome page.</p>
+        <div className="ca-glass ca-glass-card ca-enter" aria-labelledby="ca-open-heading">
+          <h2 id="ca-open-heading">Open now</h2>
+          {shown.length
+            ? shown.map((item) => (
+              <a className="ca-glass-row ca-glass-link" key={item.slug} href={'/assessments/' + encodeURIComponent(item.slug)}>
+                <span>{item.kind === 'personality' ? 'Questionnaire' : 'Skills assessment'}</span>
+                <strong>{item.title}</strong>
+              </a>
+            ))
+            : <div className="ca-glass-row"><span>{status === 'loading' ? 'Loading' : 'Assessments'}</span><strong>{status === 'loading' ? 'One moment…' : 'See the list below'}</strong></div>}
+          {more > 0 && <a className="ca-glass-row ca-glass-link" href="#assessments"><span>And more</span><strong>{more} more open</strong></a>}
         </div>
       </div>
     </section>
@@ -117,12 +74,12 @@ function Hero({ first }) {
 
 function TrustStrip() {
   return (
-    <section className="ca-trust" aria-label="Why candidates can trust this assessment">
+    <section className="ca-trust" aria-label="Why candidates can trust these assessments">
       <ul className="ca-shell ca-trust-list">
-        <li><strong>Specialist recruiters</strong><span>Talent Tree has been recruiting in South Africa since 2013.</span></li>
-        <li><strong>The same for everyone</strong><span>Each candidate sees the same assessment, time limit and instructions.</span></li>
-        <li><strong>Your ID number is masked</strong><span>Reports show a masked number. Our privacy notice is shown before you start.</span></li>
-        <li><strong>Saved as you go</strong><span>Your answers save automatically, so a reload does not lose your work.</span></li>
+        <li><strong>Blue-chip employers</strong><span>We recruit for leading companies across South Africa, and have since 2013.</span></li>
+        <li><strong>The same for everyone</strong><span>Every candidate sees the same questions, time and instructions.</span></li>
+        <li><strong>Your ID number is masked</strong><span>Reports show a masked number. The privacy notice comes before you start.</span></li>
+        <li><strong>Saved as you go</strong><span>A reload or a dropped connection does not lose your work.</span></li>
       </ul>
     </section>
   );
@@ -138,8 +95,8 @@ function CatalogueSection({ status, assessments }) {
     body = <div className="ca-state"><p role="status">No assessments are open right now.</p></div>;
   } else {
     body = <ul className="ca-cards" role="list">
-      {assessments.map((item, index) => (
-        <Reveal as="li" delay={index * 80} key={item.slug}>
+      {assessments.map((item) => (
+        <li key={item.slug}>
           <article className="ca-card">
             <p className="ca-card-client">{item.client_name}</p>
             <h3>{item.title}</h3>
@@ -150,26 +107,50 @@ function CatalogueSection({ status, assessments }) {
             </ul> : <ul className="ca-chips">
               <li className="ca-chip">{item.duration_minutes} minutes, timed</li>
               <li className="ca-chip">{item.section_titles.length} sections</li>
-              <li className="ca-chip">{item.item_count} activities</li>
+              <li className="ca-chip">{item.item_count} questions</li>
             </ul>}
             <div className="ca-card-foot">
-              <span>{item.kind === 'personality' ? 'A self-description questionnaire' : 'Practice before you start'}</span>
-              <a className="ca-card-link" href={'/assessments/' + encodeURIComponent(item.slug)} aria-label={'View ' + item.title}>View <span className="ca-arrow" aria-hidden="true">→</span></a>
+              <span>{item.kind === 'personality' ? 'How you prefer to work' : 'Practice items before you start'}</span>
+              <a className="ca-card-link" href={'/assessments/' + encodeURIComponent(item.slug)} aria-label={'Open ' + item.title}>Open <span className="ca-arrow" aria-hidden="true">→</span></a>
             </div>
           </article>
-        </Reveal>
+        </li>
       ))}
     </ul>;
   }
   return (
     <section className="ca-section" id="assessments" aria-labelledby="ca-assessments-heading">
       <div className="ca-shell">
-        <Reveal className="ca-section-head">
+        <div className="ca-section-head">
           <p className="ca-eyebrow">Assessments</p>
-          <h2 id="ca-assessments-heading">Choose an assessment</h2>
-          <p>Read the instructions for each assessment, try the practice, then start when you are ready.</p>
-        </Reveal>
+          <h2 id="ca-assessments-heading">Assessments open now</h2>
+          <p>Each assessment shows its time, format and instructions before you start. Choose the one your recruiter asked for, or the one that fits the role.</p>
+        </div>
         {body}
+      </div>
+    </section>
+  );
+}
+
+/* The brand message and the disclaimer: assessments are a showcase, not a pass mark. */
+function WhyWeAssess() {
+  return (
+    <section className="ca-section ca-section--tint" id="why" aria-labelledby="ca-why-heading">
+      <div className="ca-shell ca-why">
+        <div>
+          <p className="ca-eyebrow">Why we assess</p>
+          <h2 id="ca-why-heading" className="ca-why-title">Work-ready skills, shown in practice.</h2>
+          <p className="ca-why-lead">Blue-chip employers come to Talent Tree for people who can do the work from day one. Our assessments are built from the everyday tasks of the roles we fill, so you can show that ability directly.</p>
+          <ul className="ca-points">
+            <li><strong>Built from real roles</strong><span>Each assessment follows the everyday work of the role it is for.</span></li>
+            <li><strong>Read by people</strong><span>A Talent Tree recruiter looks at your work, not only a number.</span></li>
+          </ul>
+        </div>
+        <aside className="ca-promise" aria-labelledby="ca-promise-heading">
+          <h3 id="ca-promise-heading">A showcase, not a scorecard</h3>
+          <p>An assessment is your chance to show what you can do. It is not a pass mark that decides your application.</p>
+          <p>Our recruiters read your work alongside your experience, your references and a conversation with you.</p>
+        </aside>
       </div>
     </section>
   );
@@ -177,92 +158,20 @@ function CatalogueSection({ status, assessments }) {
 
 function Features() {
   return (
-    <section className="ca-section ca-section--tint" id="how-it-works" aria-labelledby="ca-features-heading">
+    <section className="ca-section" id="how-it-works" aria-labelledby="ca-features-heading">
       <div className="ca-shell">
-        <Reveal className="ca-section-head">
+        <div className="ca-section-head">
           <p className="ca-eyebrow">How it works</p>
-          <h2 id="ca-features-heading">Everything you need, nothing you do not.</h2>
-          <p>The assessment is a timed sequence of questions and practical tasks. These are the parts you will use.</p>
-        </Reveal>
+          <h2 id="ca-features-heading">How each assessment works</h2>
+          <p>Every assessment runs the same way, whatever the role.</p>
+        </div>
         <div className="ca-features">
-          {FEATURES.map((feature, index) => (
-            <Reveal className="ca-feature" delay={index * 70} key={feature.title}>
+          {FEATURES.map((feature) => (
+            <div className="ca-feature" key={feature.title}>
               <span className="ca-feature-icon">{ICONS[feature.icon]}</span>
               <h3>{feature.title}</h3>
               <p>{feature.body}</p>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// The catalogue lists more than one assessment family, so the illustrative task is not tied to
-// payables terminology. It stays an explicitly labelled sample with figures of its own.
-const SHOWCASE_SAMPLE = {
-  docTitle: 'Statement of account (sample)',
-  rows: [['S-1', 'Invoice', '1,200.00'], ['S-2', 'Invoice', '850.00'], ['S-3', 'Credit note', '−150.00']],
-  question: 'What balance does this statement show as due?',
-};
-
-function Showcase() {
-  const sample = SHOWCASE_SAMPLE;
-  return (
-    <section className="ca-section" aria-labelledby="ca-showcase-heading">
-      <div className="ca-shell ca-showcase">
-        <Reveal>
-          <div className="ca-device" role="group" aria-label="Illustrative practical task with sample figures">
-            <div className="ca-device-bar" aria-hidden="true"><i /><i /><i /><span>Practical task</span></div>
-            <div className="ca-sheet ca-sample">
-              <p className="ca-sample-doc">{sample.docTitle}</p>
-              <div className="ca-sheet-scroll">
-                <table>
-                  <thead><tr><th scope="col">Ref</th><th scope="col">Description</th><th scope="col" className="is-num">Amount (R)</th></tr></thead>
-                  <tbody>
-                    {sample.rows.map(([ref, description, amount]) => <tr key={ref}><td>{ref}</td><td>{description}</td><td className="is-num">{amount}</td></tr>)}
-                  </tbody>
-                </table>
-              </div>
-              <div className="ca-sample-task">
-                <p><strong>{sample.question}</strong></p>
-                <div className="ca-sample-answer"><span>Answer</span><code>R1 900,00</code></div>
-                <p className="ca-sample-read">Read as R1,900.00</p>
-              </div>
             </div>
-            <p className="ca-caption">Illustrative example with sample figures. This is not a real assessment.</p>
-          </div>
-        </Reveal>
-        <Reveal delay={120}>
-          <p className="ca-eyebrow">Inside a practical task</p>
-          <h2 id="ca-showcase-heading" className="ca-showcase-title">Read the documents. Type the answer.</h2>
-          <ul className="ca-points">
-            <li><strong>Documents you can read at a glance</strong><span>Statements, ledgers and listings appear as plain tables beside the tasks, like printed paperwork.</span></li>
-            <li><strong>Type amounts your way</strong><span>With or without R, with spaces, commas or full stops. Under each box you see how your answer was read.</span></li>
-            <li><strong>No spreadsheet needed</strong><span>You may use a calculator and scrap paper. Your answers save as you go.</span></li>
-          </ul>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-function Benefits() {
-  return (
-    <section className="ca-section ca-section--tint" aria-labelledby="ca-benefits-heading">
-      <div className="ca-shell">
-        <Reveal className="ca-section-head">
-          <p className="ca-eyebrow">Benefits</p>
-          <h2 id="ca-benefits-heading">Clear rules, readable results.</h2>
-          <p>Candidates should never have to guess what is expected, how long they have, or what happens to their details.</p>
-        </Reveal>
-        <div className="ca-benefits">
-          {BENEFITS.map((benefit, index) => (
-            <Reveal className="ca-benefit" delay={index * 60} key={benefit.title}>
-              <span className="ca-benefit-num" aria-hidden="true">0{index + 1}</span>
-              <h3>{benefit.title}</h3>
-              <p>{benefit.body}</p>
-            </Reveal>
           ))}
         </div>
       </div>
@@ -272,21 +181,19 @@ function Benefits() {
 
 function Faq() {
   return (
-    <section className="ca-section" id="faq" aria-labelledby="ca-faq-heading">
+    <section className="ca-section ca-section--tint" id="faq" aria-labelledby="ca-faq-heading">
       <div className="ca-shell">
-        <Reveal className="ca-section-head">
+        <div className="ca-section-head">
           <p className="ca-eyebrow">FAQ</p>
-          <h2 id="ca-faq-heading">Answers before you start.</h2>
+          <h2 id="ca-faq-heading">Questions before you start</h2>
           <p>Still unsure? Email <a className="ca-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
-        </Reveal>
+        </div>
         <div className="ca-faq">
           {FAQS.map(([question, answer], index) => (
-            <Reveal delay={index * 40} key={question}>
-              <details open={index === 0}>
-                <summary>{question}<span className="ca-faq-mark" aria-hidden="true" /></summary>
-                <p>{answer}</p>
-              </details>
-            </Reveal>
+            <details key={question} open={index === 0}>
+              <summary>{question}<span className="ca-faq-mark" aria-hidden="true" /></summary>
+              <p>{answer}</p>
+            </details>
           ))}
         </div>
       </div>
@@ -298,13 +205,13 @@ function FinalCta() {
   return (
     <section className="ca-cta" aria-labelledby="ca-cta-heading">
       <div className="ca-shell ca-cta-grid">
-        <Reveal>
-          <h2 id="ca-cta-heading">Ready when you are.</h2>
-          <p>Choose an assessment, read the instructions and start. There is no invitation to wait for. Questions? Email <a className="ca-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
-        </Reveal>
-        <Reveal delay={120}>
-          <a className="ca-btn ca-btn--light" href="#assessments">Choose an assessment <span className="ca-arrow" aria-hidden="true">→</span></a>
-        </Reveal>
+        <div>
+          <h2 id="ca-cta-heading">Your next role starts with your skills.</h2>
+          <p>Choose an assessment, read its instructions and begin when you are ready. Questions? Email <a className="ca-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
+        </div>
+        <div>
+          <a className="ca-btn ca-btn--light" href="#assessments">See the assessments <span className="ca-arrow" aria-hidden="true">→</span></a>
+        </div>
       </div>
     </section>
   );
@@ -320,12 +227,13 @@ function Footer() {
               <img src={talentTreeLogo} alt="" width="42" height="42" />
               <span style={{ color: 'var(--paper-soft)' }}>Talent Tree</span>
             </p>
-            <p>Specialist recruitment and executive search in South Africa, established in 2013.</p>
+            <p>Recruitment for blue-chip companies across South Africa, since 2013.</p>
           </div>
           <nav aria-label="Footer">
             <h2>Assessments</h2>
             <ul>
-              <li><a href="#assessments">Choose an assessment</a></li>
+              <li><a href="#assessments">Assessments open now</a></li>
+              <li><a href="#why">Why we assess</a></li>
               <li><a href="#how-it-works">How it works</a></li>
               <li><a href="#faq">FAQ</a></li>
             </ul>
@@ -351,12 +259,11 @@ function Landing({ status, assessments }) {
   return (
     <AssessmentFrame variant="landing">
       <main id="main-content">
-        <Hero first={assessments[0]} />
+        <Hero status={status} assessments={assessments} />
         <TrustStrip />
         <CatalogueSection status={status} assessments={assessments} />
+        <WhyWeAssess />
         <Features />
-        <Showcase />
-        <Benefits />
         <Faq />
         <FinalCta />
       </main>
