@@ -15,7 +15,7 @@ export function personalityCatalogue(personalityEnabled = false) {
     construct: 'Self-described tendencies on five broad dimensions (IPIP Big-Five factor markers). Not a test: there are no right answers and no better or worse scores.',
     status: personalityEnabled ? 'research' : 'planned', kind: 'inventory', core: false,
     itemCount: 50, stageCount: 1,
-    ...(!personalityEnabled ? {reason: 'Awaiting review by a registered industrial psychologist before this self-description questionnaire is offered.'} : {})}];
+    ...(!personalityEnabled ? {reason: 'This questionnaire is not available yet.'} : {})}];
 }
 
 export function assertPersonalityCatalogue() {
@@ -36,7 +36,7 @@ export function personalityForm() {
     version: VERSION, kind: 'inventory', phase: 0,
     stages: 1, stage: null,
     instructions: 'Describe yourself as you generally are now, not as you wish to be in the future. Describe yourself as you honestly see yourself, in relation to other people you know of roughly your same age. For each statement, choose how accurately it describes you.',
-    items: source.items.map(item => ({id: `b${item.n}`, domain: `factor_${item.factor}`, kind: 'choice', prompt: item.text, options: options.map(o => ({...o}))})),
+    items: source.items.map(item => ({id: `b${item.n}`, domain: 'self_description', kind: 'choice', prompt: item.text, options: options.map(o => ({...o}))})),
   };
 }
 

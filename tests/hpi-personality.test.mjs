@@ -17,6 +17,7 @@ test('catalogue is valid and personality is planned by default', () => {
   for (const item of form.items) {
     assert.deepEqual(Object.keys(item), ['id', 'domain', 'kind', 'prompt', 'options']);
     assert.equal(item.options.length, 5);
+    assert.equal(item.domain, 'self_description');
     assert(!('key' in item) && !('sign' in item) && !('factor' in item));
   }
   form.items[0].options[0].label = 'changed';

@@ -206,8 +206,25 @@ workflow for data-rights requests, and production configuration. The recruiter
 email renderer is not wired to the once-only notification queue. Its delivery,
 concurrent submissions and real D1 behavior remain unverified.
 
-**Go/no-go — all unchecked:** registered industrial psychologist review; POPIA
-and legal review; notice sign-off; full screen-reader pass; named support contact;
-explicit production authorisation. `ENABLE_HPI_PERSONALITY` must remain **false**
-until all gates and the missing implementation, security and accessibility checks
-are complete. Never test against production D1.
+**Confirmed (owner report):** the owner reports that a psychologist reviewed the
+profile and gave the go-ahead. The reviewer identity, scope, written record and
+whether the reviewer is a registered industrial psychologist have not been verified
+here. The owner also says Talent Tree's normal POPIA process should be followed;
+that is not evidence of completed review of this particular notice or retention.
+
+**Confirmed:** `PersonalityQuestions.jsx` is an unmounted questionnaire component;
+it is not a complete candidate journey and does not provide identity, consent or
+network handling. Migration `0007_workplace_personality.sql` and the unmounted
+`workplace-personality-store.js` implement an AP/AR-attempt-linked draft storage
+boundary with encrypted answers and results, per-version identity uniqueness,
+revision checks and metadata-only audit. No route calls it yet. The earlier 0006
+research storage is retained as historical, unused code; neither migration has been
+approved for production. The 0007 table intentionally has no automatic 90-day
+purge, matching the existing retained-results policy pending the POPIA review.
+
+**Go/no-go — open items:** confirm the psychologist's professional registration,
+scope and review record; complete the POPIA/lawful-basis and retention review;
+notice sign-off; screen-reader pass; named support contact; production
+authorisation. `ENABLE_HPI_PERSONALITY` must remain **false** until these and the
+missing implementation, security and accessibility checks are complete. Never
+test against production D1.
