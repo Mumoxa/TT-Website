@@ -74,7 +74,7 @@ export function AssessmentFrame({ children, eyebrow = 'Candidate assessment', cl
 function AssessmentPrivacyNotice({ withConsentLine = true }) {
   return <section className="ca-privacy" aria-labelledby="tta-privacy-heading">
     <h2 id="tta-privacy-heading">How we use your information</h2>
-    <p>Talent Tree Consulting collects your first name, surname, email address, contact number, South African ID number, earliest available start date and travel details. We use them to assess your practical accounting skills for the role and to arrange your start if you are selected.</p>
+    <p>Talent Tree Consulting collects your first name, surname, email address, contact number, South African ID number, earliest available start date and travel details. We use them to assess your practical skills for the role and to arrange your start if you are selected.</p>
     <p>Recruiters at Talent Tree see these details. We retain your assessment results and attempt history. Your ID number is used to link your attempts and is masked in reports.</p>
     <p>You can ask us to see, correct or delete your information at <a href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
     {withConsentLine && <p>Ticking the box below means you agree to this processing.</p>}

@@ -191,6 +191,7 @@ function ResultReport({ report, onBack, onRecorded }) {
   const r = report.result, a = report.attempt;
   // Wording follows the assessment that was taken, never a hard-coded product family.
   const receivable = /receivable|debtor/i.test(report.assessment?.title || '');
+  const hr = /\bHR\b|human resources/i.test(report.assessment?.title || '');
   const score = r?.overall_score;
   function printReport() { window.print(); }
   const workbook = report.responses?.workbook || {};
@@ -228,7 +229,9 @@ function ResultReport({ report, onBack, onRecorded }) {
     <section className="tta-admin-panel tta-report-keep-together">
       <h2>Assessment interpretation</h2>
       <p>{r?.interpretation || 'The assessment has not yet been scored.'}</p>
-      <p className="tta-admin-muted">A timed work sample is screening evidence, not independent proof of full-function {receivable ? 'accounts receivable' : 'accounts payable'} competence. Verify practical experience, {receivable ? 'debtors ledger and collections systems' : 'Sage 300 and creditor systems'} usage and references.</p>
+      <p className="tta-admin-muted">{hr
+        ? 'A timed work sample is screening evidence, not independent proof of HR competence. Verify practical experience, HR and payroll systems usage and references.'
+        : <>A timed work sample is screening evidence, not independent proof of full-function {receivable ? 'accounts receivable' : 'accounts payable'} competence. Verify practical experience, {receivable ? 'debtors ledger and collections systems' : 'Sage 300 and creditor systems'} usage and references.</>}</p>
       {!!r?.critical_flags?.length && <div className="tta-admin-flags">
         {r.critical_flags.map((f, i) => <span key={i}>{f}</span>)}
       </div>}
