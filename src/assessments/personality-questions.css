@@ -12,17 +12,18 @@
 .wpp-index button[aria-current='step'] { background:var(--ink-deep); color:var(--white); border-color:var(--ink-deep); }
 .wpp-questions { display:grid; gap:16px; }
 .wpp-question { min-width:0; margin:0; padding:24px; border:1px solid var(--line); background:var(--white); box-shadow:var(--shadow-soft); }
-.wpp-question legend { padding:0 8px; font-weight:600; line-height:1.5; }
+.wpp-question legend { float:left; width:100%; padding:0; margin:0 0 14px; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
 .wpp-question legend span { font-variant-numeric:tabular-nums; color:var(--muted); }
-.wpp-options { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.wpp-options { clear:both; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.wpp-options-reasoning { grid-template-columns:1fr; }
 .wpp-option { display:flex; align-items:flex-start; gap:8px; padding:12px; border:1px solid var(--line-strong); cursor:pointer; line-height:1.4; font-size:var(--fs-300); }
 .wpp-option:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); font-weight:600; }
 .wpp-option { min-width:0; align-items:center; }
 /* Override the form-wide text-input sizing so the radio stays a radio and the label keeps the width. */
 .wpp-option input[type='radio'] { flex:none; width:20px; height:20px; min-height:0; padding:0; margin:0; border:0; box-shadow:none; accent-color:var(--accent); }
 .wpp-option span { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
-.wpp-clear { background:none; border:0; padding:12px 0 0; color:var(--accent); text-decoration:underline; cursor:pointer; }
+.wpp-clear { min-height:44px; background:none; border:0; padding:12px 0 0; color:var(--accent); text-decoration:underline; cursor:pointer; }
 .wpp-actions { margin-top:24px; }
 .wpp-blanks { display:flex; flex-wrap:wrap; gap:8px; list-style:none; padding:0; }
-@media (max-width: 700px) { .wpp-options { grid-template-columns:1fr; } .wpp-question { padding:16px; } }
+@media (max-width: 850px) { .wpp-options { grid-template-columns:1fr; } .wpp-question { padding:16px; } }
 @media (prefers-reduced-motion: reduce) { .wpp-shell *, .wpp-shell *::before, .wpp-shell *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }

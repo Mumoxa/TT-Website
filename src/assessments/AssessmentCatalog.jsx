@@ -20,21 +20,21 @@ const ICONS = {
 
 const FEATURES = [
   { icon: 'sections', title: 'Shows the scope up front', body: 'Each assessment lists its time, format and number of questions before you enter any details.' },
-  { icon: 'workbook', title: 'Uses everyday workplace documents', body: 'Records, statements and schedules appear on screen beside the tasks. You type or choose each answer.' },
-  { icon: 'practice', title: 'Lets you practise first', body: 'Where an assessment has practice items, try them before you start. Practice is never scored or saved.' },
-  { icon: 'autosave', title: 'Saves every answer as you go', body: 'If you reload or lose your connection, your saved work comes back.' },
-  { icon: 'timer', title: 'Starts the clock only when you do', body: 'You read the instructions first. The timer starts when you click OK and cannot be paused once it runs.' },
+  { icon: 'workbook', title: 'Explains the format', body: 'Assessments can include questions, practical tasks or questionnaires. Check the instructions for the one you choose.' },
+  { icon: 'practice', title: 'Offers practice where available', body: 'Where an assessment has practice items, try them before you start. Practice is never scored or saved.' },
+  { icon: 'autosave', title: 'Saves your work as you go', body: 'Saved answers can be recovered if you reload or reconnect.' },
+  { icon: 'timer', title: 'Shows timing before you start', body: 'Read the instructions first. If your assessment has a timer, it starts when you confirm and cannot be paused.' },
   { icon: 'results', title: 'Sends your work to our recruiters', body: 'Talent Tree recruiters review your assessment with your application. Some assessments also show you a summary when you finish.' },
 ];
 
 const FAQS = [
   ['Do I need an invitation?', 'No. Open an assessment, read its instructions and start when you are ready. If a recruiter sent you a link, that link still works.'],
-  ['How long does an assessment take?', 'Each assessment states its time on its own page. Most take between 10 and 20 minutes.'],
-  ['Does my result decide whether I get the job?', 'No. An assessment is a chance to show your skills. Our recruiters read it alongside your experience, your references and a conversation with you.'],
-  ['Can I pause or restart?', 'No. Once you start, the timer runs. Your answers save automatically, and a reload brings your saved work back.'],
+  ['How long does an assessment take?', 'The time and instructions are shown on each assessment’s own page.'],
+  ['Does my result decide whether I get the job?', 'An assessment is one source of information. Recruiters can consider it alongside your experience, references and conversations with you.'],
+  ['Can I pause or restart?', 'A running timer cannot be paused. Check the assessment instructions for its time and attempt limits; saved answers can be recovered after a reload.'],
   ['Can I take an assessment again?', 'Each assessment states how many times it can be taken with one ID number. Every start counts, so begin when you are ready.'],
-  ['Who sees my answers?', 'Recruiters at Talent Tree. We keep your results and attempt history. Your ID number links your attempts and is masked in reports.'],
-  ['What should I have ready?', 'A laptop or desktop, a stable connection and your South African ID number. A calculator and scrap paper are allowed.'],
+  ['Who sees my answers?', 'The privacy notice for each assessment explains what information is collected and who can receive it.'],
+  ['What should I have ready?', 'A stable connection and your South African ID number. Check the assessment instructions for any other requirements or permitted materials.'],
   ['How do I ask about my information?', 'Email hello@talenttree.co.za to see, correct or delete it.'],
 ];
 
@@ -47,8 +47,8 @@ function Hero({ status, assessments }) {
       <div className="ca-shell ca-hero-grid">
         <div className="ca-enter">
           <p className="ca-eyebrow">Talent Tree · Candidate assessments</p>
-          <h1 id="ca-hero-title">Skills assessments <em>for candidates.</em></h1>
-          <p className="ca-lead">Talent Tree recruits for blue-chip companies across South Africa. These short assessments let you show the work-ready skills behind your CV.</p>
+          <h1 id="ca-hero-title">Assessments <em>for candidates.</em></h1>
+          <p className="ca-lead">Explore the assessments available through Talent Tree. Each one has its own purpose, format and instructions, so you can prepare before you begin.</p>
           <div className="ca-hero-actions">
             <a className="ca-btn ca-btn--light" href="#assessments">See the assessments <span className="ca-arrow" aria-hidden="true">→</span></a>
             <a className="ca-btn ca-btn--ghost-dark" href="#how-it-works">See how it works</a>
@@ -77,9 +77,9 @@ function TrustStrip() {
     <section className="ca-trust" aria-label="Why candidates can trust these assessments">
       <ul className="ca-shell ca-trust-list">
         <li><strong>Blue-chip employers</strong><span>We recruit for leading companies across South Africa, and have since 2013.</span></li>
-        <li><strong>The same for everyone</strong><span>Every candidate sees the same questions, time and instructions.</span></li>
-        <li><strong>Your ID number is masked</strong><span>Reports show a masked number. The privacy notice comes before you start.</span></li>
-        <li><strong>Saved as you go</strong><span>A reload or a dropped connection does not lose your work.</span></li>
+        <li><strong>Clear instructions</strong><span>Review the format and timing for each assessment before you start.</span></li>
+        <li><strong>Privacy information</strong><span>Read how your information is handled before you begin.</span></li>
+        <li><strong>Saved as you go</strong><span>Your saved answers can be recovered after a reload or reconnection.</span></li>
       </ul>
     </section>
   );
@@ -110,7 +110,7 @@ function CatalogueSection({ status, assessments }) {
               <li className="ca-chip">{item.item_count} questions</li>
             </ul>}
             <div className="ca-card-foot">
-              <span>{item.kind === 'personality' ? 'How you prefer to work' : 'Practice items before you start'}</span>
+              <span>{item.kind === 'personality' ? 'Self-description questionnaire' : 'View details and instructions'}</span>
               <a className="ca-card-link" href={'/assessments/' + encodeURIComponent(item.slug)} aria-label={'Open ' + item.title}>Open <span className="ca-arrow" aria-hidden="true">→</span></a>
             </div>
           </article>
@@ -139,17 +139,17 @@ function WhyWeAssess() {
       <div className="ca-shell ca-why">
         <div>
           <p className="ca-eyebrow">Why we assess</p>
-          <h2 id="ca-why-heading" className="ca-why-title">Work-ready skills, shown in practice.</h2>
-          <p className="ca-why-lead">Blue-chip employers come to Talent Tree for people who can do the work from day one. Our assessments are built from the everyday tasks of the roles we fill, so you can show that ability directly.</p>
+          <h2 id="ca-why-heading" className="ca-why-title">More than one way to learn about you.</h2>
+          <p className="ca-why-lead">Different assessments explore different things. Some ask you to work through practical tasks; others invite you to describe your own experiences or preferences.</p>
           <ul className="ca-points">
-            <li><strong>Built from real roles</strong><span>Each assessment follows the everyday work of the role it is for.</span></li>
-            <li><strong>Read by people</strong><span>A Talent Tree recruiter looks at your work, not only a number.</span></li>
+            <li><strong>Understand the purpose</strong><span>Each assessment explains what it asks you to do before you begin.</span></li>
+            <li><strong>Consider the context</strong><span>Assessment responses are one part of a wider conversation about your application.</span></li>
           </ul>
         </div>
         <aside className="ca-promise" aria-labelledby="ca-promise-heading">
-          <h3 id="ca-promise-heading">A showcase, not a scorecard</h3>
-          <p>An assessment is your chance to show what you can do. It is not a pass mark that decides your application.</p>
-          <p>Our recruiters read your work alongside your experience, your references and a conversation with you.</p>
+          <h3 id="ca-promise-heading">One part of the picture</h3>
+          <p>Each assessment has a different purpose. A questionnaire describes your responses; it does not establish your abilities or suitability for a role.</p>
+          <p>Your experience, references and conversations also provide important context.</p>
         </aside>
       </div>
     </section>
@@ -162,8 +162,8 @@ function Features() {
       <div className="ca-shell">
         <div className="ca-section-head">
           <p className="ca-eyebrow">How it works</p>
-          <h2 id="ca-features-heading">How each assessment works</h2>
-          <p>Every assessment runs the same way, whatever the role.</p>
+          <h2 id="ca-features-heading">What to expect</h2>
+          <p>Formats and requirements vary. Each assessment explains its own process before you begin.</p>
         </div>
         <div className="ca-features">
           {FEATURES.map((feature) => (
@@ -206,7 +206,7 @@ function FinalCta() {
     <section className="ca-cta" aria-labelledby="ca-cta-heading">
       <div className="ca-shell ca-cta-grid">
         <div>
-          <h2 id="ca-cta-heading">Your next role starts with your skills.</h2>
+          <h2 id="ca-cta-heading">Ready to explore?</h2>
           <p>Choose an assessment, read its instructions and begin when you are ready. Questions? Email <a className="ca-link" href="mailto:hello@talenttree.co.za">hello@talenttree.co.za</a>.</p>
         </div>
         <div>
