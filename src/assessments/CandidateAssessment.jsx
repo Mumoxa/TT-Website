@@ -285,7 +285,7 @@ export default function CandidateAssessment({catalogItem}) {
     return <AssessmentWelcome client={client.client_name} assessmentTitle={client.title}
       slug={catalogItem?.slug || client.slug || ''}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
-      sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count}
+      sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count ?? client.item_count}
       startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''}
       hasInvitation={Boolean(invitationToken.current)} onStart={invitationToken.current || catalogItem?.slug ? start : undefined} isStarting={isStarting} error={error} />;
   }

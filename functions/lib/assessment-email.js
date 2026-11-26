@@ -239,6 +239,11 @@ export function buildPersonalityResultEmail({candidate, result, screening = null
     .filter(([key,value])=>!(OPTIONAL_SCREENING.has(key)&&!value))
     .map(([key,value])=>[labels[key], screeningValue(key,value)]) : [];
   const answered = Number(result?.attempted) || 0;
+  // Reasoning (form wpp-2026-v2 onwards): raw counts only. Older submissions have none.
+  const reasoning = result?.reasoning && typeof result.reasoning === 'object' ? Object.values(result.reasoning).filter(r =>
+    r && typeof r.title === 'string' && [r.correct, r.attempted, r.total].every(n => Number.isInteger(n) && n >= 0) && r.correct <= r.attempted && r.attempted <= r.total) : [];
+  const reasoningLines = reasoning.map(r => `${r.title}: ${r.correct} of ${r.total} correct (${r.attempted} answered)`);
+  const reasoningNote = 'Reasoning results are raw counts of correct answers. They are not compared with any norm group and must not be used as a cut-off.';
   const subject = `[Assessment] Workplace personality profile — ${fullName}`;
   // Plain labelled numbers on a 1 to 5 scale. Deliberately no bar, gauge or colour that reads as a ranking.
   const factorRows = factors.map(f => `<tr><td style="padding:12px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};">${escapeHtml(f.name)}</td><td align="right" style="padding:12px 0;border-bottom:1px solid ${C.line};font:600 15px/1.5 ${SANS};color:${C.inkDeep};font-variant-numeric:tabular-nums;white-space:nowrap;">${escapeHtml(f.mean)}${f.mean === 'Not answered' ? '' : ' <span style="font-weight:400;color:' + C.muted + ';">/ 5</span>'}</td><td align="right" style="padding:12px 0 12px 16px;border-bottom:1px solid ${C.line};font:13px/1.5 ${SANS};color:${C.muted};white-space:nowrap;">${f.answered} of 10 answered</td></tr>`).join('');
@@ -257,6 +262,7 @@ export function buildPersonalityResultEmail({candidate, result, screening = null
     ${sectionHeading('Self-description on five broad dimensions (1 to 5)')}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${factorRows}</table>
     <div style="margin-top:8px;font:12px/1.6 ${SANS};color:${C.muted};">Mean of the candidate's own ratings (IPIP-50 Big-Five markers, public domain). Each end of the scale describes a different style, not a better one.</div>
+    ${reasoning.length ? sectionHeading('Reasoning') + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${reasoning.map(r => `<tr><td style="padding:12px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};">${escapeHtml(r.title)}</td><td align="right" style="padding:12px 0;border-bottom:1px solid ${C.line};font:600 15px/1.5 ${SANS};color:${C.inkDeep};font-variant-numeric:tabular-nums;white-space:nowrap;">${r.correct} <span style="font-weight:400;color:${C.muted};">of ${r.total} correct</span></td><td align="right" style="padding:12px 0 12px 16px;border-bottom:1px solid ${C.line};font:13px/1.5 ${SANS};color:${C.muted};white-space:nowrap;">${r.attempted} answered</td></tr>`).join('')}</table><div style="margin-top:8px;font:12px/1.6 ${SANS};color:${C.muted};">${escapeHtml(reasoningNote)}</div>` : ''}
     ${sectionHeading('Candidate details')}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
       ${detailRow('Candidate', fullName)}
@@ -267,7 +273,7 @@ export function buildPersonalityResultEmail({candidate, result, screening = null
   <tr><td style="padding:18px 32px 0;font:12px/1.6 ${SANS};color:${C.muted};">The candidate does not see these figures. The full record is in the admin platform at /admin/assessments.</td></tr>
 </table></td></tr></table>
 </body></html>`;
-  const text = ['Workplace personality profile', `Candidate: ${fullName}`, ...(candidate?.email ? [`Email: ${candidate.email}`] : []), `Attempt ${attemptNumber} · ${answered} of 50 statements answered`, '', disclaimer, '', ...lines, '', ...screeningRows.map(([label,value]) => `${label}: ${value}`)].join('\n');
+  const text = ['Workplace personality profile', `Candidate: ${fullName}`, ...(candidate?.email ? [`Email: ${candidate.email}`] : []), `Attempt ${attemptNumber} · ${answered} of 50 statements answered`, '', disclaimer, '', ...lines, ...(reasoning.length ? ['', 'Reasoning', ...reasoningLines, reasoningNote] : []), '', ...screeningRows.map(([label,value]) => `${label}: ${value}`)].join('\n');
   return {subject: assessmentBrandText(subject), html: assessmentBrandText(html), text: assessmentBrandText(text)};
 }
 

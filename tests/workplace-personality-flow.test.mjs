@@ -145,7 +145,7 @@ test('admin can publish the migration draft only with approvals, and the report 
   assert.equal(refused.status,400);
   const ok=await admin('publish',{version_id:version,content_approved:true,privacy_approved:true,approval_reference:'Owner approval 2026-11-25'});
   assert.equal(ok.status,200);
-  assert.equal(db.sqlite.prepare("SELECT duration_seconds AS d FROM assessment_definitions WHERE slug=?").get(slug).d,3600);
+  assert.equal(db.sqlite.prepare("SELECT duration_seconds AS d FROM assessment_definitions WHERE slug=?").get(slug).d,1200);
   const call=client(vars);
   const started=await call('start',start(5));
   await call('submit',{attempt_id:started.body.attempt_id,save_revision:0,answers:{b1:'o5'}});
@@ -165,7 +165,7 @@ test('invitation metadata identifies the personality profile so the invited cand
   const vars={...env,ENABLE_HPI_PERSONALITY:'true'};
   const meta=await (await onRequest({env:vars,request:new Request(base+'/api/assessment/invite?token='+token)})).json();
   assert.equal(meta.kind,'personality');
-  assert.equal(meta.duration_seconds,3600);
+  assert.equal(meta.duration_seconds,1200); assert.equal(meta.item_count,50);
   const {assessment_slug,...invited}=start(6);
   const started=await client(vars)('start',{...invited,invitation_token:token});
   assert.equal(started.status,200);
