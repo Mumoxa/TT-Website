@@ -296,8 +296,10 @@ async function inviteMeta(request, db) {
   let instructions;
   try { const payload = JSON.parse(i.question_payload_json || '{}'); if (payload.format === 'battery-v2' && typeof payload.instructions === 'string') instructions = payload.instructions.trim().slice(0, 1500) || undefined; } catch { instructions = undefined; }
   // Invited candidates need to know they are taking the personality profile, so they see its notice and send its version.
-  const personality = isPersonalityPayload(safeParse(i.question_payload_json, {}));
-  return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: i.duration_seconds, ...(personality ? { kind: 'personality' } : {}), ...(instructions ? { instructions } : {}) });
+  const payload = safeParse(i.question_payload_json, {}), personality = isPersonalityPayload(payload);
+  // For the personality profile, advertise the enforced limit and the real question count (counts only, never items).
+  return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: personality ? PERSONALITY_SECONDS : i.duration_seconds,
+    ...(personality ? { kind: 'personality', item_count: 50 + (Array.isArray(payload.reasoning) ? payload.reasoning.length : 0) } : {}), ...(instructions ? { instructions } : {}) });
 }
 
 async function requireAdmin(request, env) {

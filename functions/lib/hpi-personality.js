@@ -12,6 +12,8 @@ export const PERSONALITY_SLUG = 'workplace-personality-profile';
 export const PERSONALITY_FLOW_READY = true;
 // The original 50-statement form. A version payload without `form_version` is this form.
 export const VERSION = 'hpi-2026-pilot-2';
+// The enforced time limit and the advertised one come from here (owner decision 2026-11-25: 20 minutes).
+export const PERSONALITY_SECONDS = 1200;
 export const formVersionOf = payload => (typeof payload?.form_version === 'string' && payload.form_version) || VERSION;
 
 /* Reasoning questions (form wpp-2026-v2 onwards) are NOT in this repository: the public repo must never

@@ -90,3 +90,22 @@ test('an older submission without reasoning still renders in the email and the d
   const withReasoning = buildPersonalityReport({candidate: {first_name: 'A', surname: 'B'}, personality: {status: 'submitted', factors: result.factors, attempted: 1, reasoning: {numeric: {title: 'Numeric reasoning', correct: 4, attempted: 5, total: 6}, bad: {title: 'x', correct: 9, attempted: 1, total: 1}}}});
   assert.deepEqual(withReasoning.reasoning.map(r => r.id), ['numeric']);
 });
+
+test('advertised time and question counts follow what is enforced, for v1, v2 and invitations', async () => {
+  // v1 (no reasoning) with the stale 3600-second column still in the database.
+  const v1 = personalityDatabase({publish: true});
+  v1.db.sqlite.exec("UPDATE assessment_definitions SET duration_seconds=3600 WHERE slug='workplace-personality-profile'");
+  const on1 = {...v1.env, ENABLE_HPI_PERSONALITY: 'true'};
+  const [card1] = await (await onRequest({env: on1, request: new Request(base + '/api/assessment/catalog')})).json();
+  assert.equal(card1.duration_minutes, 20); assert.equal(card1.item_count, 50);
+  v1.db.sqlite.close();
+  // v2 through an invitation link: real counts, enforced duration, and still no items.
+  const v2 = personalityDatabase({publish: true, v2: true});
+  const {tokenHash} = await import('../functions/lib/assessment-core.js');
+  const token = 'b'.repeat(64), at = new Date().toISOString(), expires = new Date(Date.now() + 86400000).toISOString();
+  v2.db.sqlite.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,created_at) VALUES ('inv2','6f1c2a90-9b5e-4c1d-8e3a-0d7b5a2f4c11',?,'issued',?,?,?)").run(await tokenHash(token), at, expires, at);
+  const meta = await (await onRequest({env: {...v2.env, ENABLE_HPI_PERSONALITY: 'true'}, request: new Request(base + '/api/assessment/invite?token=' + token)})).json();
+  assert.equal(meta.duration_seconds, 1200); assert.equal(meta.item_count, 53); assert.equal(meta.kind, 'personality');
+  assert.doesNotMatch(JSON.stringify(meta), /Synthetic: what is/);
+  v2.db.sqlite.close();
+});

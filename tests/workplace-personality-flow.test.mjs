@@ -165,7 +165,7 @@ test('invitation metadata identifies the personality profile so the invited cand
   const vars={...env,ENABLE_HPI_PERSONALITY:'true'};
   const meta=await (await onRequest({env:vars,request:new Request(base+'/api/assessment/invite?token='+token)})).json();
   assert.equal(meta.kind,'personality');
-  assert.equal(meta.duration_seconds,3600);
+  assert.equal(meta.duration_seconds,1200); assert.equal(meta.item_count,50);
   const {assessment_slug,...invited}=start(6);
   const started=await client(vars)('start',{...invited,invitation_token:token});
   assert.equal(started.status,200);

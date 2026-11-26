@@ -8,8 +8,8 @@ import {buildPersonalityResultEmail, sendResultEmail} from './assessment-email.j
 import {finalizeClosedPersonalityDrafts, readPersonalityDraft, NOTICE_VERSION} from './workplace-personality-store.js';
 
 export const PERSONALITY_FORMAT = 'personality-v1';
-// 20 minutes for the 50 statements and the reasoning questions (owner decision 2026-11-25).
-export const PERSONALITY_SECONDS = 1200;
+// 20 minutes for the 50 statements and the reasoning questions; defined once in hpi-personality.js.
+export {PERSONALITY_SECONDS} from './hpi-personality.js';
 // One start per ID number for this form version (the store also enforces one record per ID).
 export const PERSONALITY_MAX_ATTEMPTS = 1;
 export const PERSONALITY_ATTEMPT_MESSAGE = 'You have already started the workplace personality profile with this ID number. If you think this is a mistake, email hello@talenttree.co.za.';

@@ -93,14 +93,14 @@ function PersonalityPrivacyNotice({ withConsentLine = true }) {
 const cleanName = value => value.trim().replace(/\s+/g, ' ');
 
 /* Shown after the details are valid and before the attempt starts. The timer starts only on OK. */
-function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting, personality = false }) {
+function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting, personality = false, reasoningCount = 0 }) {
   const okRef = React.useRef(null);
   React.useEffect(() => { okRef.current?.focus(); }, []);
   return (
     <div className="ca-modal-backdrop" onKeyDown={(e) => { if (e.key === 'Escape' && !isStarting) onCancel(); }}>
       <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
         <h2 id="ca-brief-title">{personality ? 'Before you begin' : 'Before the timer starts'}</h2>
-        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? 'Part 1 has 50 short statements, five to a screen: choose how accurately each one describes you. Then come short numeric and cognitive reasoning questions, each with one correct answer. You may use a calculator. Your answers save as you go.' : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
+        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? `Part 1 has 50 short statements, five to a screen: choose how accurately each one describes you.${reasoningCount > 0 ? ` Then come ${reasoningCount} short numeric and cognitive reasoning questions, each with one correct answer. You may use a calculator.` : ''} Your answers save as you go.` : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
         <p className="ca-modal-note">{personality ? `The ${durationMinutes}-minute timer starts when you click OK and cannot be paused. You can take this assessment once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
         <div className="ca-modal-actions">
           <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>
@@ -113,6 +113,8 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
 
 export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug='',kind=''}) {
   const personality = kind === 'personality';
+  // Reasoning questions exist only on versions that carry them; never assume a count.
+  const reasoningCount = personality && Number.isInteger(itemCount) && itemCount > 50 ? itemCount - 50 : 0;
   const catalogue=useAssessmentCatalog(!sectionTitles);
   const matching=catalogue.assessments.find(item=>item.title===assessmentTitle && item.client_name===client);
   const sections=sectionTitles || matching?.section_titles || ['Technical knowledge','Practical reconciliation'];
@@ -137,7 +139,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
         {personality ? <dl className="ca-facts">
           <div><dt>Time</dt><dd>{durationMinutes} min</dd></div>
           <div><dt>Statements</dt><dd>50</dd></div>
-          <div><dt>Reasoning</dt><dd>{itemCount != null && itemCount > 50 ? itemCount - 50 : 12} questions</dd></div>
+          {reasoningCount > 0 && <div><dt>Reasoning</dt><dd>{reasoningCount} questions</dd></div>}
         </dl> : <dl className="ca-facts">
           <div><dt>Time</dt><dd>{durationMinutes} min</dd></div>
           <div><dt>Sections</dt><dd>{sections.length}</dd></div>
@@ -148,7 +150,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
           {personality ? <ul className="ca-checklist">
             <li>You will read 50 short statements, such as "Am always prepared." For each one, choose how accurately it describes you, from Very inaccurate to Very accurate.</li>
             <li>The statements are a self-description, with no right or wrong answers. Answer as you generally are now; your first reaction is usually the most accurate.</li>
-            <li>Then answer short numeric and cognitive reasoning questions. Each has one correct answer, and you may use a calculator.</li>
+            {reasoningCount > 0 && <li>Then answer {reasoningCount} short numeric and cognitive reasoning questions. Each has one correct answer, and you may use a calculator.</li>}
             <li>You have {durationMinutes} minutes in total. The timer starts when you click OK.</li>
             <li>Your answers save as you go. You can leave a statement blank and review everything before you submit.</li>
             <li>Have your ID number ready. You can take this assessment once.</li>
@@ -186,7 +188,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
           </form>
         </>}
       </section>
-      {pending && <StartBriefing personality={personality} instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
+      {pending && <StartBriefing personality={personality} reasoningCount={reasoningCount} instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
         onCancel={()=>setPending(null)} onConfirm={()=>onStart(pending)} />}
     </main>
   </AssessmentFrame>;
