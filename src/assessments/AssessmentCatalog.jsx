@@ -101,16 +101,16 @@ function CatalogueSection({ status, assessments }) {
             <p className="ca-card-client">{item.client_name}</p>
             <h3>{item.title}</h3>
             {item.kind === 'personality' ? <ul className="ca-chips">
-              <li className="ca-chip">About {item.estimated_minutes || 10} minutes</li>
-              <li className="ca-chip">{item.item_count} statements</li>
-              <li className="ca-chip">No right or wrong answers</li>
+              <li className="ca-chip">{item.duration_minutes} minutes, timed</li>
+              <li className="ca-chip">50 statements</li>
+              {item.item_count > 50 && <li className="ca-chip">{item.item_count - 50} reasoning questions</li>}
             </ul> : <ul className="ca-chips">
               <li className="ca-chip">{item.duration_minutes} minutes, timed</li>
               <li className="ca-chip">{item.section_titles.length} sections</li>
               <li className="ca-chip">{item.item_count} questions</li>
             </ul>}
             <div className="ca-card-foot">
-              <span>{item.kind === 'personality' ? 'How you prefer to work' : 'Practice items before you start'}</span>
+              <span>{item.kind === 'personality' ? 'How you work, plus reasoning' : 'Practice items before you start'}</span>
               <a className="ca-card-link" href={'/assessments/' + encodeURIComponent(item.slug)} aria-label={'Open ' + item.title}>Open <span className="ca-arrow" aria-hidden="true">→</span></a>
             </div>
           </article>

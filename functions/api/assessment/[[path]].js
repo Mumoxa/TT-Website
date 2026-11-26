@@ -14,7 +14,7 @@ import {assertPracticeIsolation} from '../../lib/practice-isolation.js';
 import {practiceForSlug} from '../../../src/assessments/practice-tables.js';
 import {candidateResult} from '../../lib/candidate-results.js';
 import { assessmentCatalog } from '../../lib/assessment-catalog.js';
-import {PERSONALITY_SLUG} from '../../lib/hpi-personality.js';
+import {PERSONALITY_SLUG, personalitySpec, formVersionOf} from '../../lib/hpi-personality.js';
 import {isPersonalityPayload,isPersonalitySlug,personalityOpen,publicPersonalityAssessment,personalityDraftView,personalityReportData,notifyPendingPersonality,PERSONALITY_SECONDS,PERSONALITY_MAX_ATTEMPTS,PERSONALITY_ATTEMPT_MESSAGE,PERSONALITY_NOTICE_VERSION,PERSONALITY_FORMAT} from '../../lib/workplace-personality-flow.js';
 import {createPersonalityAttempt,writePersonalityAttempt} from '../../lib/workplace-personality-store.js';
 import { assessmentAdmin, assessmentLogin } from '../../lib/assessment-admin.js';
@@ -121,7 +121,7 @@ function attemptView(a, personality = null) {
       structured: safeParse(a.structured_answers_json, {}),
       workbook: safeParse(a.workbook_json, {}),
     },
-    assessment: isPersonality ? publicPersonalityAssessment() : publicAssessment(version),
+    assessment: isPersonality ? publicPersonalityAssessment(safeParse(a.question_payload_json, {}), safeParse(a.scoring_key_json, {})) : publicAssessment(version),
     ...(isPersonality ? { personality: personality || { status: 'draft', revision: 0, answers: {} } } : {}),
   };
 }
@@ -236,6 +236,8 @@ async function startAttempt(request, db, env) {
   const personality=isPersonalitySlug(invited.slug)||isPersonalityPayload(payload);
   if(personality&&(!personalityOpen(env)||!isPersonalitySlug(invited.slug)||!isPersonalityPayload(payload)))return failure('This assessment is not open right now.',404);
   if(personality&&data.personality_notice_version!==PERSONALITY_NOTICE_VERSION)return failure('Please read and accept the questionnaire notice before starting.',400);
+  // The reasoning questions and keys come from the private version; refuse to start if they do not match.
+  if(personality){try{personalitySpec(payload,safeParse(version?.scoring_key_json,{}));}catch{return failure('This assessment needs a content review before it can start.',503);}}
   if(!personality){
   // Practice is checked against this assessment's own family (slug-scoped), never another's.
   if(isBatteryPayload(payload)){try{assertPracticeIsolation(payload,safeParse(version.scoring_key_json,{}),practiceForSlug(invited.slug));}catch{return failure('This assessment needs a practice-content review before it can start.',503);}}
@@ -262,11 +264,11 @@ async function startAttempt(request, db, env) {
   operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,invited.current_version_id,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,candidateId));
   if(!open)operations.push(db.prepare("UPDATE invitations SET status='redeemed',redeemed_at=? WHERE id=? AND status='issued'").bind(at,invited.id));
   await db.batch(operations);
-  const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
+  const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json,v.scoring_key_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
   if(!a)return failure(limitMessage,403);
   await audit(db,'candidate',candidateId,attemptId,'assessment.started');
   if(personality){
-    const created=await createPersonalityAttempt(env,{attemptId,candidateId,identityHash:hash,noticeVersion:PERSONALITY_NOTICE_VERSION});
+    const created=await createPersonalityAttempt(env,{attemptId,candidateId,identityHash:hash,noticeVersion:PERSONALITY_NOTICE_VERSION,formVersion:formVersionOf(payload)});
     if(!created.ok){
       await db.prepare("UPDATE attempts SET status='void',closed_at_ms=?,updated_at=? WHERE id=?").bind(Date.now(),nowIso(),attemptId).run();
       return failure(PERSONALITY_ATTEMPT_MESSAGE,403);
@@ -562,7 +564,9 @@ async function adminReport(db, attemptId, env = {}) {
 async function savePersonality(context, env, db, attempt, data, submit) {
   if (data.attempt_id !== attempt.id) return apiJson({ok:false,session_changed:true,message:'This tab belongs to another assessment session.'},409);
   if (!personalityOpen(env)) return failure('This assessment is not open right now. Your saved answers have been retained.', 409);
-  const written = await writePersonalityAttempt(env, {attemptId: attempt.id, candidateId: attempt.candidate_id, revision: Number(data.save_revision), answers: data.answers || {}, submit});
+  let spec;
+  try { spec = personalitySpec(safeParse(attempt.question_payload_json, {}), safeParse(attempt.scoring_key_json, {})); } catch { return failure('This assessment needs a content review. Your saved answers have been retained.', 503); }
+  const written = await writePersonalityAttempt(env, {attemptId: attempt.id, candidateId: attempt.candidate_id, revision: Number(data.save_revision), answers: data.answers || {}, submit, spec});
   if (written.error === 'invalid') return failure('Invalid answers.', 400);
   if (written.error === 'empty') return failure('Answer at least one statement before you submit.', 400);
   if (written.error) return apiJson({ok:false,conflict:true,message:'Another save was completed. Reload your saved answers before continuing.'},409);

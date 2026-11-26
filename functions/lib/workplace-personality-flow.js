@@ -2,14 +2,14 @@
 // The candidate registers with the same identity and screening details as AP/AR, answers the
 // 50 statements and sees a thank-you screen. Factor results go only to the recruiter email and
 // the admin report. Item responses never leave the server except to the candidate's own session.
-import {personalityForm, PERSONALITY_SLUG, PERSONALITY_FLOW_READY} from './hpi-personality.js';
+import {personalityForm, personalitySpec, PERSONALITY_SLUG, PERSONALITY_FLOW_READY} from './hpi-personality.js';
 import {decryptPrivate, publicScreening} from './candidate-privacy.js';
 import {buildPersonalityResultEmail, sendResultEmail} from './assessment-email.js';
 import {finalizeClosedPersonalityDrafts, readPersonalityDraft, NOTICE_VERSION} from './workplace-personality-store.js';
 
 export const PERSONALITY_FORMAT = 'personality-v1';
-// Generous window so the questionnaire is effectively untimed; most people need about 10 minutes.
-export const PERSONALITY_SECONDS = 3600;
+// 20 minutes for the 50 statements and the reasoning questions (owner decision 2026-11-25).
+export const PERSONALITY_SECONDS = 1200;
 // One start per ID number for this form version (the store also enforces one record per ID).
 export const PERSONALITY_MAX_ATTEMPTS = 1;
 export const PERSONALITY_ATTEMPT_MESSAGE = 'You have already started the workplace personality profile with this ID number. If you think this is a mistake, email hello@talenttree.co.za.';
@@ -19,11 +19,15 @@ export const isPersonalityPayload = payload => payload?.format === PERSONALITY_F
 export const personalityOpen = env => PERSONALITY_FLOW_READY && env?.ENABLE_HPI_PERSONALITY === 'true';
 export const isPersonalitySlug = slug => slug === PERSONALITY_SLUG;
 
-// The browser form: statements and the response scale only. No factor, sign or key.
-export function publicPersonalityAssessment() {
+// The browser form: statements, the response scale and the reasoning questions. Never a factor, sign or
+// key: the spec's key stays on the server.
+export function publicPersonalityAssessment(payload = {}, scoringKey = {}) {
   const form = personalityForm();
-  return {format: PERSONALITY_FORMAT, version: form.version, instructions: form.instructions,
-    items: form.items.map(item => ({id: item.id, prompt: item.prompt, options: item.options.map(o => ({id: o.id, label: o.label}))}))};
+  const spec = personalitySpec(payload, scoringKey);
+  return {format: PERSONALITY_FORMAT, version: spec.formVersion, instructions: form.instructions,
+    items: form.items.map(item => ({id: item.id, prompt: item.prompt, options: item.options.map(o => ({id: o.id, label: o.label}))})),
+    reasoning_sections: spec.reasoning?.sections || [],
+    reasoning: spec.reasoning?.items || []};
 }
 
 export async function personalityDraftView(env, attemptId, candidateId) {
@@ -58,6 +62,7 @@ export async function personalityReportData(env, db, attemptId) {
     attempt: {id: row.id, attempt_number: row.attempt_number || 1, status: row.status, started_at_ms: row.started_at_ms, expires_at_ms: row.expires_at_ms, closed_at_ms: row.closed_at_ms, last_saved_at_ms: row.last_saved_at_ms},
     personality: {status: row.wpp_status || 'not_started', submitted_at: row.submitted_at || null, unreadable, notified_at: row.notified_at || null,
       factors: result ? result.factors.map(f => ({name: f.name, mean: f.mean, answered: f.answered, total: f.total})) : null,
+      reasoning: result?.reasoning || null,
       attempted: result ? result.attempted : null, total: 50},
     result: null,
   };

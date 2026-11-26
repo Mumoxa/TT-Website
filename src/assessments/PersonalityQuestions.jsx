@@ -14,9 +14,26 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
   const heading=useRef(null);
   // Latest values for background saves, which must not read a stale render's state.
   const answersRef=useRef(initialAnswers), revisionRef=useRef(initialRevision), dirtyRef=useRef(false), inflightRef=useRef(null), persistRef=useRef(null);
-  const items=Array.isArray(form?.items) ? form.items : [];
-  const pages=Math.ceil(items.length/5);
+  const statements=Array.isArray(form?.items) ? form.items : [];
+  const reasoning=Array.isArray(form?.reasoning) ? form.reasoning : [];
+  const sections=Array.isArray(form?.reasoning_sections) ? form.reasoning_sections : [];
+  // Screens: the statements five at a time, then each reasoning section three questions at a time.
+  const screens=[];
+  for (let i=0;i<statements.length;i+=5) screens.push({kind:'statements',items:statements.slice(i,i+5),offset:i});
+  for (const section of sections) {
+    const its=reasoning.filter(item=>item.section===section.id);
+    for (let i=0;i<its.length;i+=3) screens.push({kind:'reasoning',section,items:its.slice(i,i+3),offset:i,count:its.length});
+  }
+  const items=[...statements,...reasoning];
+  const pages=screens.length;
   const answered=items.filter(item=>answers[item.id]!=null).length;
+  // A readable name for any question, used on the review list ("Statement 18", "Numeric reasoning 2").
+  const nameOf=item=>{
+    const s=statements.indexOf(item); if (s>=0) return `Statement ${s+1}`;
+    const section=sections.find(x=>x.id===item.section); const its=reasoning.filter(x=>x.section===item.section);
+    return `${section?.title || 'Question'} ${its.indexOf(item)+1}`;
+  };
+  const screenOf=item=>screens.findIndex(sc=>sc.items.includes(item));
   useEffect(()=>{heading.current?.focus();},[screen]);
   useEffect(()=>{
     if (!dirty) return undefined;
@@ -31,7 +48,7 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
     const timer=setTimeout(()=>{void persistRef.current?.();},2000);
     return ()=>clearTimeout(timer);
   },[answers,dirty]);
-  if (items.length !== 50 || typeof onSave !== 'function' || typeof onSubmit !== 'function') {
+  if (statements.length !== 50 || reasoning.some(item=>!sections.some(x=>x.id===item.section)) || typeof onSave !== 'function' || typeof onSubmit !== 'function') {
     return <main className="wpp-shell" id="main-content"><h1>Assessment unavailable</h1><p role="status">This questionnaire is not available yet.</p></main>;
   }
   // One save at a time; a save requested while another runs waits for it, then saves what is newer.
@@ -72,27 +89,36 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
   const change=(id,value)=>{const next={...answersRef.current,[id]:value};answersRef.current=next;dirtyRef.current=true;setAnswers(next);setDirty(true);};
   const leave=async()=>{if (!busy && await save() && typeof onLeave==='function') onLeave();};
   const page=typeof screen==='number' ? screen : null;
+  const sc=page!==null ? screens[page] : null;
+  const letter=i=>String.fromCharCode(65+i);
   return <main className="wpp-shell" id="main-content">
     {screen==='intro' && <section className="wpp-panel">
       <p className="ca-eyebrow">Workplace personality profile</p>
       <h1 ref={heading} tabIndex={-1}>Before you begin</h1>
       <p>{form.instructions}</p>
-      <ul><li>50 statements, five per screen.</li><li>There is no time limit and no right or wrong answers.</li><li>You may leave statements unanswered.</li></ul>
+      <ul>
+        <li>Part 1: 50 statements about how you see yourself, five per screen. There are no right or wrong answers here.</li>
+        {sections.map(section=><li key={section.id}>{section.title}: {reasoning.filter(item=>item.section===section.id).length} questions, each with one correct answer.</li>)}
+        <li>The timer at the top shows the time left. Your answers save as you go, and you may leave questions unanswered.</li>
+      </ul>
       <button className="ca-btn ca-btn--primary" onClick={()=>setScreen(0)}>Begin</button>
     </section>}
-    {page!==null && <>
+    {sc && <>
       <div className="wpp-toolbar"><span role="status">{busy?'Saving…':dirty?'Changes not saved yet':'All answers saved'}</span><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={leave}>Save and leave</button></div>
       {error && <p className="wpp-error" role="alert">{error}</p>}
-      <h1 ref={heading} tabIndex={-1}>How accurately does each statement describe you?</h1>
-      <p>Screen {page+1} of {pages} · {answered} of {items.length} answered</p>
-      <nav aria-label="Question screens"><ol className="wpp-index">{Array.from({length:pages},(_,index)=>{
-        const done=items.slice(index*5,index*5+5).every(item=>answers[item.id]!=null);
-        return <li key={index}><button type="button" disabled={busy} aria-current={index===page?'step':undefined} aria-label={`Screen ${index+1}${done?', all answered':''}${index===page?', current':''}`} onClick={()=>go(index)}>{index+1}{done&&<span aria-hidden="true"> ✓</span>}</button></li>;
+      {sc.kind==='statements'
+        ? <h1 ref={heading} tabIndex={-1}>How accurately does each statement describe you?</h1>
+        : <><h1 ref={heading} tabIndex={-1}>{sc.section.title}</h1><p className="wpp-instruction">{sc.section.instruction}</p></>}
+      <p className="wpp-progress">Screen {page+1} of {pages} · {answered} of {items.length} answered</p>
+      <nav aria-label="Question screens"><ol className="wpp-index">{screens.map((s2,index)=>{
+        const done=s2.items.every(item=>answers[item.id]!=null);
+        return <li key={index}><button type="button" disabled={busy} aria-current={index===page?'step':undefined} aria-label={`Screen ${index+1}${s2.kind==='reasoning'?', '+s2.section.title:''}${done?', all answered':''}${index===page?', current':''}`} onClick={()=>go(index)}>{index+1}{done&&<span aria-hidden="true"> ✓</span>}</button></li>;
       })}</ol></nav>
-      <div className="wpp-questions">{items.slice(page*5,page*5+5).map((item,index)=><fieldset className="wpp-question" key={item.id} disabled={busy}>
-        <legend><span>{page*5+index+1}.</span> {item.prompt}</legend>
-        <div className="wpp-options">{item.options.map(option=><label className="wpp-option" key={option.id}>
+      <div className="wpp-questions">{sc.items.map((item,index)=><fieldset className={'wpp-question'+(sc.kind==='reasoning'?' wpp-question--reasoning':'')} key={item.id} disabled={busy}>
+        <legend><span>{sc.kind==='statements'?`${sc.offset+index+1}.`:`${sc.offset+index+1} of ${sc.count}.`}</span> {item.prompt}</legend>
+        <div className={sc.kind==='statements'?'wpp-options':'wpp-choices'}>{item.options.map((option,i)=><label className="wpp-option" key={option.id}>
           <input type="radio" name={item.id} value={option.id} checked={answers[item.id]===option.id} onChange={()=>change(item.id,option.id)} />
+          {sc.kind==='reasoning' && <b className="wpp-letter" aria-hidden="true">{letter(i)}</b>}
           <span>{option.label}</span>
         </label>)}</div>
         {answers[item.id]!=null && <button type="button" className="wpp-clear" onClick={()=>change(item.id,null)}>Clear this answer</button>}
@@ -101,9 +127,9 @@ export default function PersonalityQuestions({form, initialAnswers = {}, initial
     </>}
     {screen==='review' && <section className="wpp-panel">
       <h1 ref={heading} tabIndex={-1}>Review your answers</h1>
-      <p>{answered} of {items.length} statements answered. Blanks are allowed.</p>
+      <p>{answered} of {items.length} answered. Blanks are allowed.</p>
       {error && <p className="wpp-error" role="alert">{error}</p>}
-      {answered<items.length && <><h2>Not answered</h2><ul className="wpp-blanks">{items.map((item,index)=>answers[item.id]==null && <li key={item.id}><button type="button" disabled={busy} onClick={()=>go(Math.floor(index/5))}>Statement {index+1}</button></li>)}</ul></>}
+      {answered<items.length && <><h2>Not answered</h2><ul className="wpp-blanks">{items.map(item=>answers[item.id]==null && <li key={item.id}><button type="button" disabled={busy} onClick={()=>go(screenOf(item))}>{nameOf(item)}</button></li>)}</ul></>}
       <div className="wpp-actions"><button type="button" className="ca-btn ca-btn--quiet" disabled={busy} onClick={()=>go(pages-1)}>Back</button><button type="button" className="ca-btn ca-btn--primary" disabled={busy||answered===0} onClick={finish}>{busy?'Submitting…':'Submit'}</button></div>
     </section>}
     {screen==='complete' && <section className="wpp-panel"><h1 ref={heading} tabIndex={-1}>Thank you</h1><p>Your questionnaire has been submitted.</p><a className="ca-link" href="/assessments">Back to assessments</a></section>}

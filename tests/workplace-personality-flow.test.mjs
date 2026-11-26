@@ -145,7 +145,7 @@ test('admin can publish the migration draft only with approvals, and the report 
   assert.equal(refused.status,400);
   const ok=await admin('publish',{version_id:version,content_approved:true,privacy_approved:true,approval_reference:'Owner approval 2026-11-25'});
   assert.equal(ok.status,200);
-  assert.equal(db.sqlite.prepare("SELECT duration_seconds AS d FROM assessment_definitions WHERE slug=?").get(slug).d,3600);
+  assert.equal(db.sqlite.prepare("SELECT duration_seconds AS d FROM assessment_definitions WHERE slug=?").get(slug).d,1200);
   const call=client(vars);
   const started=await call('start',start(5));
   await call('submit',{attempt_id:started.body.attempt_id,save_revision:0,answers:{b1:'o5'}});

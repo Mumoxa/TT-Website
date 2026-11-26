@@ -10,7 +10,39 @@ export const PERSONALITY_SLUG = 'workplace-personality-profile';
 // The runner, notice, encrypted submit and recruiter mail queue are integrated (2026-11-25).
 // ENABLE_HPI_PERSONALITY remains the launch switch.
 export const PERSONALITY_FLOW_READY = true;
+// The original 50-statement form. A version payload without `form_version` is this form.
 export const VERSION = 'hpi-2026-pilot-2';
+export const formVersionOf = payload => (typeof payload?.form_version === 'string' && payload.form_version) || VERSION;
+
+/* Reasoning questions (form wpp-2026-v2 onwards) are NOT in this repository: the public repo must never
+   hold answer keys. They live in the private D1 assessment version: questions in question_payload_json
+   (`reasoning_sections`, `reasoning`) and keys in scoring_key_json (`reasoning`). This builds the scoring
+   spec from those two private records and fails closed if they do not match. */
+const REASONING_ID = /^[nc][1-9][0-9]?$/;
+export function personalitySpec(payload, key) {
+  const formVersion = formVersionOf(payload);
+  const items = Array.isArray(payload?.reasoning) ? payload.reasoning : [];
+  if (!items.length) return { formVersion, reasoning: null };
+  const sections = Array.isArray(payload.reasoning_sections) ? payload.reasoning_sections : [];
+  const sectionIds = new Set(sections.map(s => s?.id));
+  const seen = new Set();
+  for (const it of items) {
+    const opts = Array.isArray(it?.options) ? it.options : [];
+    const answer = key?.reasoning?.[it?.id]?.answer;
+    if (!REASONING_ID.test(it?.id || '') || seen.has(it.id) || !sectionIds.has(it.section) || typeof it.prompt !== 'string' || !it.prompt.trim()
+      || opts.length < 2 || opts.length > 6 || new Set(opts.map(o => o?.id)).size !== opts.length || !opts.every(o => /^o[1-8]$/.test(o?.id || '') && typeof o.label === 'string' && o.label.trim())
+      || !opts.some(o => o.id === answer)) throw new Error('Invalid personality reasoning content.');
+    seen.add(it.id);
+  }
+  return { formVersion, reasoning: { sections: sections.map(({ id, title, instruction }) => ({ id, title, instruction })), items: items.map(({ id, section, prompt, options }) => ({ id, section, prompt, options: options.map(({ id, label }) => ({ id, label })) })), key: Object.fromEntries(items.map(it => [it.id, key.reasoning[it.id].answer])) } };
+}
+function scoreReasoning(answers, reasoning) {
+  if (!reasoning) return null;
+  return Object.fromEntries(reasoning.sections.map(({ id, title }) => {
+    const its = reasoning.items.filter(i => i.section === id);
+    return [id, { title, correct: its.filter(i => answers[i.id] === reasoning.key[i.id]).length, attempted: its.filter(i => answers[i.id] != null).length, total: its.length }];
+  }));
+}
 export const ENGINE = 'hpi-raw-v2';
 const options = source.response_scale.map((label, i) => ({id: `o${i + 1}`, label}));
 
@@ -44,17 +76,19 @@ export function personalityForm() {
   };
 }
 
-export function normalizePersonalityAnswers(input) {
+export function normalizePersonalityAnswers(input, spec = null) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid answers');
   const validIds = new Set(source.items.map(item => `b${item.n}`));
+  const reasoning = new Map((spec?.reasoning?.items || []).map(it => [it.id, it]));
   for (const [key, value] of Object.entries(input)) {
+    if (reasoning.has(key)) { if (value !== null && !reasoning.get(key).options.some(o => o.id === value)) throw new Error('Invalid answer'); continue; }
     if (!validIds.has(key) || (value !== null && !options.some(option => option.id === value))) throw new Error('Invalid answer');
   }
-  return Object.fromEntries(source.items.map(item => [`b${item.n}`, input[`b${item.n}`] ?? null]));
+  return Object.fromEntries([...source.items.map(item => `b${item.n}`), ...reasoning.keys()].map(id => [id, input[id] ?? null]));
 }
 
-export function scorePersonality(input) {
-  const answers = normalizePersonalityAnswers(input);
+export function scorePersonality(input, spec = null) {
+  const answers = normalizePersonalityAnswers(input, spec);
   const factors = Object.entries(source.factors).map(([factor, name]) => {
     const items = source.items.filter(item => String(item.factor) === factor);
     const values = items.filter(item => answers[`b${item.n}`] !== null).map(item => {
@@ -66,8 +100,10 @@ export function scorePersonality(input) {
       mean: values.length ? Math.round(sum / values.length * 100) / 100 : null,
       sum: values.length === items.length ? sum : null};
   });
-  return {moduleId: 'P01', version: VERSION, engine: ENGINE, status: 'research_only',
-    selectionAllowed: false, attempted: Object.values(answers).filter(value => value !== null).length,
+  const reasoning = scoreReasoning(answers, spec?.reasoning);
+  return {moduleId: 'P01', version: spec?.formVersion || VERSION, engine: reasoning ? 'hpi-raw-v3' : ENGINE, status: 'research_only',
+    selectionAllowed: false, attempted: source.items.filter(item => answers[`b${item.n}`] !== null).length,
+    ...(reasoning ? {reasoning} : {}),
     total: source.items.length, precision: 'not_established', norms: 'not_established',
     scale: '1-5 (mean of item scores)',
     interpretation: 'Your self-description on five broad dimensions. These are not abilities and there is no better or worse position. No norms, types or job-fit judgments are made.', factors};

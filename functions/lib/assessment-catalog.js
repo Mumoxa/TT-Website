@@ -17,8 +17,10 @@ export async function assessmentCatalog(db, slug = null, env = {}) {
     const payload = JSON.parse(row.question_payload_json);
     if (payload.format === 'personality-v1') return {
       slug: row.slug, title: row.title, client_name: row.client_name, kind: 'personality',
-      duration_minutes: Math.ceil(row.duration_seconds / 60), estimated_minutes: 10,
-      section_titles: ['Self-description'], item_count: 50,
+      duration_minutes: Math.ceil(row.duration_seconds / 60), estimated_minutes: Math.ceil(row.duration_seconds / 60),
+      section_titles: ['Self-description', ...(Array.isArray(payload.reasoning_sections) ? payload.reasoning_sections.map(s => typeof s?.title === 'string' ? s.title.slice(0, 120) : '') : [])],
+      // Question counts only; the reasoning questions themselves are never in the public catalogue.
+      item_count: 50 + (Array.isArray(payload.reasoning) ? payload.reasoning.length : 0),
     };
     const sections = payload.format === 'battery-v2' && Array.isArray(payload.sections) ? payload.sections : null;
     return {

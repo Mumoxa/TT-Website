@@ -73,6 +73,10 @@ export function buildPersonalityReport(report) {
   const farthest=complete.length?Math.max(...complete.map(d=>Math.abs(d.score-3))):null;
   const explore=complete.filter(d=>Math.abs(d.score-3)===farthest && farthest>0.1+1e-7).map(d=>d.name);
   const candidate=[report.candidate?.first_name,report.candidate?.surname].filter(v=>typeof v==='string' && v.trim()).join(' ').trim() || 'Name not recorded';
+  // Reasoning counts (form wpp-2026-v2 onwards). Raw counts only; anything malformed is dropped, never guessed.
+  const reasoning = p.reasoning && typeof p.reasoning === 'object' ? Object.entries(p.reasoning).flatMap(([id, r]) =>
+    r && typeof r.title === 'string' && [r.correct, r.attempted, r.total].every(n => Number.isInteger(n) && n >= 0) && r.correct <= r.attempted && r.attempted <= r.total
+      ? [{id, title: r.title, correct: r.correct, attempted: r.attempted, total: r.total}] : []) : [];
   const answers = Number.isInteger(p.attempted) && p.attempted>=0 && p.attempted<=50 ? p.attempted : null;
   const parts = complete.length ? [
     top.length===5 ? 'All five dimensions share the highest numerical mean; the results are not ranked strengths.' : `${top.join(', ')} ${top.length===1?'has':'have'} the highest numerical ${top.length===1?'mean':'means'}; these are not ranked strengths.`,
@@ -86,7 +90,7 @@ export function buildPersonalityReport(report) {
     submitted_at:formatDate(p.submitted_at), form_version:report.assessment?.form_version ?? null, scoring_version:report.assessment?.scoring_version ?? null,
     assessment_version:report.assessment?.version ?? null, administration:'Not recorded', validation_status:'Pilot / not validated for employment selection',
     status:p.unreadable?'Unavailable':p.status==='submitted'?'Submitted':p.status==='draft'?'In progress':'Unavailable',
-    unreadable:!!p.unreadable, answered:answers, total:50, dimensions, summary:parts.join(' '),
+    unreadable:!!p.unreadable, answered:answers, total:50, dimensions, reasoning, summary:parts.join(' '),
     highlights:{top,midpoint,explore}, permissions:'Authorised recruiter access only; sharing requires approved policy.',
   };
 }

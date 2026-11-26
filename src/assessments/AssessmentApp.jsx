@@ -100,8 +100,8 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
     <div className="ca-modal-backdrop" onKeyDown={(e) => { if (e.key === 'Escape' && !isStarting) onCancel(); }}>
       <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
         <h2 id="ca-brief-title">{personality ? 'Before you begin' : 'Before the timer starts'}</h2>
-        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? 'You will see 50 short statements, five to a screen. For each one, choose how accurately it describes you as you generally are. Most people finish in about 10 minutes. Your answers save as you move between screens.' : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
-        <p className="ca-modal-note">{personality ? `You have up to ${durationMinutes} minutes once you start, which is far more than you need. You can take this questionnaire once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
+        <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? 'Part 1 has 50 short statements, five to a screen: choose how accurately each one describes you. Then come short numeric and cognitive reasoning questions, each with one correct answer. You may use a calculator. Your answers save as you go.' : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
+        <p className="ca-modal-note">{personality ? `The ${durationMinutes}-minute timer starts when you click OK and cannot be paused. You can take this assessment once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
         <div className="ca-modal-actions">
           <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>
           <button ref={okRef} type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={isStarting}>{isStarting ? 'Starting…' : personality ? 'OK, begin' : 'OK, start the timer'}</button>
@@ -135,9 +135,9 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
       <div className="ca-welcome-intro">
         <h1>{assessmentTitle}</h1>
         {personality ? <dl className="ca-facts">
-          <div><dt>Time</dt><dd>About 10 min</dd></div>
+          <div><dt>Time</dt><dd>{durationMinutes} min</dd></div>
           <div><dt>Statements</dt><dd>50</dd></div>
-          <div><dt>Answers</dt><dd>No right or wrong</dd></div>
+          <div><dt>Reasoning</dt><dd>{itemCount != null && itemCount > 50 ? itemCount - 50 : 12} questions</dd></div>
         </dl> : <dl className="ca-facts">
           <div><dt>Time</dt><dd>{durationMinutes} min</dd></div>
           <div><dt>Sections</dt><dd>{sections.length}</dd></div>
@@ -147,10 +147,11 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
           <h2 id="ca-expect-heading">What to expect</h2>
           {personality ? <ul className="ca-checklist">
             <li>You will read 50 short statements, such as "Am always prepared." For each one, choose how accurately it describes you, from Very inaccurate to Very accurate.</li>
-            <li>This is a self-description, not a test. There are no right or wrong answers, and no better or worse result.</li>
-            <li>Answer as you generally are now, not as you wish to be. Your first reaction is usually the most accurate.</li>
+            <li>The statements are a self-description, with no right or wrong answers. Answer as you generally are now; your first reaction is usually the most accurate.</li>
+            <li>Then answer short numeric and cognitive reasoning questions. Each has one correct answer, and you may use a calculator.</li>
+            <li>You have {durationMinutes} minutes in total. The timer starts when you click OK.</li>
             <li>Your answers save as you go. You can leave a statement blank and review everything before you submit.</li>
-            <li>Have your ID number ready. You can take this questionnaire once.</li>
+            <li>Have your ID number ready. You can take this assessment once.</li>
           </ul> : <ul className="ca-checklist">
             <li>You see the instructions first. The timer starts only when you click OK, and keeps running if you reload or close the page.</li>
             <li>Choose answers, and type amounts in the box under each practical task. You may use a calculator and scrap paper.</li>
