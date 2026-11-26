@@ -3,7 +3,7 @@
 .tta-shell { width:min(var(--shell),calc(100% - 2 * var(--gutter))); margin-inline:auto; }
 .tta-topbar { background:var(--paper-soft); border-bottom:1px solid var(--line); }
 .tta-topbar-inner { min-height:96px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:32px; padding-block:12px; }
-.tta-brand { display:inline-flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink); }
+.tta-brand { display:inline-flex; align-items:center; gap:12px; min-height:44px; text-decoration:none; color:var(--ink); }
 .tta-logo { width:62px; height:62px; object-fit:contain; flex:none; }
 .tta-brand > span { font:500 1.35rem/1 var(--serif); white-space:nowrap; }
 .tta-topbar-context { min-width:0; display:grid; gap:5px; color:var(--ink); font-size:.85rem; overflow-wrap:anywhere; }
