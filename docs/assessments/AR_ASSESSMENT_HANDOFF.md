@@ -16,12 +16,13 @@ form within an hour; one AP candidate: 46 to 81 over nine starts).
   correction is never re-exposed. No forms configured means the old behaviour. The recruiter list, report and result
   email name the form. The public catalogue exposes only a `parallel_forms` yes/no, used to tell candidates that a
   second attempt uses different questions.
-- **AR:** forms A (v3), B (v4), C (v5) active in production. B and C built privately
+- **AR:** forms A (v3), B (v4), C (v5) active in production; **signed off by the owner 2026-11-27** (audit `assessment.forms_activated`). B and C built privately
   (`private/assessments/ar-clerk-v1/build-forms.mjs`, 46 checks incl. same blueprint, no shared parties, document numbers
   or answer figures with A, answer positions differing, no marked amount in any prompt).
 - **AP:** forms B (v3) and C (v4) are built (`private/assessments/ap-clerk-v2/build-forms.mjs`, 41 checks) and stored in
-  production **but switched off** on owner instruction ("finish AR first"); AP keeps its single current version until
-  they are switched on (`UPDATE assessment_forms SET active=1 ...` for ap-clerk-v2).
+  production. Switched off at first ("finish AR first"), then **signed off by the owner and switched on 2026-11-27**:
+  AP forms A (v2), B (v3), C (v4) are active; v1 stays an inactive A so its takers count as having had A. Live check:
+  a test person drew A then B, and a third start was refused; the records were deleted (not submitted, no emails).
 - Finding for the owner: live AP form A has 13 of 15 choice answers in position 1 or 2 (7 in position 2).
 - Production: migration 0010 applied and recorded. Migration `0008_hr_pilot_state.sql` (HR pilot) is not applied in
   production; not part of this change.
