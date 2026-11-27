@@ -141,3 +141,13 @@ test('publishing a form checks the blueprint, replaces the same label, and the r
   const list = await t.call('admin/list', undefined, admin, true);
   assert.match(list.data.attempts[0].form_label, /^[AB]$/);
 });
+
+test('the catalogue says whether a second attempt uses different questions, and nothing else about the forms', async () => {
+  const t = await setup(['A', 'B']);
+  const one = await t.call('catalog?slug=ar-clerk-v1');
+  assert.equal(one.status, 200);
+  assert.equal(one.data[0].parallel_forms, true);
+  assert.doesNotMatch(JSON.stringify(one.data), /version_id|form_label|"B"/);
+  t.db.sqlite.prepare("UPDATE assessment_forms SET active=0 WHERE form_label='B'").run();
+  assert.equal((await t.call('catalog?slug=ar-clerk-v1')).data[0].parallel_forms, false);
+});

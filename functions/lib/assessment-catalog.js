@@ -7,7 +7,8 @@ import {PERSONALITY_SLUG, PERSONALITY_FLOW_READY, PERSONALITY_SECONDS} from './h
 export async function assessmentCatalog(db, slug = null, env = {}) {
   const exact = typeof slug === 'string' && /^[a-z0-9-]{3,60}$/.test(slug);
   const statement = db.prepare(
-    'SELECT d.slug, d.title, d.client_name, d.duration_seconds, v.question_payload_json ' +
+    'SELECT d.slug, d.title, d.client_name, d.duration_seconds, v.question_payload_json, ' +
+    '(SELECT count(*) FROM assessment_forms f WHERE f.definition_id=d.id AND f.active=1) AS active_forms ' +
     'FROM assessment_definitions d JOIN assessment_versions v ON v.id=d.current_version_id ' +
     "WHERE d.status='published' AND v.published_at IS NOT NULL" +
     (exact ? ' AND d.slug=? ORDER BY d.slug' : ' ORDER BY d.title, d.slug LIMIT 100')
@@ -30,6 +31,8 @@ export async function assessmentCatalog(db, slug = null, env = {}) {
       client_name: row.client_name,
       duration_minutes: Math.ceil(row.duration_seconds / 60),
       section_titles: sections ? sections.map(section => typeof section.title === 'string' ? section.title.slice(0, 120) : '') : ['Technical knowledge', 'Practical reconciliation'],
+      // True when a second attempt is drawn from a different parallel form (no form content is exposed).
+      parallel_forms: Number(row.active_forms || 0) > 1,
       item_count: sections ? sections.reduce((total, section) => total + (Array.isArray(section.items) ? section.items.length : 0), 0) : payload.questions.length + 1,
       // Candidate-facing instruction text, shown before the timer starts. Contains no answers.
       ...(sections && typeof payload.instructions === 'string' && payload.instructions.trim() ? { instructions: payload.instructions.trim().slice(0, 1500) } : {}),

@@ -286,7 +286,7 @@ export default function CandidateAssessment({catalogItem}) {
       slug={catalogItem?.slug || client.slug || ''}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
       sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count ?? client.item_count}
-      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''}
+      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''} parallelForms={Boolean(catalogItem?.parallel_forms)}
       hasInvitation={Boolean(invitationToken.current)} onStart={invitationToken.current || catalogItem?.slug ? start : undefined} isStarting={isStarting} error={error} />;
   }
   if (phase === 'complete') {

@@ -9,11 +9,11 @@ function seed(db,{id='public',status='published',published=true,payload}={}) {
  db.sqlite.prepare('INSERT INTO assessment_versions VALUES (?,?,?,?,?,?,?,?)').run(id+'-version',id,'v1',JSON.stringify(payload),JSON.stringify({private_canary:'PRIVATE_CATALOG_CANARY'}),'test-only',published?at:null,at);
 }
 const get=db=>onRequest({env:{ASSESSMENT_DB:db},request:new Request('https://example.invalid/api/assessment/catalog')});
-test('catalogue exposes only six metadata fields, never question or marking data',async()=>{
+test('catalogue exposes only seven metadata fields (incl. a parallel-forms yes/no), never question or marking data',async()=>{
  const db=database();
  seed(db,{payload:{format:'battery-v2',sections:[{title:'Technical knowledge',items:[{prompt:'PRIVATE_CATALOG_CANARY',options:['PRIVATE_CATALOG_CANARY'],answer:'PRIVATE_CATALOG_CANARY'}]},{title:'Reconciliation',items:[{workbook:'PRIVATE_CATALOG_CANARY'}]}],workbook:{source:{A1:'PRIVATE_CATALOG_CANARY'}},scoring_key:'PRIVATE_CATALOG_CANARY'}});
  const response=await get(db);assert.equal(response.status,200);
- assert.deepEqual(await response.json(),[{slug:'public',title:'Accounts Payable Clerk',client_name:'Example client',duration_minutes:10,section_titles:['Technical knowledge','Reconciliation'],item_count:2}]);
+ assert.deepEqual(await response.json(),[{slug:'public',title:'Accounts Payable Clerk',client_name:'Example client',duration_minutes:10,section_titles:['Technical knowledge','Reconciliation'],parallel_forms:false,item_count:2}]);
  const serialized=await (await get(db)).text();assert.doesNotMatch(serialized,/PRIVATE_CATALOG_CANARY|prompt|options|answer|workbook|scoring_key/);
 });
 test('catalogue excludes drafts, retired definitions and unpublished versions',async()=>{
@@ -51,6 +51,6 @@ test('catalogue includes battery instruction text for the start briefing, and no
  seed(db,{payload:{format:'battery-v2',instructions:'  Read the documents. You have 20 minutes.  ',sections:[{title:'Knowledge',items:[{prompt:'PRIVATE_CATALOG_CANARY'}]}],workbook:{source:{A1:'PRIVATE_CATALOG_CANARY'}}}});
  const [item]=await (await get(db)).json();
  assert.equal(item.instructions,'Read the documents. You have 20 minutes.');
- assert.deepEqual(Object.keys(item).sort(),['client_name','duration_minutes','instructions','item_count','section_titles','slug','title']);
+ assert.deepEqual(Object.keys(item).sort(),['client_name','duration_minutes','instructions','item_count','parallel_forms','section_titles','slug','title']);
  assert.doesNotMatch(JSON.stringify(item),/PRIVATE_CATALOG_CANARY/);
 });

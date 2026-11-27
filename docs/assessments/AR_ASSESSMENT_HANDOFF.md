@@ -3,6 +3,33 @@
 Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; every point scored automatically; not published, not piloted, not validated.**
 Last updated: 2026-11-05. **Superseded in part on 2026-11-23 — read section 0 first.**
 
+## 0b. 2026-11-27: two attempts and parallel forms
+
+Why: repeat attempts on the same questions raised scores by memory, not skill (one AR candidate: 39, 65, 96 on the same
+form within an hour; one AP candidate: 46 to 81 over nine starts).
+
+- **Two attempts** per ID number (was three); the second is final. All candidate copy and the refusal message say so.
+- **Parallel forms** (`migrations/assessments/0010_assessment_forms.sql`, `functions/lib/assessment-forms.js`). An
+  assessment may hold forms A, B, C: the same blueprint (sections, item types, points, option and line counts, enforced
+  at publish) with different parties, figures, dates and answer positions. A start draws at random from the active
+  forms the ID number has not taken; nobody is given the same form twice, and a corrected form keeps its label so a
+  correction is never re-exposed. No forms configured means the old behaviour. The recruiter list, report and result
+  email name the form. The public catalogue exposes only a `parallel_forms` yes/no, used to tell candidates that a
+  second attempt uses different questions.
+- **AR:** forms A (v3), B (v4), C (v5) active in production. B and C built privately
+  (`private/assessments/ar-clerk-v1/build-forms.mjs`, 46 checks incl. same blueprint, no shared parties, document numbers
+  or answer figures with A, answer positions differing, no marked amount in any prompt).
+- **AP:** forms B (v3) and C (v4) are built (`private/assessments/ap-clerk-v2/build-forms.mjs`, 41 checks) and stored in
+  production **but switched off** on owner instruction ("finish AR first"); AP keeps its single current version until
+  they are switched on (`UPDATE assessment_forms SET active=1 ...` for ap-clerk-v2).
+- Finding for the owner: live AP form A has 13 of 15 choice answers in position 1 or 2 (7 in position 2).
+- Production: migration 0010 applied and recorded. Migration `0008_hr_pilot_state.sql` (HR pilot) is not applied in
+  production; not part of this change.
+- Verified: unit and API tests; local end-to-end with the real packages (60 people x 2 attempts: no repeated form,
+  every third start refused, every perfect sheet 100 on its own form). Browser suites: 28 pass; 7 fail identically on
+  `main` (pre-existing). Forms are isomorphs, not statistically equated: compare form-level averages once real data
+  exists.
+
 ## 0a. 2026-11-24: changes after go-live
 
 Current live version: **`ar-clerk-v1` v3**. Not SME-reviewed, not piloted.
