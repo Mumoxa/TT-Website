@@ -167,7 +167,7 @@ function ResultReport({ report, onBack, onRecorded }) {
       <span className="tta-admin-kicker">Confidential · Assessment evidence</span>
       <h1>{report.candidate.first_name} {report.candidate.surname}</h1>
       <p className="tta-report-subtitle">{report.assessment.title} · {report.assessment.client_name}</p>
-      <p className="tta-report-attempt">Attempt {a.attempt_number||1}</p>
+      <p className="tta-report-attempt">Attempt {a.attempt_number||1}{a.form_label ? ' · Form ' + a.form_label : ''}</p>
       <p className="tta-admin-muted">{report.candidate.email} · {formattedTime(a.started_at_ms)} · {a.status}</p>
     </div>
     <div className="tta-report-summary-label">Assessment overview</div>
@@ -383,7 +383,7 @@ function Workspace({ onExpired }) {
         <thead><tr><th>Candidate</th><th>Attempt</th><th>Status</th><th>Score</th><th>Started</th><th>Report</th></tr></thead>
         <tbody>{visible.length ? visible.map((a) => <tr key={a.id}>
           <td><strong>{a.first_name} {a.surname}</strong><small>{a.email}</small></td>
-          <td><span className="tta-mobile-label" aria-hidden="true">Attempt</span>{a.attempt_number||1}</td>
+          <td><span className="tta-mobile-label" aria-hidden="true">Attempt</span>{a.attempt_number||1}{a.form_label ? ' · Form ' + a.form_label : ''}</td>
           <td><span className="tta-mobile-label" aria-hidden="true">Status</span>{a.status}</td>
           <td><span className="tta-mobile-label" aria-hidden="true">Score</span>{a.overall_score ?? '—'}</td>
           <td><span className="tta-mobile-label" aria-hidden="true">Started</span>{formattedTime(a.started_at_ms)}</td>
@@ -393,7 +393,7 @@ function Workspace({ onExpired }) {
     </section>}
     {tab === 'invitations' && <section className="tta-admin-panel">
       <h2>Create candidate invitation</h2>
-      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered, and each ID number can start at most 3 times.</p>
+      <p>Invitations are individual and valid for seven days by default. Candidates can also start from the public assessment link. Repeat attempts are numbered. Each ID number can start at most 2 times, the second is final, and nobody is given the same form twice.</p>
       <form onSubmit={invitation} className="tta-admin-form">
         <label>Published assessment
           <select value={selectedDefinition} onChange={(e) => setSelectedDefinition(e.target.value)} required>

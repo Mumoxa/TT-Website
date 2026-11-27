@@ -156,7 +156,8 @@ function itemReviewHtml(items) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
 }
 
-export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false, screening={}, attemptNumber=1, speed = null }) {
+export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false, screening={}, attemptNumber=1, speed = null, formLabel = null }) {
+  const attemptLabel = `Attempt ${attemptNumber}${formLabel ? ` · Form ${formLabel}` : ''}`;
   const details=publicScreening(screening);
   const labels={contact_number_masked:'Contact number',id_number_masked:'South African ID number',earliest_start_date:'Earliest start date',first_day_confirmed:'First day confirmed',travel_mode:'Travel mode',travel_description:'Route description',own_transport:'Own transport',assignment_available:'Available for a 2-month assignment',assignment_note:'Availability note'};
   const screeningRows=Object.entries(details)
@@ -166,7 +167,7 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
   const flags = result.critical_flags || [];
   const b = result.breakdown || {};
   const verdict = flags.length ? 'Review flags' : 'No critical flags';
-  const subject = `[Assessment] Attempt ${attemptNumber} — ${title} — ${name}: ${result.overall_score}/100`;
+  const subject = `[Assessment] ${attemptLabel} — ${title} — ${name}: ${result.overall_score}/100`;
   const batteryStyle = isBattery || Boolean(b.categories);
   const scoring = batteryStyle ? batteryScoringHtml(b) : v1ScoringHtml(b);
   const reviewTitle = batteryStyle ? 'Item review' : 'Knowledge questions';
@@ -179,7 +180,7 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
   <tr><td style="background:${C.inkDeep};padding:26px 32px 28px;border-radius:4px 4px 0 0;">
     <div style="font:500 20px/1 ${SERIF};color:#ffffff;">Talent Tree</div>
-    <div style="margin-top:26px;font:700 11px/1.2 ${SANS};letter-spacing:1.8px;text-transform:uppercase;color:${C.accentBright};">Assessment result · Attempt ${escapeHtml(attemptNumber)}</div>
+    <div style="margin-top:26px;font:700 11px/1.2 ${SANS};letter-spacing:1.8px;text-transform:uppercase;color:${C.accentBright};">Assessment result · ${escapeHtml(attemptLabel)}</div>
     <h1 style="margin:10px 0 8px;font:500 28px/1.2 ${SERIF};color:#ffffff;">${escapeHtml(title)}</h1>
     <div style="font:14px/1.6 ${SANS};color:${C.mutedOnDark};">${escapeHtml(clientName)} · Status: ${escapeHtml(status)} · Graded ${escapeHtml(gradedAt)}</div>
   </td></tr>
@@ -202,7 +203,7 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
 </body></html>`;
 
   const text = [
-    `Attempt ${attemptNumber}`,
+    attemptLabel,
     'Screening details',
     ...screeningRows.map(([label,value])=>`${label}: ${value}`),
     `${title} — ${name} <${candidate.email}>`,
@@ -314,7 +315,7 @@ export async function sendResultEmail(env, message, fetchImpl = fetch, slug = ''
    answers with the same pure function the API uses, so the email matches the saved result. */
 async function loadResultForEmail(db, attemptId) {
   const row = await db.prepare(
-    'SELECT a.id, d.slug, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
+    'SELECT a.id, d.slug, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
     'v.question_payload_json, v.scoring_key_json, r.overall_score, r.knowledge_score, r.reconciliation_score, ' +
     'r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
@@ -373,6 +374,7 @@ async function loadResultForEmail(db, attemptId) {
     mcqReview,
     speed,
     slug: row.slug,
+    formLabel: row.form_label || null,
   };
 }
 

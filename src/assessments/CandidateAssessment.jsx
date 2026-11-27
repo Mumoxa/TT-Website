@@ -23,7 +23,7 @@ function batteryItemAnswered(item, draft) {
 /* Submitting ends the attempt and uses one of a candidate's three starts, so one click must not do it.
    The dialog shows what is still unanswered, defaults to going back, and stays open with 'Submitting…'
    until the server confirms, so the candidate always sees that the click did something. */
-function SubmitConfirm({ answered, total, submitting, onConfirm, onCancel }) {
+function SubmitConfirm({ answered, total, submitting, onConfirm, onCancel, attemptNumber = 1 }) {
   const backRef = useRef(null);
   useEffect(() => { backRef.current?.focus(); }, []);
   const missing = total == null ? 0 : total - answered;
@@ -34,7 +34,7 @@ function SubmitConfirm({ answered, total, submitting, onConfirm, onCancel }) {
         <div id="ca-submit-text">
           {total != null && <p>You have answered <strong>{answered} of {total}</strong> activities.</p>}
           {missing > 0 && <p className="ca-modal-note">{missing === 1 ? '1 activity is' : missing + ' activities are'} still unanswered. Unanswered activities score zero.</p>}
-          <p>After you submit you cannot change your answers. This attempt counts as one of your three.</p>
+          <p>After you submit you cannot change your answers. {attemptNumber >= 2 ? 'This is your second and final attempt.' : 'This counts as the first of your 2 attempts.'}</p>
         </div>
         <div className="ca-modal-actions">
           <button ref={backRef} type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={submitting}>Back to the assessment</button>
@@ -341,7 +341,7 @@ export default function CandidateAssessment({catalogItem}) {
               onClick={() => setConfirmingSubmit(true)}>{submitting ? 'Submitting…' : 'Submit assessment'} <span aria-hidden="true">→</span></button>
           </div>
         </fieldset>
-        {confirmingSubmit && !expired && <SubmitConfirm answered={answeredCount} total={batteryItems.length} submitting={submitting}
+        {confirmingSubmit && !expired && <SubmitConfirm attemptNumber={attempt?.attempt_number||1} answered={answeredCount} total={batteryItems.length} submitting={submitting}
           onConfirm={() => void submit()} onCancel={() => setConfirmingSubmit(false)} />}
       </AssessmentRunnerLayout>
     );
@@ -439,7 +439,7 @@ export default function CandidateAssessment({catalogItem}) {
           </>
         )}
       </div>
-      {confirmingSubmit && !expired && <SubmitConfirm answered={null} total={null} submitting={submitting}
+      {confirmingSubmit && !expired && <SubmitConfirm attemptNumber={attempt?.attempt_number||1} answered={null} total={null} submitting={submitting}
         onConfirm={() => void submit()} onCancel={() => setConfirmingSubmit(false)} />}
       </fieldset>
     </AssessmentRunnerLayout>
