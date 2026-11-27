@@ -31,6 +31,7 @@ import { notifyPendingResults } from '../../lib/assessment-email.js';
 import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
 import { combineScores } from '../../lib/assessment-review.js';
 import { speedAccuracy } from '../../lib/speed-accuracy.js';
+import { activeForms, takenFormLabels, chooseForm, secureRandom, formShape, formLabelOf, FORM_LABELS } from '../../lib/assessment-forms.js';
 
 const HEADER = 'x-tt-assessment-admin';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -206,10 +207,13 @@ async function saveProgress(db, a, data, submit = false) {
   return apiJson({ ok: true, ...(submit ? {status:'completed'} : {}), save_revision: expectedRevision + 1, saved_at_ms: now, server_now_ms: Date.now() });
 }
 
-// Owner decision 2026-11-05: each person (by South African ID number) may start an assessment at most 3 times.
-// Every start counts, whether it was submitted, timed out or left unfinished.
-export const MAX_ATTEMPTS_PER_ID = 3;
-const ATTEMPT_LIMIT_MESSAGE = 'You have used all ' + MAX_ATTEMPTS_PER_ID + ' attempts for this assessment. If you think this is a mistake, email hello@talenttree.co.za.';
+// Owner decision 2026-11-27 (was 3 from 2026-11-05): each person (by South African ID number) may start an
+// assessment at most 2 times, and the second attempt is final. Every start counts, whether it was submitted, timed
+// out or left unfinished. Repeat attempts on the same questions raised scores by memory, so a person is also never
+// given the same parallel form twice (see functions/lib/assessment-forms.js).
+export const MAX_ATTEMPTS_PER_ID = 2;
+const ATTEMPT_LIMIT_MESSAGE = 'You have used both attempts for this assessment. Your second attempt is final. If you think this is a mistake, email hello@talenttree.co.za.';
+const FORMS_EXHAUSTED_MESSAGE = 'You have already taken every version of this assessment. If you think this is a mistake, email hello@talenttree.co.za.';
 
 async function startAttempt(request, db, env) {
   const data=await requestJson(request);
@@ -227,7 +231,14 @@ async function startAttempt(request, db, env) {
     if(!invited||invited.status!=='issued'||Date.parse(invited.expires_at)<=Date.now()||invited.assessment_status!=='published'||!invited.current_version_id)return failure('This invitation is unavailable or has expired. Contact your recruiter.',403);
     if(invited.intended_email&&invited.intended_email.toLowerCase()!==identity.email)return failure('Please use the email address associated with your invitation.',403);
   }
-  const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(invited.current_version_id).first();
+  // Parallel forms: draw at random from the active forms this person has not taken for this assessment.
+  // Without forms the assessment's current version is used, as before.
+  const hash=await identityHash(env,invited.definition_id,screening.id_number);
+  const forms=await activeForms(db,invited.definition_id);
+  const pick=chooseForm(forms,forms.length?await takenFormLabels(db,invited.definition_id,hash):[],secureRandom);
+  if(pick.exhausted)return failure(FORMS_EXHAUSTED_MESSAGE,403);
+  const versionId=pick.form?pick.form.version_id:invited.current_version_id;
+  const version=await db.prepare('SELECT question_payload_json,scoring_key_json FROM assessment_versions WHERE id=?').bind(versionId).first();
   const payload=safeParse(version?.question_payload_json,{});
   // HR lacks its candidate runner and review flow. Do not start a timed attempt
   // even if an HR version was inserted or published outside this API.
@@ -246,7 +257,6 @@ async function startAttempt(request, db, env) {
   }
   const maxAttempts=personality?PERSONALITY_MAX_ATTEMPTS:MAX_ATTEMPTS_PER_ID;
   const limitMessage=personality?PERSONALITY_ATTEMPT_MESSAGE:ATTEMPT_LIMIT_MESSAGE;
-  const hash=await identityHash(env,invited.definition_id,screening.id_number);
   const used=await db.prepare('SELECT COUNT(*) AS n FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=?').bind(invited.definition_id,hash).first();
   if(Number(used?.n||0)>=maxAttempts)return failure(limitMessage,403);
   const ciphertext=await encryptId(env,screening.id_number);
@@ -256,12 +266,14 @@ async function startAttempt(request, db, env) {
   if(open)operations.push(db.prepare("INSERT INTO invitations (id,definition_id,token_sha256,status,issued_at,expires_at,redeemed_at,created_at) VALUES (?,?,?,'redeemed',?,?,?,?)").bind(invited.id,invited.definition_id,await tokenHash(newToken()),at,new Date(start.expires_at_ms).toISOString(),at,at));
   const columns='id,first_name,surname,email,privacy_notice_version,consent_recorded_at,created_at,contact_number,id_number_encrypted,id_number_masked,earliest_start_date,first_day_confirmed,travel_mode,travel_description,own_transport,assignment_available,assignment_note';
   const values=[candidateId,identity.first_name,identity.surname,identity.email,personality?PERSONALITY_NOTICE_VERSION:'open-assessment-retained-results-v2',at,at,screening.contact_number,ciphertext,maskId(screening.id_number),screening.earliest_start_date,1,screening.travel_mode,screening.travel_description,screening.own_transport,screening.assignment_available,screening.assignment_note];
-  const condition=open?"EXISTS (SELECT id FROM assessment_definitions WHERE id=? AND status='published' AND current_version_id=?)":"EXISTS (SELECT i.id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.status='issued' AND i.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND d.status='published' AND d.current_version_id=?)";
-  operations.push(db.prepare('INSERT INTO candidates ('+columns+') SELECT '+values.map(()=>'?').join(',')+' WHERE '+condition).bind(...values,open?invited.definition_id:invited.id,invited.current_version_id));
+  // The chosen version must still be live when the write commits: the current version, or an active form.
+  const live="(d.current_version_id=? OR EXISTS (SELECT 1 FROM assessment_forms f WHERE f.definition_id=d.id AND f.version_id=? AND f.active=1))";
+  const condition=open?"EXISTS (SELECT d.id FROM assessment_definitions d WHERE d.id=? AND d.status='published' AND "+live+")":"EXISTS (SELECT i.id FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.status='issued' AND i.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND d.status='published' AND "+live+")";
+  operations.push(db.prepare('INSERT INTO candidates ('+columns+') SELECT '+values.map(()=>'?').join(',')+' WHERE '+condition).bind(...values,open?invited.definition_id:invited.id,versionId,versionId));
   // Allocate the next ordinal atomically with the new candidate and attempt graph.
   // The limit is enforced again inside the write, so two simultaneous starts cannot both pass the check above.
   operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=? HAVING COUNT(*)<?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash,maxAttempts));
-  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,invited.current_version_id,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,candidateId));
+  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,versionId,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,candidateId));
   if(!open)operations.push(db.prepare("UPDATE invitations SET status='redeemed',redeemed_at=? WHERE id=? AND status='issued'").bind(at,invited.id));
   await db.batch(operations);
   const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json,v.scoring_key_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
@@ -365,6 +377,25 @@ async function adminPublish(request,db) {
   }
   const at=nowIso();
   const metadata=JSON.parse(version.question_payload_json)._metadata||{};
+  // Parallel forms: publishing with form_label adds this version as form A, B, C... of the assessment. It must share
+  // the blueprint of the forms already live; a new version of an existing label replaces that form and keeps its
+  // label, so anyone who took the old version is never given its correction.
+  if(data.form_label!==undefined){
+    if(personalityDraft||!FORM_LABELS.includes(data.form_label))return failure('Form label must be one of '+FORM_LABELS.join(', ')+'.',400);
+    const live=await db.prepare("SELECT v.question_payload_json FROM assessment_forms f JOIN assessment_versions v ON v.id=f.version_id WHERE f.definition_id=? AND f.active=1 AND f.form_label<>? LIMIT 1").bind(version.definition_id,data.form_label).first()
+      || await db.prepare('SELECT v.question_payload_json FROM assessment_definitions d JOIN assessment_versions v ON v.id=d.current_version_id WHERE d.id=? AND d.current_version_id<>?').bind(version.definition_id,version.id).first();
+    if(live&&formShape(safeParse(live.question_payload_json,{}))!==formShape(JSON.parse(version.question_payload_json)))return failure('This version does not match the blueprint of the live forms (sections, activity types, points and option counts). Parallel forms must share it.',400);
+    const hasCurrent=await db.prepare("SELECT current_version_id FROM assessment_definitions WHERE id=? AND current_version_id IS NOT NULL AND status='published'").bind(version.definition_id).first();
+    await db.batch([
+      db.prepare('UPDATE assessment_versions SET published_at=COALESCE(published_at,?) WHERE id=?').bind(at,version.id),
+      db.prepare('UPDATE assessment_forms SET active=0 WHERE definition_id=? AND form_label=? AND active=1').bind(version.definition_id,data.form_label),
+      db.prepare('INSERT INTO assessment_forms (definition_id,version_id,form_label,active,created_at) VALUES (?,?,?,1,?) ON CONFLICT(definition_id,version_id) DO UPDATE SET form_label=excluded.form_label,active=1').bind(version.definition_id,version.id,data.form_label,at),
+      // Form A (or the first form of an unpublished assessment) is the catalogue's reference version.
+      ...(data.form_label==='A'||!hasCurrent?[db.prepare('UPDATE assessment_definitions SET current_version_id=?,status=?,duration_seconds=?,updated_at=?,title=COALESCE(?,title),client_name=COALESCE(?,client_name) WHERE id=?').bind(version.id,'published',DEFAULT_ASSESSMENT_SECONDS,at,metadata.title||null,metadata.client_name||null,version.definition_id)]:[]),
+      db.prepare('INSERT INTO audit_events (id,actor_type,actor_id,event_type,safe_metadata_json,created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id(),'admin',version.id,'assessment.published',JSON.stringify({approval_reference:data.approval_reference.trim(),content_approved:true,privacy_approved:true,form_label:data.form_label}),at),
+    ]);
+    return apiJson({ok:true,assessment_id:version.definition_id,version_id:version.id,version_label:version.version_label,form_label:data.form_label});
+  }
   await db.batch([
     db.prepare('UPDATE assessment_versions SET published_at=COALESCE(published_at,?) WHERE id=?').bind(at,version.id),
     db.prepare('UPDATE assessment_definitions SET current_version_id=?,status=?,duration_seconds=?,updated_at=?,title=COALESCE(?,title),client_name=COALESCE(?,client_name) WHERE id=?').bind(version.id,'published',personalityDraft?PERSONALITY_SECONDS:DEFAULT_ASSESSMENT_SECONDS,at,metadata.title||null,metadata.client_name||null,version.definition_id),
@@ -414,7 +445,7 @@ async function adminList(db) {
     db.prepare("SELECT d.id,d.slug,d.client_name,d.title,d.status,d.duration_seconds,d.updated_at, (SELECT v.id FROM assessment_versions v WHERE v.definition_id=d.id ORDER BY v.created_at DESC,v.version_label DESC LIMIT 1) AS latest_version_id FROM assessment_definitions d ORDER BY d.updated_at DESC LIMIT 100"),
     db.prepare(
       'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, c.first_name, c.surname, c.email, c.earliest_start_date, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
-      'd.client_name, d.title, r.overall_score, r.knowledge_score, r.reconciliation_score, r.critical_flags_json ' +
+      'd.client_name, d.title, r.overall_score, r.knowledge_score, r.reconciliation_score, r.critical_flags_json, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label ' +
       'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
       'LEFT JOIN results r ON r.attempt_id=a.id ORDER BY a.started_at_ms DESC LIMIT 100'
     ),
@@ -451,7 +482,7 @@ async function batteryReport(db, a, attemptId) {
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
     screening: publicScreening(a),
     assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format, sheets: payloadObj.workbook?.sheets || null },
-    attempt: { id: a.id, attempt_number:a.attempt_number||1, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
+    attempt: { id: a.id, attempt_number:a.attempt_number||1, form_label: a.form_label||null, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
     responses: answers,
     question_review: graded.items.map((i) => ({
       id: i.id, section: i.section, category: i.category, prompt: i.prompt, chosen: i.given ?? 'Not answered',
@@ -505,7 +536,7 @@ async function adminDecision(request, db, attemptId) {
 async function adminReport(db, attemptId, env = {}) {
   if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
   const a = await db.prepare(
-    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
+    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
     'a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number, c.id_number_masked, c.earliest_start_date, c.first_day_confirmed, c.travel_mode, c.travel_description, c.own_transport, c.assignment_available, c.assignment_note, ' +
     'd.client_name, d.title, v.version_label, v.question_payload_json, v.scoring_key_json, ' +
     'r.overall_score, r.knowledge_score, r.reconciliation_score, r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
@@ -541,7 +572,7 @@ async function adminReport(db, attemptId, env = {}) {
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
     screening: publicScreening(a),
     assessment: { client_name: safeParse(a.question_payload_json,{})._metadata?.client_name || a.client_name, title: safeParse(a.question_payload_json,{})._metadata?.title || a.title, version: a.version_label, scenario: safeParse(a.question_payload_json, {}).scenario },
-    attempt: { id: a.id, attempt_number:a.attempt_number||1, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
+    attempt: { id: a.id, attempt_number:a.attempt_number||1, form_label: a.form_label||null, status: a.status, started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms, closed_at_ms: a.closed_at_ms, last_saved_at_ms: a.last_saved_at_ms },
     responses: { mcq: safeParse(a.mcq_answers_json, {}), structured: safeParse(a.structured_answers_json, {}), workbook: safeParse(a.workbook_json, {}) },
     question_review: safeParse(a.question_payload_json, {}).questions?.map((q) => {
       const chosenId = safeParse(a.mcq_answers_json, {})[q.id] || null;

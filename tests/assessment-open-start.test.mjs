@@ -59,7 +59,8 @@ test('screening is masked in recruiter report and actual notification; repeat re
  // No retention process removes old actual results or hash history.
  t.db.sqlite.prepare('UPDATE attempts SET closed_at_ms=?').run(Date.now()-90*86400000);
  await t.call('admin/list',undefined,admin.cookie);assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM results').get().n,2);
- const third=await t.call('start',t.fields);assert.equal(third.data.attempt_number,3);
+ // Two attempts per person (owner decision 2026-11-27): a third start is refused even with results retained.
+ const third=await t.call('start',t.fields);assert.equal(third.status,403);assert.match(third.data.message,/both attempts/);
 });
 
 import {notifyPendingResults} from '../functions/lib/assessment-email.js';
@@ -91,19 +92,19 @@ test('private protocol identifiers needing brand review are rejected before a ti
  t.db.sqlite.prepare('UPDATE assessment_versions SET question_payload_json=?,scoring_key_json=?').run(JSON.stringify(payload),JSON.stringify(key));
  const result=await t.call('start',t.fields);assert.equal(result.status,503);assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM attempts').get().n,0);
 });
-test('a person can start at most 3 times; the 4th start is refused and creates no attempt',async()=>{
+test('a person can start at most 2 times; the 3rd start is refused and creates no attempt',async()=>{
  const t=await setup();
- for(let i=1;i<=3;i+=1){const r=await t.call('start',{...t.fields,email:`try${i}@example.invalid`});assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.attempt_number,i);}
- const fourth=await t.call('start',{...t.fields,email:'try4@example.invalid'});
- assert.equal(fourth.status,403);assert.match(fourth.data.message||fourth.data.error||JSON.stringify(fourth.data),/all 3 attempts/);
- assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM attempts').get().n,3);
- assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM assessment_identity_attempts').get().n,3);
+ for(let i=1;i<=2;i+=1){const r=await t.call('start',{...t.fields,email:`try${i}@example.invalid`});assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.attempt_number,i);}
+ const third=await t.call('start',{...t.fields,email:'try3@example.invalid'});
+ assert.equal(third.status,403);assert.match(third.data.message||third.data.error||JSON.stringify(third.data),/both attempts.*second attempt is final/);
+ assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM attempts').get().n,2);
+ assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM assessment_identity_attempts').get().n,2);
  // A different ID number is unaffected.
  const other=await t.call('start',{...t.fields,...screeningFixture(9),email:'other@example.invalid'});assert.equal(other.status,200,JSON.stringify(other.data));assert.equal(other.data.attempt_number,1);
 });
 test('simultaneous starts cannot exceed the limit',async()=>{
  const t=await setup();
  const results=await Promise.all([1,2,3,4,5].map((i)=>t.call('start',{...t.fields,email:`race${i}@example.invalid`})));
- assert.equal(results.filter((r)=>r.status===200).length,3,JSON.stringify(results.map((r)=>r.status)));
- assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM attempts').get().n,3);
+ assert.equal(results.filter((r)=>r.status===200).length,2,JSON.stringify(results.map((r)=>r.status)));
+ assert.equal(t.db.sqlite.prepare('SELECT count(*) n FROM attempts').get().n,2);
 });

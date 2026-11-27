@@ -93,7 +93,7 @@ function PersonalityPrivacyNotice({ withConsentLine = true }) {
 const cleanName = value => value.trim().replace(/\s+/g, ' ');
 
 /* Shown after the details are valid and before the attempt starts. The timer starts only on OK. */
-function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting, personality = false, reasoningCount = 0 }) {
+function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isStarting, personality = false, reasoningCount = 0, parallelForms = false }) {
   const okRef = React.useRef(null);
   React.useEffect(() => { okRef.current?.focus(); }, []);
   return (
@@ -101,7 +101,7 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
       <div className="ca-modal" role="dialog" aria-modal="true" aria-labelledby="ca-brief-title" aria-describedby="ca-brief-text">
         <h2 id="ca-brief-title">{personality ? 'Before you begin' : 'Before the timer starts'}</h2>
         <div id="ca-brief-text" className="ca-brief-text"><InstructionText text={personality ? `Part 1 has 50 short statements, five to a screen: choose how accurately each one describes you.${reasoningCount > 0 ? ` Then come ${reasoningCount} short numeric and cognitive reasoning questions, each with one correct answer. You may use a calculator.` : ''} Your answers save as you go.` : (instructions || `You have ${durationMinutes} minutes, including reading. Your work saves automatically.`)} /></div>
-        <p className="ca-modal-note">{personality ? `The ${durationMinutes}-minute timer starts when you click OK and cannot be paused. You can take this assessment once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your three attempts, even if you do not submit.`}</p>
+        <p className="ca-modal-note">{personality ? `The ${durationMinutes}-minute timer starts when you click OK and cannot be paused. You can take this assessment once with your ID number.` : `The ${durationMinutes}-minute timer starts when you click OK. It cannot be paused or reset. Starting uses one of your 2 attempts, even if you do not submit. Treat this as your real attempt: a second attempt ${parallelForms ? 'uses different questions and ' : ''}is final.`}</p>
         <div className="ca-modal-actions">
           <button type="button" className="ca-btn ca-btn--quiet" onClick={onCancel} disabled={isStarting}>Back</button>
           <button ref={okRef} type="button" className="ca-btn ca-btn--primary" onClick={onConfirm} disabled={isStarting}>{isStarting ? 'Starting…' : personality ? 'OK, begin' : 'OK, start the timer'}</button>
@@ -111,7 +111,7 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
   );
 }
 
-export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug='',kind=''}) {
+export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug='',kind='',parallelForms=false}) {
   const personality = kind === 'personality';
   // Reasoning questions exist only on versions that carry them; never assume a count.
   const reasoningCount = personality && Number.isInteger(itemCount) && itemCount > 50 ? itemCount - 50 : 0;
@@ -159,7 +159,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
             <li>Choose answers, and type amounts in the box under each practical task. You may use a calculator and scrap paper.</li>
             <li>Answers save automatically. You see your results when you submit.</li>
             <li>Use a laptop or desktop and have your ID number ready.</li>
-            <li>You can take this assessment up to 3 times. Every start counts, so start when you are ready.</li>
+            <li>You have 2 attempts, and every start counts. Treat your first as your real attempt. A second attempt {parallelForms ? 'uses different questions and ' : ''}is final, so keep it for when something goes wrong, such as a power or connection failure.</li>
           </ul>}
         </section>
       </div>
@@ -188,7 +188,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
           </form>
         </>}
       </section>
-      {pending && <StartBriefing personality={personality} reasoningCount={reasoningCount} instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
+      {pending && <StartBriefing parallelForms={parallelForms} personality={personality} reasoningCount={reasoningCount} instructions={startInstructions} durationMinutes={durationMinutes} isStarting={isStarting}
         onCancel={()=>setPending(null)} onConfirm={()=>onStart(pending)} />}
     </main>
   </AssessmentFrame>;
@@ -326,7 +326,7 @@ export function AssessmentComplete({ client = '', timedOut = false, candidateNam
           <aside className="ca-complete-side" aria-label="Next steps">
             <h2>What happens next</h2>
             <p>Your recruiter will contact you regarding next steps. You may now close this window.</p>
-            <p>{personality ? 'You do not need to do anything else. The questionnaire can be taken once with each ID number.' : 'Each person can take this assessment up to 3 times. Every start counts, including one that is not submitted.'}</p>
+            <p>{personality ? 'You do not need to do anything else. The questionnaire can be taken once with each ID number.' : (attemptNumber >= 2 ? 'This was your second and final attempt.' : 'You have one more attempt only if something went wrong, such as a power or connection failure. A second attempt is final.')}</p>
             <a className="ca-btn ca-btn--quiet ca-btn--block" href="/assessments">Back to assessments</a>
           </aside>
         </div>
