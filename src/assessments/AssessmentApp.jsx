@@ -8,6 +8,7 @@ import ScreeningFields, {emptyScreening} from './ScreeningFields.jsx';
 import {normalizeScreening} from './screening.js';
 import {AssessmentPractice} from './AssessmentPractice.jsx';
 import {practiceForSlug} from './practice-tables.js';
+import {INTEGRITY_STATEMENT, INTEGRITY_STATEMENT_VERSION} from './integrity.js';
 import {PERSONALITY_NOTICE, PERSONALITY_NOTICE_VERSION} from './personality-notice.js';
 
 /**
@@ -111,7 +112,7 @@ function StartBriefing({ instructions, durationMinutes, onConfirm, onCancel, isS
   );
 }
 
-export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug='',kind='',parallelForms=false}) {
+export function AssessmentWelcome({client='',assessmentTitle='Assessment',durationMinutes=10,sectionTitles,itemCount,onStart,isStarting=false,error='',startInstructions='',slug='',kind='',parallelForms=false,integrityChecks=false}) {
   const personality = kind === 'personality';
   // Reasoning questions exist only on versions that carry them; never assume a count.
   const reasoningCount = personality && Number.isInteger(itemCount) && itemCount > 50 ? itemCount - 50 : 0;
@@ -124,11 +125,12 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
   const [pending,setPending]=useState(null);
   // A failed start closes the briefing so the error on the form is visible; the next Start reopens it.
   useEffect(()=>{ if(error) setPending(null); },[error]);
+  const [honesty,setHonesty]=useState(false);
   const [consent,setConsent]=useState(false),[screening,setScreening]=useState(emptyScreening),[validation,setValidation]=useState('');
-  const canStart=Boolean(onStart && !isStarting && cleanName(firstName).length>=2 && cleanName(surname).length>=2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && consent);
+  const canStart=Boolean(onStart && !isStarting && cleanName(firstName).length>=2 && cleanName(surname).length>=2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && consent && (!integrityChecks || honesty));
   function handleSubmit(event) {
     event.preventDefault();if(!canStart)return;
-    try {const normalized=normalizeScreening(screening);setValidation('');setPending({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true,...(personality?{personality_notice_version:PERSONALITY_NOTICE_VERSION}:{})});}
+    try {const normalized=normalizeScreening(screening);setValidation('');setPending({...normalized,first_name:cleanName(firstName),surname:cleanName(surname),email:email.trim().toLowerCase(),consent_acknowledged:true,...(integrityChecks?{integrity_statement_version:INTEGRITY_STATEMENT_VERSION}:{}),...(personality?{personality_notice_version:PERSONALITY_NOTICE_VERSION}:{})});}
     catch(e){setValidation(e.message);}
   }
   if(view==='practice')return <AssessmentFrame><AssessmentPractice practice={practiceForSlug(slug)} onContinue={()=>setView('form')} onBack={()=>setView('welcome')}/></AssessmentFrame>;
@@ -159,6 +161,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
             <li>Choose answers, and type amounts in the box under each practical task. You may use a calculator and scrap paper.</li>
             <li>Answers save automatically. You see your results when you submit.</li>
             <li>Use a laptop or desktop and have your ID number ready.</li>
+            {integrityChecks && <li>Work on your own: no other people, AI tools such as ChatGPT, or websites. Copying the questions is switched off, and each time you leave the assessment page the time is recorded for the recruiter.</li>}
             <li>You have 2 attempts, and every start counts. Treat your first as your real attempt. A second attempt {parallelForms ? 'uses different questions and ' : ''}is final, so keep it for when something goes wrong, such as a power or connection failure.</li>
           </ul>}
         </section>
@@ -182,6 +185,7 @@ export function AssessmentWelcome({client='',assessmentTitle='Assessment',durati
             <ScreeningFields value={screening} onChange={setScreening}/>
             {personality ? <PersonalityPrivacyNotice/> : <AssessmentPrivacyNotice/>}
             <label className="tta-consent"><input type="checkbox" checked={consent} required onChange={e=>setConsent(e.target.checked)}/><span>I agree to this processing.</span></label>
+            {integrityChecks && <label className="tta-consent"><input type="checkbox" checked={honesty} required onChange={e=>setHonesty(e.target.checked)}/><span>{INTEGRITY_STATEMENT}</span></label>}
             {(validation||error) && <p className="tta-error" role="alert">{validation||error}</p>}
             <button className="ca-btn ca-btn--primary ca-btn--block" type="submit" disabled={!canStart}>{isStarting?(personality?'Starting…':'Starting assessment…'):(personality?'Continue':'Start assessment')} <span className="ca-arrow" aria-hidden="true">↗</span></button>
             <p className="tta-form-note">{personality ? 'Nothing has started yet. You will see a short briefing next.' : 'The timer has not started. You will see the instructions next, and the timer starts only when you click OK.'}</p>

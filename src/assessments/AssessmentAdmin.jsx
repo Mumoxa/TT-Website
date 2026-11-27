@@ -86,6 +86,26 @@ export function SpeedAccuracy({ report }) {
   </section>;
 }
 
+/* Page integrity: how often and how long the candidate left the assessment page, pastes from outside and blocked
+   copies. Recorded by the server; it never changes a score and is not proof of misconduct. */
+export function IntegrityRecord({ report }) {
+  const r = report.integrity;
+  if (!r) return null;
+  const level = r.long_leaves > 0 || r.away_seconds >= 60 || r.outside_pastes > 0 ? 'Ask about this' : r.leaves > 0 || r.copy_blocked > 0 ? 'Minor' : 'Nothing recorded';
+  return <section className="tta-admin-panel" aria-labelledby="tta-integrity">
+    <h2 id="tta-integrity">Page integrity</h2>
+    <p className="tta-admin-mark-total"><strong>{level}</strong></p>
+    <dl className="tta-admin-score-breakdown">
+      <div><dt>Left the assessment page</dt><dd>{r.leaves} time{r.leaves === 1 ? '' : 's'}{r.long_leaves ? ` (${r.long_leaves} longer than 30 s)` : ''}</dd></div>
+      <div><dt>Time away in total</dt><dd>{formatDuration(r.away_seconds)}{r.leaves ? ` · longest ${formatDuration(r.longest_away_seconds)}` : ''}{r.away_at_close ? ' · was away when the time ran out' : ''}</dd></div>
+      <div><dt>Pasted text from outside the assessment</dt><dd>{r.outside_pastes}</dd></div>
+      <div><dt>Copy attempts blocked</dt><dd>{r.copy_blocked}</dd></div>
+      <div><dt>Honesty statement</dt><dd>{r.statement_accepted ? 'Accepted before starting' : 'Not recorded'}</dd></div>
+    </dl>
+    <p className="tta-admin-muted">{r.basis}</p>
+  </section>;
+}
+
 export function HandoffEvidence({ report }) {
   const notes = report.result?.review?.notes || [];
   if (!notes.length) return null;
@@ -185,6 +205,7 @@ function ResultReport({ report, onBack, onRecorded }) {
       ].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Not recorded'}</dd></div>)}</dl>
     </section>
     <SpeedAccuracy report={report} />
+    <IntegrityRecord report={report} />
     <HandoffEvidence report={report} />
     <section className="tta-admin-panel tta-report-keep-together">
       <h2>Assessment interpretation</h2>

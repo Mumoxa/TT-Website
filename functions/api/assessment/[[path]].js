@@ -31,6 +31,7 @@ import { notifyPendingResults } from '../../lib/assessment-email.js';
 import { BATTERY_FORMAT, BatteryError, batteryWorkbookRules, cleanBatteryWorkbook, gradeBattery, isBatteryPayload } from '../../lib/battery.js';
 import { combineScores } from '../../lib/assessment-review.js';
 import { speedAccuracy } from '../../lib/speed-accuracy.js';
+import { integrityOn, INTEGRITY_STATEMENT_VERSION, INTEGRITY_EVENTS, LONG_LEAVE_MS, integritySummary } from '../../../src/assessments/integrity.js';
 import { activeForms, takenFormLabels, chooseForm, secureRandom, formShape, formLabelOf, FORM_LABELS } from '../../lib/assessment-forms.js';
 
 const HEADER = 'x-tt-assessment-admin';
@@ -99,7 +100,7 @@ async function candidateAttempt(request, db) {
   if (!sessionToken) return null;
   const hash = await tokenHash(sessionToken);
   return db.prepare(
-    'SELECT ' + PUBLIC_KEYS + ', c.first_name, c.surname, c.email, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.title, d.client_name, d.duration_seconds, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
+    'SELECT ' + PUBLIC_KEYS + ', c.first_name, c.surname, c.email, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.slug, d.title, d.client_name, d.duration_seconds, v.question_payload_json, v.scoring_key_json, v.scoring_engine_version ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id ' +
     'JOIN assessment_definitions d ON d.id=a.definition_id ' +
     'JOIN assessment_versions v ON v.id=a.version_id ' +
@@ -117,6 +118,8 @@ function attemptView(a, personality = null) {
     started_at_ms: a.started_at_ms, expires_at_ms: a.expires_at_ms,
     save_revision: a.save_revision, last_saved_at_ms: a.last_saved_at_ms,
     server_now_ms: Date.now(),
+    // Copy blocking and page-leave recording are on for this assessment (see src/assessments/integrity.js).
+    ...(integrityOn(a.slug) && !isPersonality ? { integrity_checks: true } : {}),
     responses: {
       mcq: safeParse(a.mcq_answers_json, {}),
       structured: safeParse(a.structured_answers_json, {}),
@@ -255,6 +258,8 @@ async function startAttempt(request, db, env) {
   // Check the public projection before creating a timed attempt; never alias opaque IDs.
   if(assessmentContentNeedsBrandReview({assessment:publicAssessment(version)}))return failure('Assessment content needs a branding review. Please contact Talent Tree.',503);
   }
+  const integrity=!personality&&integrityOn(invited.slug);
+  if(integrity&&data.integrity_statement_version!==INTEGRITY_STATEMENT_VERSION)return failure('Please confirm the honesty statement before starting.',400);
   const maxAttempts=personality?PERSONALITY_MAX_ATTEMPTS:MAX_ATTEMPTS_PER_ID;
   const limitMessage=personality?PERSONALITY_ATTEMPT_MESSAGE:ATTEMPT_LIMIT_MESSAGE;
   const used=await db.prepare('SELECT COUNT(*) AS n FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=?').bind(invited.definition_id,hash).first();
@@ -273,10 +278,10 @@ async function startAttempt(request, db, env) {
   // Allocate the next ordinal atomically with the new candidate and attempt graph.
   // The limit is enforced again inside the write, so two simultaneous starts cannot both pass the check above.
   operations.push(db.prepare('INSERT INTO assessment_identity_attempts (definition_id,id_hash,candidate_id,created_at_ms,attempt_number) SELECT ?,?,?,?,COALESCE(MAX(attempt_number),0)+1 FROM assessment_identity_attempts WHERE definition_id=? AND id_hash=? HAVING COUNT(*)<?').bind(invited.definition_id,hash,candidateId,start.started_at_ms,invited.definition_id,hash,maxAttempts));
-  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,versionId,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,candidateId));
+  operations.push(db.prepare('INSERT INTO attempts (id,invitation_id,candidate_id,definition_id,version_id,session_token_sha256,status,started_at_ms,expires_at_ms,created_at,updated_at,integrity_statement_version) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assessment_identity_attempts WHERE candidate_id=?)').bind(attemptId,invited.id,candidateId,invited.definition_id,versionId,sessionHash,'active',start.started_at_ms,start.expires_at_ms,at,at,integrity?INTEGRITY_STATEMENT_VERSION:null,candidateId));
   if(!open)operations.push(db.prepare("UPDATE invitations SET status='redeemed',redeemed_at=? WHERE id=? AND status='issued'").bind(at,invited.id));
   await db.batch(operations);
-  const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.title,d.client_name,v.question_payload_json,v.scoring_key_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
+  const a=await db.prepare('SELECT '+PUBLIC_KEYS+',c.first_name,c.surname,COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number,d.slug,d.title,d.client_name,v.question_payload_json,v.scoring_key_json FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id JOIN assessment_versions v ON v.id=a.version_id WHERE a.id=?').bind(attemptId).first();
   if(!a)return failure(limitMessage,403);
   await audit(db,'candidate',candidateId,attemptId,'assessment.started');
   if(personality){
@@ -299,7 +304,7 @@ async function inviteMeta(request, db) {
   const token = new URL(request.url).searchParams.get('token');
   if (!isToken(token)) return failure('A valid invitation is required.', 400);
   const i = await db.prepare(
-    'SELECT i.status, i.expires_at, d.title, d.client_name, d.duration_seconds, v.question_payload_json ' +
+    'SELECT i.status, i.expires_at, d.slug, d.title, d.client_name, d.duration_seconds, v.question_payload_json ' +
     'FROM invitations i JOIN assessment_definitions d ON d.id=i.definition_id ' +
     'LEFT JOIN assessment_versions v ON v.id=d.current_version_id WHERE i.token_sha256=?'
   ).bind(await tokenHash(token)).first();
@@ -311,7 +316,8 @@ async function inviteMeta(request, db) {
   const payload = safeParse(i.question_payload_json, {}), personality = isPersonalityPayload(payload);
   // For the personality profile, advertise the enforced limit and the real question count (counts only, never items).
   return apiJson({ ok: true, title: i.title, client_name: i.client_name, duration_seconds: personality ? PERSONALITY_SECONDS : i.duration_seconds,
-    ...(personality ? { kind: 'personality', item_count: 50 + (Array.isArray(payload.reasoning) ? payload.reasoning.length : 0) } : {}), ...(instructions ? { instructions } : {}) });
+    ...(personality ? { kind: 'personality', item_count: 50 + (Array.isArray(payload.reasoning) ? payload.reasoning.length : 0) } : {}), ...(instructions ? { instructions } : {}),
+    ...(!personality && integrityOn(i.slug) ? { integrity_checks: true } : {}) });
 }
 
 async function requireAdmin(request, env) {
@@ -479,6 +485,8 @@ async function batteryReport(db, a, attemptId) {
       items: graded.items, startedAtMs: Number(a.started_at_ms), closedAtMs: Number(a.closed_at_ms),
       limitSeconds: Math.round((Number(a.expires_at_ms) - Number(a.started_at_ms)) / 1000),
     }),
+    // Page leaves, outside pastes and blocked copies; recorded only where integrity checks are on. Never changes a score.
+    integrity: a.integrity_statement_version || a.integrity_json ? integritySummary(a.integrity_json, { closedAtMs: a.status === 'active' ? null : Number(a.closed_at_ms), expiresAtMs: Number(a.expires_at_ms), statementVersion: a.integrity_statement_version }) : null,
     candidate: { first_name: a.first_name, surname: a.surname, email: a.email },
     screening: publicScreening(a),
     assessment: { client_name: payloadObj._metadata?.client_name || a.client_name, title: payloadObj._metadata?.title || a.title, version: a.version_label, format: payloadObj.format, sheets: payloadObj.workbook?.sheets || null },
@@ -536,7 +544,7 @@ async function adminDecision(request, db, attemptId) {
 async function adminReport(db, attemptId, env = {}) {
   if (!/^[a-f0-9-]{36}$/i.test(attemptId)) return failure('Invalid attempt ID.', 400);
   const a = await db.prepare(
-    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, ' +
+    'SELECT a.id, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.last_saved_at_ms, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, a.integrity_json, a.integrity_statement_version, d.slug, ' +
     'a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number, c.id_number_masked, c.earliest_start_date, c.first_day_confirmed, c.travel_mode, c.travel_description, c.own_transport, c.assignment_available, c.assignment_note, ' +
     'd.client_name, d.title, v.version_label, v.question_payload_json, v.scoring_key_json, ' +
     'r.overall_score, r.knowledge_score, r.reconciliation_score, r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
@@ -614,6 +622,32 @@ async function savePersonality(context, env, db, attempt, data, submit) {
   return await completionResponse(db, attempt.id, 'completed');
 }
 
+// One page-integrity event from the candidate's browser. Times come from the server clock, so the browser cannot
+// shorten a recorded absence; it can only fail to report one. Only active attempts with integrity checks record.
+const INTEGRITY_CAP = 5000;
+async function recordIntegrity(request, db, attempt) {
+  if (request.method !== 'POST') return failure('Method not allowed.', 405);
+  const data = await requestJson(request);
+  if (data.attempt_id !== attempt.id) return failure('This tab belongs to another assessment session.', 409);
+  if (!integrityOn(attempt.slug) || isPersonalityPayload(safeParse(attempt.question_payload_json, {}))) return apiJson({ ok: true, recorded: false });
+  if (!INTEGRITY_EVENTS.includes(data.event)) return failure('Invalid integrity event.', 400);
+  const now = Date.now();
+  const j = "COALESCE(integrity_json,'{}')";
+  const n = (path) => `COALESCE(json_extract(${j},'${path}'),0)`;
+  const live = "WHERE id=? AND status='active' AND expires_at_ms>?";
+  let statement;
+  if (data.event === 'left') statement = db.prepare(`UPDATE attempts SET integrity_json=json_set(${j},'$.leaves',${n('$.leaves')}+1,'$.away_since',?) ${live} AND json_extract(${j},'$.away_since') IS NULL AND ${n('$.leaves')}<?`).bind(now, attempt.id, now, INTEGRITY_CAP);
+  else if (data.event === 'back') {
+    const gap = `(?-json_extract(${j},'$.away_since'))`;
+    statement = db.prepare(`UPDATE attempts SET integrity_json=json_remove(json_set(${j},'$.away_ms',${n('$.away_ms')}+${gap},'$.longest_ms',max(${n('$.longest_ms')},${gap}),'$.long_leaves',${n('$.long_leaves')}+(CASE WHEN ${gap}>=? THEN 1 ELSE 0 END)),'$.away_since') ${live} AND json_extract(${j},'$.away_since') IS NOT NULL`).bind(now, now, now, LONG_LEAVE_MS, attempt.id, now);
+  } else {
+    const path = data.event === 'paste' ? '$.pastes' : '$.copy_blocked';
+    statement = db.prepare(`UPDATE attempts SET integrity_json=json_set(${j},'${path}',${n(path)}+1) ${live} AND ${n(path)}<?`).bind(attempt.id, now, INTEGRITY_CAP);
+  }
+  const changed = await statement.run();
+  return apiJson({ ok: true, recorded: Boolean(changed?.meta?.changes) });
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const dbError = requireDatabase(env);
@@ -654,7 +688,7 @@ export async function onRequest(context) {
       return failure('Admin endpoint not found.', 404);
     }
 
-    if (!['me', 'save', 'submit'].includes(operation)) return failure('Endpoint not found.', 404);
+    if (!['me', 'save', 'submit', 'integrity'].includes(operation)) return failure('Endpoint not found.', 404);
     const attempt = await candidateAttempt(request, db);
     if (!attempt) return failure('Session not found. Contact your recruiter.', 401);
     const expectedId=new URL(request.url).searchParams.get('attempt_id');
@@ -665,6 +699,7 @@ export async function onRequest(context) {
       if(!matches)return failure('Invitation does not match this session.',401);
     }
 
+    if (operation === 'integrity') return await recordIntegrity(request, db, attempt);
     const status = await closeAttempt(db, attempt, Date.now(), null);
     if (status !== 'active') scheduleNotifications(context, env, db);
     const personality = isPersonalityPayload(safeParse(attempt.question_payload_json, {}));

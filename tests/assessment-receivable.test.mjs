@@ -7,6 +7,7 @@ import {assertPracticeIsolation, assertNoPracticeReuse} from '../functions/lib/p
 import {cleanBatteryWorkbook, gradeBattery, parseAmount, publicBattery, validateBattery, BATTERY_ENGINE} from '../functions/lib/battery.js';
 import {database} from './helpers/assessment-db.mjs';
 import {screeningFixture} from './helpers/screening-fixture.mjs';
+import {INTEGRITY_STATEMENT_VERSION} from '../src/assessments/integrity.js';
 
 /* Accounts Receivable duplicate: the same battery-v2 platform, a second assessment family.
  * Every figure here is synthetic and trivial. No live question, option or key may enter this file
@@ -144,7 +145,7 @@ async function setup(slug = 'ar-clerk-v1') {
     }) });
     return { status: response.status, data: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
   }
-  const fields = { assessment_slug: slug, first_name: 'Synthetic', surname: 'Candidate', email: 'ar@example.invalid', consent_acknowledged: true, ...screeningFixture() };
+  const fields = { assessment_slug: slug, first_name: 'Synthetic', surname: 'Candidate', email: 'ar@example.invalid', consent_acknowledged: true, integrity_statement_version: INTEGRITY_STATEMENT_VERSION, ...screeningFixture() };
   return { db, env, call, fields };
 }
 

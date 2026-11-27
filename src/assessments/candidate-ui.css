@@ -718,3 +718,10 @@
 /* The runner's top bar is sticky, so anything scrolled into view (a focused answer, a link to a task)
    would stop underneath it. Stop it below the bar instead (WCAG 2.4.11, focus not obscured). */
 .ca-page .ca-runner * { scroll-margin-top: calc(var(--tta-bar) + 16px); }
+
+/* Integrity checks (useIntegrity.js): question text cannot be selected; answer boxes still can. */
+.tta-integrity body { -webkit-user-select: none; user-select: none; }
+.tta-integrity input, .tta-integrity textarea, .tta-integrity select { -webkit-user-select: text; user-select: text; }
+.tta-integrity-note { margin: 0 0 12px; font-size: 0.875rem; color: var(--ca-muted, #5b6470); }
+.tta-integrity-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; padding: 10px 16px; border-radius: 6px; background: #1f2a24; color: #fff; font-size: 0.9rem; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+@media print { .tta-integrity body { display: none; } }
