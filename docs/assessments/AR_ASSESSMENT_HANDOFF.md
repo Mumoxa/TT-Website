@@ -3,6 +3,30 @@
 Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; every point scored automatically; not published, not piloted, not validated.**
 Last updated: 2026-11-05. **Superseded in part on 2026-11-23 — read section 0 first.**
 
+## 0c. 2026-11-27: AR forms B and C rebuilt as strict copies of form A
+
+Why: the owner asked for the same assessment with different numbers, companies and answer order, not different
+questions. The first B and C (v4, v5) changed the scenario of about nine knowledge items. They were replaced.
+
+- **Live AR forms now:** A v3, **B v6, C v7** (v4 and v5 inactive, kept under labels B and C so anyone who took them is
+  never given that label again). Audit `assessment.published` for v6 and v7 records the owner instruction.
+- **How B and C are made** (`private/assessments/strict-clone.mjs`, `private/assessments/ar-clerk-v1/build-strict.mjs`):
+  form A's own text with a fixed swap table (customer names, document numbers, dates, ledger descriptions, amounts in the
+  format they had in A). No sentence is written by hand. Then the order of choice options is shuffled with a fixed seed.
+  The marked practical answers are recomputed from the swapped documents.
+- **Checks (42, all pass):** wording identical to A once names, numbers and dates are masked; no A name, document
+  number, description or amount survives; same blueprint; days overdue, ageing buckets, ranking of balances, limit
+  breaches, transposition and reconciliation relationships the same as A; no marked amount appears in any prompt; no
+  answer figure shared between B and C; a perfect sheet scores 100. Local end-to-end through the real API with A, B and
+  C (30 people x 2 attempts): no repeated form, every third start refused, 60/60 perfect sheets scored 100, all forms drawn.
+- **Live check:** a test person drew C (v7) then B (v6); a third start was refused. Records deleted (not submitted, no
+  emails; audit `assessment.test_records_deleted`).
+- **Real attempts on the replaced forms:** one candidate took C v5 (timed out, 59) and then B v4 (completed, 79) before
+  the replacement. Their results stand as recorded; they have used both attempts.
+- Psychometric status: strict isomorphs, still not statistically equated. Compare form averages after about 30 attempts
+  per form and investigate a gap of more than 5 marks.
+- AP: not yet rebuilt this way (AP B v3 and C v4 remain the earlier, non-strict forms).
+
 ## 0b. 2026-11-27: two attempts and parallel forms
 
 Why: repeat attempts on the same questions raised scores by memory, not skill (one AR candidate: 39, 65, 96 on the same
