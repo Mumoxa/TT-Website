@@ -16,7 +16,7 @@ form within an hour; one AP candidate: 46 to 81 over nine starts).
   correction is never re-exposed. No forms configured means the old behaviour. The recruiter list, report and result
   email name the form. The public catalogue exposes only a `parallel_forms` yes/no, used to tell candidates that a
   second attempt uses different questions.
-- **AR:** forms A (v3), B (v4), C (v5) active in production. B and C built privately
+- **AR:** forms A (v3), B (v4), C (v5) active in production; **signed off by the owner 2026-11-27** (audit `assessment.forms_activated`). B and C built privately
   (`private/assessments/ar-clerk-v1/build-forms.mjs`, 46 checks incl. same blueprint, no shared parties, document numbers
   or answer figures with A, answer positions differing, no marked amount in any prompt).
 - **AP:** forms B (v3) and C (v4) are built (`private/assessments/ap-clerk-v2/build-forms.mjs`, 41 checks) and stored in
