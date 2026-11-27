@@ -3,6 +3,34 @@
 Status: **platform verified locally; AR content rebuilt to the Talza Assessment Blueprint and privately authored; every point scored automatically; not published, not piloted, not validated.**
 Last updated: 2026-11-05. **Superseded in part on 2026-11-23 — read section 0 first.**
 
+## 0d. 2026-11-27: integrity checks (AR only)
+
+Why: candidates can copy questions into AI tools. This cannot be prevented (a phone camera defeats any page), so the
+aim is friction, deterrence and a record for the recruiter. On for `ar-clerk-v1` only (`INTEGRITY_SLUGS` in
+`src/assessments/integrity.js`); AP and the personality profile are unchanged.
+
+- **Honesty statement** (`INTEGRITY_STATEMENT`, version `honesty-statement-2026-11-27`): a second checkbox on the
+  details form; Start stays disabled until it is ticked, and the server refuses a start without it. The accepted
+  version is stored on the attempt (`attempts.integrity_statement_version`, migration 0011). The "What to expect"
+  list says copying is off and leaving the page is recorded.
+- **Copy blocking** (`src/assessments/useIntegrity.js`): while an attempt is active, question and document text cannot
+  be selected, copied, cut, dragged or right-clicked, and printing shows a blank page. Answer boxes and workbook cells
+  still allow typing and their own copy and paste. A blocked copy shows "Copying is switched off for this assessment."
+- **Page-leave record**: leaving the page (another tab or window, minimising, closing, reloading) and returning are
+  sent to `POST /api/assessment/integrity`; the server times them with its own clock (`attempts.integrity_json`:
+  leaves, time away, longest, leaves over 30 s, an absence still open at the deadline counted up to the deadline).
+  Also counted: pastes into answer boxes of text not copied inside the assessment, and blocked copies. No content or
+  keystrokes are stored.
+- **Shown to recruiters**: "Page integrity" panel in the admin report, and a line in the result email. Attempts made
+  before this change show no record (not a clean one). It never changes a score.
+- **Limits** (stated in the report): cannot see a second device; people leave pages for innocent reasons; a candidate
+  who disables JavaScript sends no events. Use it to ask questions, for example a two-minute call on one item.
+- Verified: 439 unit and API tests (5 new), new browser test (statement gates Start; copy of question text blocked
+  and clipboard unchanged; answer-box copy and paste work and are not counted; outside paste counted; right-click
+  blocked; hidden-tab and lost-focus leaves recorded with the right duration). Playwright keeps every page visible and
+  focused, so the test drives the browser's own visibility and focus events. Browser suites: 29 pass; the same 7 fail
+  on unchanged `main`. Production: migration 0011 applied and recorded before deploy.
+
 ## 0c. 2026-11-27: AR forms B and C rebuilt as strict copies of form A
 
 Why: the owner asked for the same assessment with different numbers, companies and answer order, not different

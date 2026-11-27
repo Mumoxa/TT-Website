@@ -13,6 +13,7 @@
    images. Colours and type follow the Talent Tree tokens in src/styles.css (DESIGN.md). */
 
 import { speedAccuracy, speedAccuracySummary } from './speed-accuracy.js';
+import { integritySummary, integrityLine } from '../../src/assessments/integrity.js';
 import {publicScreening} from './candidate-privacy.js';
 import {assessmentBrandText} from './assessment-core.js';
 import { BATTERY_FORMAT, gradeBattery, isBatteryPayload } from './battery.js';
@@ -156,7 +157,7 @@ function itemReviewHtml(items) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
 }
 
-export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false, screening={}, attemptNumber=1, speed = null, formLabel = null }) {
+export function buildResultEmail({ candidate, title, clientName, status, result, mcqReview, gradedAt, isBattery = false, screening={}, attemptNumber=1, speed = null, formLabel = null, integrity = null }) {
   const attemptLabel = `Attempt ${attemptNumber}${formLabel ? ` · Form ${formLabel}` : ''}`;
   const details=publicScreening(screening);
   const labels={contact_number_masked:'Contact number',id_number_masked:'South African ID number',earliest_start_date:'Earliest start date',first_day_confirmed:'First day confirmed',travel_mode:'Travel mode',travel_description:'Route description',own_transport:'Own transport',assignment_available:'Available for a 2-month assignment',assignment_note:'Availability note'};
@@ -193,6 +194,7 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
       ${screeningRows.map(([label, value]) => detailRow(label, value)).join('')}
     </table>
     ${speed ? sectionHeading('Speed and accuracy') + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${detailRow('Profile', speedAccuracySummary(speed))}</table><div style="margin-top:8px;font:12px/1.6 ${SANS};color:${C.muted};">${escapeHtml(speed.basis)}</div>` : ''}
+    ${integrity ? sectionHeading('Page integrity') + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${detailRow('Record', integrityLine(integrity))}</table><div style="margin-top:8px;font:12px/1.6 ${SANS};color:${C.muted};">${escapeHtml(integrity.basis)}</div>` : ''}
     ${scoring}
     ${sectionHeading(reviewTitle)}
     ${itemReviewHtml(mcqReview)}
@@ -211,6 +213,7 @@ export function buildResultEmail({ candidate, title, clientName, status, result,
     `Total: ${result.overall_score}/100 (knowledge ${result.knowledge_score}/40, reconciliation ${result.reconciliation_score}/60)`,
     `Flags: ${verdict}${flags.length ? ': ' + flags.join('; ') : ''}`,
     ...(speed ? [`Speed and accuracy: ${speedAccuracySummary(speed)}`] : []),
+    ...(integrity ? [`Page integrity: ${integrityLine(integrity)}`] : []),
     `Interpretation: ${result.interpretation}`,
     '',
     ...mcqReview.map((q, i) => `${i + 1}. ${q.prompt}\n   Candidate: ${q.chosen}\n   Correct: ${q.expected} — ${q.correct ? 'Correct' : 'Incorrect'}`),
@@ -315,7 +318,7 @@ export async function sendResultEmail(env, message, fetchImpl = fetch, slug = ''
    answers with the same pure function the API uses, so the email matches the saved result. */
 async function loadResultForEmail(db, attemptId) {
   const row = await db.prepare(
-    'SELECT a.id, d.slug, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
+    'SELECT a.id, d.slug, (SELECT f.form_label FROM assessment_forms f WHERE f.version_id=a.version_id LIMIT 1) AS form_label, a.status, a.started_at_ms, a.expires_at_ms, a.closed_at_ms, a.integrity_json, a.integrity_statement_version, a.mcq_answers_json, a.structured_answers_json, a.workbook_json, c.first_name, c.surname, c.email, c.contact_number,c.id_number_masked,c.earliest_start_date,c.first_day_confirmed,c.travel_mode,c.travel_description,c.own_transport,c.assignment_available,c.assignment_note, COALESCE((SELECT h.attempt_number FROM assessment_identity_attempts h WHERE h.candidate_id=c.id),1) AS attempt_number, d.client_name, d.title, ' +
     'v.question_payload_json, v.scoring_key_json, r.overall_score, r.knowledge_score, r.reconciliation_score, ' +
     'r.breakdown_json, r.critical_flags_json, r.interpretation, r.graded_at ' +
     'FROM attempts a JOIN candidates c ON c.id=a.candidate_id JOIN assessment_definitions d ON d.id=a.definition_id ' +
@@ -373,6 +376,7 @@ async function loadResultForEmail(db, attemptId) {
     },
     mcqReview,
     speed,
+    integrity: isBattery && (row.integrity_statement_version || row.integrity_json) ? integritySummary(row.integrity_json, { closedAtMs: Number(row.closed_at_ms), expiresAtMs: Number(row.expires_at_ms), statementVersion: row.integrity_statement_version }) : null,
     slug: row.slug,
     formLabel: row.form_label || null,
   };

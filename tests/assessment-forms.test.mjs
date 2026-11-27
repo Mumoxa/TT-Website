@@ -6,6 +6,7 @@ import {database} from './helpers/assessment-db.mjs';
 import {SYNTHETIC} from './fixtures/synthetic-assessment.mjs';
 import {SYNTHETIC_BATTERY, SYNTHETIC_BATTERY_KEY} from './fixtures/synthetic-battery.mjs';
 import {screeningFixture} from './helpers/screening-fixture.mjs';
+import {INTEGRITY_STATEMENT_VERSION} from '../src/assessments/integrity.js';
 
 /* Parallel forms (owner decision 2026-11-27): a person is never given the same form twice, and has 2 attempts.
    Synthetic content only (public repository). */
@@ -49,7 +50,7 @@ async function setup(labels = ['A', 'B', 'C']) {
       body: data === undefined ? undefined : JSON.stringify(data)})});
     return {status: response.status, data: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0]};
   }
-  const fields = (seed) => ({assessment_slug: 'ar-clerk-v1', first_name: 'Synthetic', surname: 'Candidate', email: `forms${seed}@example.invalid`, consent_acknowledged: true, ...screeningFixture(seed)});
+  const fields = (seed) => ({assessment_slug: 'ar-clerk-v1', first_name: 'Synthetic', surname: 'Candidate', email: `forms${seed}@example.invalid`, consent_acknowledged: true, integrity_statement_version: INTEGRITY_STATEMENT_VERSION, ...screeningFixture(seed)});
   const formOf = (attemptId) => db.sqlite.prepare('SELECT f.form_label FROM attempts a JOIN assessment_forms f ON f.version_id=a.version_id WHERE a.id=?').get(attemptId).form_label;
   return {db, env, call, fields, formOf};
 }

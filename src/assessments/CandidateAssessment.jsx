@@ -6,6 +6,7 @@ import {
 import PersonalityQuestions from './PersonalityQuestions.jsx';
 import { ReconciliationSpreadsheet } from './Spreadsheet.jsx';
 import { BatteryPanels } from './BatteryPanels.jsx';
+import { useIntegrity } from './useIntegrity.js';
 import './candidate.css';
 
 /* An activity counts as answered once it holds a value. Cell activities are answered in the
@@ -271,6 +272,7 @@ export default function CandidateAssessment({catalogItem}) {
   async function recover() {
     try {activate(await api('me?attempt_id='+attemptRef.current.attempt_id,undefined,'GET'));}catch(e){setError(e.message);}
   }
+  const integrityNotice = useIntegrity(phase === 'active' && attempt?.integrity_checks === true, attempt?.attempt_id);
   const remainingExpiry = useMemo(() => {
     if (!attempt) return new Date(Date.now()).toISOString();
     const offset = Number(attempt.server_now_ms || Date.now()) - Date.now();
@@ -286,7 +288,7 @@ export default function CandidateAssessment({catalogItem}) {
       slug={catalogItem?.slug || client.slug || ''}
       durationMinutes={Math.round(Number(client.duration_seconds) / 60) || 10}
       sectionTitles={welcomeItem?.section_titles} itemCount={welcomeItem?.item_count ?? client.item_count}
-      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''} parallelForms={Boolean(catalogItem?.parallel_forms)}
+      startInstructions={client.instructions || welcomeItem?.instructions} kind={catalogItem?.kind || client.kind || ''} parallelForms={Boolean(catalogItem?.parallel_forms)} integrityChecks={Boolean(catalogItem?.integrity_checks || client.integrity_checks)}
       hasInvitation={Boolean(invitationToken.current)} onStart={invitationToken.current || catalogItem?.slug ? start : undefined} isStarting={isStarting} error={error} />;
   }
   if (phase === 'complete') {
@@ -333,6 +335,8 @@ export default function CandidateAssessment({catalogItem}) {
         saveStatus={saveStatus}>
         {conflicted && <div className="tta-error" role="alert"><p>{error}</p><button type="button" onClick={recover}>Load saved work</button></div>}
         {expired && <p role="status">Time has expired. Confirming receipt of your saved work…</p>}
+        {attempt.integrity_checks && <p className="tta-integrity-note">Copying the questions is switched off, and leaving this page is recorded.</p>}
+        {integrityNotice && <div className="tta-integrity-toast" role="status">{integrityNotice}</div>}
         <fieldset className="tta-run-fields" disabled={conflicted||expired||submitting}>
           <BatteryPanels assessment={assessment} draft={draft} patchDraft={patchDraft} />
           {error && <div className="tta-error" role="alert">{error}</div>}

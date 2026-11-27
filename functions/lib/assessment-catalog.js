@@ -1,4 +1,5 @@
 import {apiJson} from './assessment-core.js';
+import {integrityOn} from '../../src/assessments/integrity.js';
 import {PERSONALITY_SLUG, PERSONALITY_FLOW_READY, PERSONALITY_SECONDS} from './hpi-personality.js';
 
 // Public metadata only. Never spread a database row or a private version payload.
@@ -33,6 +34,8 @@ export async function assessmentCatalog(db, slug = null, env = {}) {
       section_titles: sections ? sections.map(section => typeof section.title === 'string' ? section.title.slice(0, 120) : '') : ['Technical knowledge', 'Practical reconciliation'],
       // True when a second attempt is drawn from a different parallel form (no form content is exposed).
       parallel_forms: Number(row.active_forms || 0) > 1,
+      // Copy blocking, page-leave recording and the honesty statement (src/assessments/integrity.js).
+      ...(integrityOn(row.slug) ? { integrity_checks: true } : {}),
       item_count: sections ? sections.reduce((total, section) => total + (Array.isArray(section.items) ? section.items.length : 0), 0) : payload.questions.length + 1,
       // Candidate-facing instruction text, shown before the timer starts. Contains no answers.
       ...(sections && typeof payload.instructions === 'string' && payload.instructions.trim() ? { instructions: payload.instructions.trim().slice(0, 1500) } : {}),
